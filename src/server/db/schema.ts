@@ -10,26 +10,45 @@ import { type AdapterAccount } from "next-auth/adapters";
  */
 export const createTable = pgTableCreator((name) => `showplayer_${name}`);
 
-export const posts = createTable(
-  "post",
-  (d) => ({
-    id: d.integer().primaryKey().generatedByDefaultAsIdentity(),
-    name: d.varchar({ length: 256 }),
-    createdById: d
-      .varchar({ length: 255 })
-      .notNull()
-      .references(() => users.id),
-    createdAt: d
-      .timestamp({ withTimezone: true })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
-  }),
-  (t) => [
-    index("created_by_idx").on(t.createdById),
-    index("name_idx").on(t.name),
-  ]
-);
+export const media = createTable("media", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  anilistId: d.integer("anilist_id").notNull().unique(),
+  type: d.varchar({ length: 255 }), // "show" | "movie" | "anime"
+  title: d.text("title").notNull(),
+  description: d.text("description").notNull(),
+  imageUrl: d.text("image_url").notNull(),
+  createdAt: d
+    .timestamp({
+      mode: "date",
+      withTimezone: true,
+    })
+    .default(sql`CURRENT_TIMESTAMP`),
+}));
+
+// export const posts = createTable(
+//   "post",
+//   (d) => ({
+//     id: d.integer().primaryKey().generatedByDefaultAsIdentity(),
+//     name: d.varchar({ length: 256 }),
+//     createdById: d
+//       .varchar({ length: 255 })
+//       .notNull()
+//       .references(() => users.id),
+//     createdAt: d
+//       .timestamp({ withTimezone: true })
+//       .default(sql`CURRENT_TIMESTAMP`)
+//       .notNull(),
+//     updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+//   }),
+//   (t) => [
+//     index("created_by_idx").on(t.createdById),
+//     index("name_idx").on(t.name),
+//   ]
+// );
 
 export const users = createTable("user", (d) => ({
   id: d

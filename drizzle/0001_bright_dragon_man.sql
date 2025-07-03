@@ -1,0 +1,2 @@
+ALTER TABLE "showplayer_media" ADD COLUMN "anilist_id" integer NOT NULL;--> statement-breakpoint
+ALTER TABLE "showplayer_media" ADD CONSTRAINT "showplayer_media_anilist_id_unique" UNIQUE("anilist_id");

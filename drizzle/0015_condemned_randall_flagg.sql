@@ -1,0 +1,1 @@
+ALTER TABLE "anilist_media" ALTER COLUMN "episodes" SET NOT NULL;

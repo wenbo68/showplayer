@@ -1,0 +1,1 @@
+ALTER TABLE "anilist_media" ADD COLUMN "episodes" integer;

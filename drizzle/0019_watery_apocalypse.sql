@@ -1,0 +1,1 @@
+ALTER TABLE "tmdb_source" ADD COLUMN "headers" jsonb;

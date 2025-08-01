@@ -1,0 +1,1 @@
+ALTER TABLE "showplayer_media" ADD COLUMN "updatedAt" timestamp with time zone DEFAULT CURRENT_TIMESTAMP;

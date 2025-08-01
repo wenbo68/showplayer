@@ -15,6 +15,153 @@
       "when": 1751546758458,
       "tag": "0001_bright_dragon_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1751696728612,
+      "tag": "0002_reflective_loa",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1751702199485,
+      "tag": "0003_rapid_unus",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1751703436616,
+      "tag": "0004_calm_vargas",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1751709833388,
+      "tag": "0005_absurd_giant_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1751784421329,
+      "tag": "0006_curved_bedlam",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1751785164441,
+      "tag": "0007_tired_titanium_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1751794500475,
+      "tag": "0008_lucky_blacklash",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1751798556469,
+      "tag": "0009_misty_xorn",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1751798908160,
+      "tag": "0010_nebulous_sumo",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1751877264314,
+      "tag": "0011_strange_monster_badoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1752411202213,
+      "tag": "0012_normal_talisman",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1752498976637,
+      "tag": "0013_left_nova",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1752505217353,
+      "tag": "0014_medical_silver_surfer",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1752579462040,
+      "tag": "0015_condemned_randall_flagg",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1752580264273,
+      "tag": "0016_acoustic_the_initiative",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1753178850249,
+      "tag": "0017_third_kylun",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1753280720376,
+      "tag": "0018_keen_maggott",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1753797324483,
+      "tag": "0019_watery_apocalypse",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1753797686355,
+      "tag": "0020_bright_gravity",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1753797923656,
+      "tag": "0021_absent_madripoor",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1753799178985,
+      "tag": "0022_pale_xavin",
+      "breakpoints": true
     }
   ]
 }

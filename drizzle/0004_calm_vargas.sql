@@ -1,0 +1,1 @@
+ALTER TABLE "showplayer_media" ADD COLUMN "trending" integer DEFAULT -1 NOT NULL;

@@ -1,0 +1,1 @@
+ALTER TABLE "tmdb_source" ALTER COLUMN "headers" DROP NOT NULL;

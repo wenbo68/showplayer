@@ -1,0 +1,1 @@
+ALTER TABLE "showplayer_media" ALTER COLUMN "imdb_id" SET DATA TYPE varchar(20);

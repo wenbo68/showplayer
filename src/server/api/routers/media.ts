@@ -26,8 +26,9 @@ import {
   fetchAndInsertMvSrc,
   fetchAndInsertTvSrc,
   fetchAnilistTrending,
-  fetchTmdbDetailById,
-  fetchTmdbTrending,
+  fetchTmdbDetailViaApi,
+  fetchTmdbTrendingViaApi,
+  fetchSrcForEpisodes,
   upsertExistingTvInfo,
   upsertNewTvInfo,
 } from '~/server/utils';
@@ -50,7 +51,8 @@ export const mediaRouter = createTRPCRouter({
       return media[0];
     }),
 
-  tmdbTrending: publicProcedure.query(async ({ ctx }) => {
+  // get all trending media (with their media details)
+  tmdbTrendingWithDetails: publicProcedure.query(async ({ ctx }) => {
     const trending = await ctx.db
       .select({
         rank: tmdbTrending.rank,
@@ -98,7 +100,7 @@ export const mediaRouter = createTRPCRouter({
     .input(z.object({ limit: z.number() }))
     .mutation(async ({ input, ctx }) => {
       // 1. fetch output from api
-      const fetchOutput = await fetchTmdbTrending(input.limit);
+      const fetchOutput = await fetchTmdbTrendingViaApi(input.limit);
 
       // 2. Prepare db input from api fetch ouput
       let mediaInput = fetchOutput.map((item: any) => ({
@@ -194,8 +196,12 @@ export const mediaRouter = createTRPCRouter({
   //     return { count: mediaInput.length };
   //   }),
 
+  //keep debugging populateMediaDetails and dailySrcFetch (the fetch src condition for tv may be flawed. if the new episode is airing in the future, we won't fetch src for the existing episodes...)
+
+  // for mv, get updateDate from api => no need to get src (bc dailySrcFetch will)
+  // for tv, get seasons/episodes from api => need to get src for all episodes (dailySrcFetch only fetches the next episode to air)
   populateMediaDetails: publicProcedure.mutation(async ({ ctx }) => {
-    //1. fetch new records: tmdbMedia where (type is movie and mvReleaseDate is null) or (type is tv and it has no season in tmdbSeason table)
+    //1. fetch new records: tmdbMedia where (type is movie and updateDate is null) or (type is tv and it has no season in tmdbSeason table)
     const newMediaRecords = await ctx.db
       .select()
       .from(tmdbMedia)
@@ -214,25 +220,43 @@ export const mediaRouter = createTRPCRouter({
         )
       )
       .execute();
+    console.log(
+      `[populateMediaDetails] Found ${newMediaRecords.length} new media records to process.`
+    );
 
     // 2. for each record, fetch details from tmdb api
     for (const media of newMediaRecords) {
-      const details = await fetchTmdbDetailById(media.type, media.tmdbId);
-
+      console.log(
+        `[populateMediaDetails] Processing ${media.type} ${media.tmdbId}: ${media.title}.`
+      );
+      const details = await fetchTmdbDetailViaApi(media.type, media.tmdbId);
       if (media.type === 'movie') {
         // 3. for movies, update mvReleaseDate in tmdbMedia
         await ctx.db
           .update(tmdbMedia)
-          .set({ updateDate: details.release_date })
+          .set({
+            updateDate: !!details.release_date
+              ? new Date(details.release_date)
+              : null,
+          })
           .where(eq(tmdbMedia.id, media.id))
           .execute();
       } else if (media.type === 'tv' && details?.seasons) {
         // 4. for tv, update nextEpisodeDate in tmdbMedia then populate seasons and episodes
-        upsertNewTvInfo(details, media.id);
+        await upsertNewTvInfo(details, media.id);
+        console.log(
+          `[populateMediaDetails] Inserted seasons and episodes for ${media.type} ${media.tmdbId}.`
+        );
+        // 5. fetch src for all episodes of this tv
+        await fetchSrcForEpisodes(media.id, details.id);
+        console.log(
+          `[populateMediaDetails] Inserted sources for ${media.type} ${media.tmdbId}.`
+        );
       }
     }
   }),
 
+  // find all media who needs src then get src from providers
   dailySrcFetch: publicProcedure.mutation(async ({ ctx }) => {
     // 1. in tmdbMedia find updated records: (type is movie and mvReleaseDate is older than yesterday) or (type is tv and nextEpisodeDate is older than yesterday)
     const yesterday = new Date();
@@ -274,47 +298,11 @@ export const mediaRouter = createTRPCRouter({
         await fetchAndInsertMvSrc(media.tmdbId);
       } else if (media.type === 'tv') {
         // 3. for updated tv, fetch details from api first and update nextEpisodeDate in tmdbMedia
-        const details = await fetchTmdbDetailById('tv', media.tmdbId);
+        const details = await fetchTmdbDetailViaApi('tv', media.tmdbId);
         // then upsert seasons/episodes
         await upsertExistingTvInfo(details, media.id);
         // then fetch sources for all episodes whose source is null
-        const episodesWithoutSources = await ctx.db.query.tmdbEpisode.findMany({
-          where: and(
-            // Condition 1: Find episodes belonging to the current TV show
-            // by checking if their season's mediaId matches.
-            exists(
-              ctx.db
-                .select()
-                .from(tmdbSeason)
-                .where(
-                  and(
-                    eq(tmdbSeason.mediaId, media.id),
-                    eq(tmdbSeason.id, tmdbEpisode.seasonId)
-                  )
-                )
-            ),
-            // Condition 2: Find episodes that have no corresponding
-            // entry in the tmdbSource table.
-            notExists(
-              ctx.db
-                .select()
-                .from(tmdbSource)
-                .where(eq(tmdbSource.episodeId, tmdbEpisode.id))
-            )
-          ),
-          orderBy: (episode, { asc }) => [asc(episode.episodeNumber)],
-          with: {
-            season: true,
-          },
-        });
-
-        for (const episode of episodesWithoutSources) {
-          await fetchAndInsertTvSrc(
-            media.tmdbId,
-            episode.season.seasonNumber,
-            episode.episodeNumber
-          );
-        }
+        await fetchSrcForEpisodes(media.id, media.tmdbId);
       }
     });
     console.log(
@@ -381,12 +369,6 @@ export const mediaRouter = createTRPCRouter({
 
   //     return media[0];
   //   }),
-
-  // fetch source for each episode? or just use embeds?
-  // to ensure backend uniqueness and no ads, don't use embeds
-  // but don't search for sources of all shows
-  // instead, fetch sources when a user click some episode, then store the sources in db so that other users don't need fetches
-  // sources (use tmdb id): vidjoy, videasy, vidfast, vidlink, vidsrc
 
   fetchAndInsertMvSrc: publicProcedure
     .input(

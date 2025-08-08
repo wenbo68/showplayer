@@ -8,7 +8,7 @@ export default function TrendingList() {
     data: tmdbData,
     status: tmdbStatus,
     error: tmdbError,
-  } = api.media.tmdbTrending.useQuery();
+  } = api.media.tmdbTrendingWithDetails.useQuery();
   // const {
   //   data: anilistData,
   //   status: anilistStatus,

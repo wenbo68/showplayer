@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
 
 // rewrites vid seg urls within the m3u8 playlist
 function rewritePlaylist(
@@ -87,15 +85,6 @@ export async function GET(request: NextRequest) {
     const response = await fetch(targetUrl, {
       headers: headers,
     });
-    // console.log(
-    //   `[PROXY] Step 2: Received response with status: ${response.status}`
-    // );
-
-    // // Log all response headers to see what we're getting back
-    // console.log(
-    //   '[PROXY] Response headers:',
-    //   Object.fromEntries(response.headers.entries())
-    // );
 
     if (!response.ok) {
       console.error(
@@ -125,23 +114,23 @@ export async function GET(request: NextRequest) {
         headers
       );
 
-      // save playlist content
-      const downloadDir = path.join(process.cwd(), 'downloads');
-      if (!fs.existsSync(downloadDir)) {
-        fs.mkdirSync(downloadDir, { recursive: true });
-      }
-      let filename =
-        path.basename(new URL(targetUrl).pathname) + crypto.randomUUID();
-      if (!filename || filename === '/') {
-        filename = `playlist-${Date.now()}-${Math.floor(
-          Math.random() * 1000
-        )}.m3u8`;
-      } else if (!filename.includes('.m3u8')) {
-        filename = `${filename}.m3u8`;
-      }
-      const savePath = path.join(downloadDir, filename);
-      fs.writeFileSync(savePath, buffer);
-      console.log(`Saved playlist to: ${savePath}`);
+      // // save playlist content
+      // const downloadDir = path.join(process.cwd(), 'downloads');
+      // if (!fs.existsSync(downloadDir)) {
+      //   fs.mkdirSync(downloadDir, { recursive: true });
+      // }
+      // let filename =
+      //   path.basename(new URL(targetUrl).pathname) + crypto.randomUUID();
+      // if (!filename || filename === '/') {
+      //   filename = `playlist-${Date.now()}-${Math.floor(
+      //     Math.random() * 1000
+      //   )}.m3u8`;
+      // } else if (!filename.includes('.m3u8')) {
+      //   filename = `${filename}.m3u8`;
+      // }
+      // const savePath = path.join(downloadDir, filename);
+      // fs.writeFileSync(savePath, buffer);
+      // console.log(`Saved playlist to: ${savePath}`);
 
       // // save rewritten playlist content
       // const savePathRewritten = path.join(downloadDir, `rewritten-${filename}`);

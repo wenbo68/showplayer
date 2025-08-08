@@ -3,7 +3,7 @@ import TmdbAdmin from './_components/TmdbAdmin';
 import TrendingList from './_components/media/TrendingList';
 
 export default async function Home() {
-  void api.media.tmdbTrending.prefetch();
+  void api.media.tmdbTrendingWithDetails.prefetch();
   // void api.media.anilistTrending.prefetch();
 
   return (

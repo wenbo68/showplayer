@@ -1,11 +1,32 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
 
-export function VideoPlayer({ src }: { src?: string }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+interface Subtitle {
+  lang: string;
+  label: string;
+  content: string;
+  default: boolean;
+}
 
+interface VideoPlayerProps {
+  src?: string;
+  subtitles?: Subtitle[];
+}
+
+interface TrackData {
+  src: string;
+  label: string;
+  srcLang: string;
+  default: boolean;
+}
+
+export function VideoPlayer({ src, subtitles }: VideoPlayerProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [tracks, setTracks] = useState<TrackData[]>([]);
+
+  // setup hls.js
   useEffect(() => {
     if (Hls.isSupported() && videoRef.current && src) {
       const hls = new Hls();
@@ -13,6 +34,35 @@ export function VideoPlayer({ src }: { src?: string }) {
       hls.attachMedia(videoRef.current);
     }
   }, [src]);
+
+  // Effect for creating and cleaning up subtitle Blob URLs
+  useEffect(() => {
+    // If there are no subtitles, do nothing.
+    if (!subtitles || subtitles.length === 0) {
+      setTracks([]); // Clear any existing tracks
+      return;
+    }
+
+    // Create a Blob URL for each subtitle string.
+    const subtitleTracks = subtitles.map((subtitle) => {
+      const blob = new Blob([subtitle.content], { type: 'text/vtt' });
+      const url = URL.createObjectURL(blob);
+      return {
+        src: url,
+        srcLang: subtitle.lang,
+        label: subtitle.label,
+        default: subtitle.default,
+      };
+    });
+    setTracks(subtitleTracks);
+
+    // IMPORTANT: Cleanup function to revoke the Blob URLs and prevent memory leaks.
+    return () => {
+      for (const track of subtitleTracks) {
+        URL.revokeObjectURL(track.src);
+      }
+    };
+  }, [subtitles]); // Rerun this effect if the subtitles prop changes
 
   if (!src) {
     return (
@@ -26,7 +76,19 @@ export function VideoPlayer({ src }: { src?: string }) {
     <video
       ref={videoRef}
       controls
+      crossOrigin="anonymous"
       className="w-full aspect-video rounded bg-black"
-    />
+    >
+      {tracks.map((track, index) => (
+        <track
+          key={index}
+          kind="subtitles"
+          src={track.src}
+          srcLang={track.srcLang}
+          label={track.label}
+          default={track.default}
+        />
+      ))}
+    </video>
   );
 }

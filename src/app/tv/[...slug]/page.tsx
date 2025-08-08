@@ -17,12 +17,16 @@ interface PageProps {
   };
 }
 
+// now the subtitles work (but vidjoy's subtitle seems to be off sync => maybe we turn off vidjoy subtitle by default since it already has subtitles baked in?)
+// now we might wanna try testing other episodes/movies
+// then we would bulk fetch the trending ones
+
 export default async function Page({ params }: PageProps) {
   const { slug } = await params;
   const [tmdbIdParam, seasonParam, episodeParam, providerParam] = slug;
 
   if (!tmdbIdParam || !seasonParam || !episodeParam) {
-    return notFound;
+    return notFound();
   }
 
   // Parse params from the URL
@@ -65,7 +69,11 @@ export default async function Page({ params }: PageProps) {
   // Step 3. Fetch all available sources for the selected episode
   const sources = await db.query.tmdbSource.findMany({
     where: eq(tmdbSource.episodeId, selectedEpisode.id),
+    with: {
+      subtitles: true,
+    },
   });
+
   if (!sources[0]) {
     notFound();
   }
@@ -83,13 +91,17 @@ export default async function Page({ params }: PageProps) {
   // Step 4. Find the selected source URL for the video player
   const selectedSrc = sources.find((s) => s.provider === providerParam);
 
+  // If a provider is in the URL but doesn't exist for this media, 404
+  if (!selectedSrc) {
+    notFound();
+  }
+
   // Step 5. construct the proxy url with src url and headers included as params
   let playerSrc: string | undefined;
 
   // two ways to create url with params:
   // 1. encode params and append them to to url as strings (encode the urls so that they can be included in another url otherwise the special characters in the embeded urls can cause confusions)
   // 2. use URL obj and attach params (without encoding) as key/value
-
   if (selectedSrc) {
     const urlObject = new URL(`/api/proxy`, 'http://localhost');
     urlObject.searchParams.set('url', selectedSrc.url);
@@ -103,8 +115,18 @@ export default async function Page({ params }: PageProps) {
     }
     // final url = relative proxy path (/api/proxy) + params (playlist url + headers)
     playerSrc = urlObject.pathname + urlObject.search;
-    console.log(`playerSrc: `, playerSrc);
+    // console.log(`playerSrc: `, playerSrc);
   }
+
+  // 6. find all subtitles
+  const subtitles = sources.flatMap((source, index) =>
+    source.subtitles.map((sub) => ({
+      content: sub.content,
+      lang: sub.language.slice(0, 2).toLowerCase(), // e.g., "English" -> "en"
+      label: `${sub.language} (${source.provider})`,
+      default: source.id === selectedSrc?.id,
+    }))
+  );
 
   return (
     <div className="container mx-auto p-4">
@@ -117,7 +139,7 @@ export default async function Page({ params }: PageProps) {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3">
           {/* Video Player Component */}
-          <VideoPlayer src={playerSrc} />
+          <VideoPlayer src={playerSrc} subtitles={subtitles} />
 
           {/* Source Selector Component */}
           <SourceSelector

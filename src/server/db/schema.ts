@@ -1,6 +1,5 @@
 import { relations, sql } from 'drizzle-orm';
 import {
-  boolean,
   index,
   integer,
   jsonb,
@@ -268,7 +267,7 @@ export const tmdbSource = pgTable('tmdb_source', {
   headers: jsonb('headers'),
 });
 
-export const tmdbSourceRelations = relations(tmdbSource, ({ one }) => ({
+export const tmdbSourceRelations = relations(tmdbSource, ({ one, many }) => ({
   media: one(tmdbMedia, {
     fields: [tmdbSource.mediaId],
     references: [tmdbMedia.id],
@@ -276,6 +275,28 @@ export const tmdbSourceRelations = relations(tmdbSource, ({ one }) => ({
   episode: one(tmdbEpisode, {
     fields: [tmdbSource.episodeId],
     references: [tmdbEpisode.id],
+  }),
+  subtitles: many(tmdbSubtitle),
+}));
+
+export const tmdbSubtitle = pgTable('tmdb_subtitle', {
+  id: varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  sourceId: varchar({ length: 255 })
+    .notNull()
+    .references(() => tmdbSource.id, {
+      onDelete: 'cascade',
+    }),
+  language: varchar({ length: 255 }).notNull(),
+  content: text().notNull(),
+});
+
+export const tmdbSubtitleRelations = relations(tmdbSubtitle, ({ one }) => ({
+  source: one(tmdbSource, {
+    fields: [tmdbSubtitle.sourceId],
+    references: [tmdbSource.id],
   }),
 }));
 

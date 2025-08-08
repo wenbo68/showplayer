@@ -5,6 +5,8 @@ import { api } from '~/trpc/react';
 export default function TmdbAdmin() {
   const clearTmdbTrendingMutation = api.media.clearTmdbTrending.useMutation();
   const fetchTmdbTrendingMutation = api.media.fetchTmdbTrending.useMutation();
+  const populateDetailsMutation = api.media.populateMediaDetails.useMutation();
+  const dailySrcFetchMutation = api.media.dailySrcFetch.useMutation();
   // const clearAnilistTrendingMutation =
   //   api.media.clearAnilistTrending.useMutation();
   // const fetchAnilistTrendingMutation =
@@ -32,6 +34,18 @@ export default function TmdbAdmin() {
       }
     );
   };
+  const handlePopulateDetails = () => {
+    populateDetailsMutation.mutate(undefined, {
+      onSuccess: () => console.log('Populated details'),
+      onError: (err) => console.error('Error populating details: ', err),
+    });
+  };
+  const handleDailySrcFetch = () => {
+    dailySrcFetchMutation.mutate(undefined, {
+      onSuccess: () => console.log('Daily src fetch finished'),
+      onError: (err) => console.error('Error fetching daily src: ', err),
+    });
+  };
   // const handleClearAnilistTrending = () => {
   //   clearAnilistTrendingMutation.mutate(undefined, {
   //     onSuccess: () => console.log('Anilist trending cleared'),
@@ -56,7 +70,7 @@ export default function TmdbAdmin() {
   // };
   const handleFetchMvSrc = () => {
     fetchMvSrcMutation.mutate(
-      { tmdbId: 1807192 },
+      { tmdbId: 803796 },
       {
         onSuccess: (data) => console.log('Fetched source:', data),
         onError: (err) => console.error('Error fetching source:', err),
@@ -124,6 +138,32 @@ export default function TmdbAdmin() {
       {fetchTmdbTrendingMutation.error && (
         <p className="text-red-500">
           Error: {fetchTmdbTrendingMutation.error.message}
+        </p>
+      )}
+      <button
+        onClick={handlePopulateDetails}
+        disabled={populateDetailsMutation.isPending}
+        className="px-4 py-2 bg-red-600 text-white rounded"
+      >
+        {populateDetailsMutation.isPending
+          ? 'Populating...'
+          : 'Populate media details'}
+      </button>
+      {populateDetailsMutation.error && (
+        <p className="text-red-500 mt-2">
+          Error: {populateDetailsMutation.error.message}
+        </p>
+      )}
+      <button
+        onClick={handleDailySrcFetch}
+        disabled={dailySrcFetchMutation.isPending}
+        className="px-4 py-2 bg-blue-600 text-white rounded"
+      >
+        {dailySrcFetchMutation.isPending ? 'Fetching...' : 'Daily src fetch'}
+      </button>
+      {dailySrcFetchMutation.error && (
+        <p className="text-red-500">
+          Error: {dailySrcFetchMutation.error.message}
         </p>
       )}
       {/* <button

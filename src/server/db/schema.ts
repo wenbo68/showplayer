@@ -134,22 +134,29 @@ export const episodeRelations = relations(tmdbEpisode, ({ one, many }) => ({
   sources: many(tmdbSource),
 }));
 
-export const tmdbSource = pgTable('tmdb_source', {
-  id: varchar({ length: 255 })
-    .notNull()
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  mediaId: varchar({ length: 255 }).references(() => tmdbMedia.id, {
-    onDelete: 'cascade',
-  }),
-  episodeId: varchar({ length: 255 }).references(() => tmdbEpisode.id, {
-    onDelete: 'cascade',
-  }),
-  provider: varchar({ length: 255 }).notNull(),
-  type: m3u8TypeEnum('type').notNull(),
-  url: text().notNull(),
-  headers: jsonb('headers'),
-});
+export const tmdbSource = pgTable(
+  'tmdb_source',
+  {
+    id: varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    mediaId: varchar({ length: 255 }).references(() => tmdbMedia.id, {
+      onDelete: 'cascade',
+    }),
+    episodeId: varchar({ length: 255 }).references(() => tmdbEpisode.id, {
+      onDelete: 'cascade',
+    }),
+    provider: varchar({ length: 255 }).notNull(),
+    type: m3u8TypeEnum('type').notNull(),
+    url: text().notNull(),
+    headers: jsonb('headers'),
+  },
+  (table) => [
+    uniqueIndex('unq_episode_provider').on(table.episodeId, table.provider),
+    uniqueIndex('unq_movie_provider').on(table.mediaId, table.provider),
+  ]
+);
 
 export const tmdbSourceRelations = relations(tmdbSource, ({ one, many }) => ({
   media: one(tmdbMedia, {
@@ -163,19 +170,25 @@ export const tmdbSourceRelations = relations(tmdbSource, ({ one, many }) => ({
   subtitles: many(tmdbSubtitle),
 }));
 
-export const tmdbSubtitle = pgTable('tmdb_subtitle', {
-  id: varchar({ length: 255 })
-    .notNull()
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  sourceId: varchar({ length: 255 })
-    .notNull()
-    .references(() => tmdbSource.id, {
-      onDelete: 'cascade',
-    }),
-  language: varchar({ length: 255 }).notNull(),
-  content: text().notNull(),
-});
+export const tmdbSubtitle = pgTable(
+  'tmdb_subtitle',
+  {
+    id: varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    sourceId: varchar({ length: 255 })
+      .notNull()
+      .references(() => tmdbSource.id, {
+        onDelete: 'cascade',
+      }),
+    language: varchar({ length: 255 }).notNull(),
+    content: text().notNull(),
+  },
+  (table) => [
+    uniqueIndex('unq_source_language').on(table.sourceId, table.language),
+  ]
+);
 
 export const tmdbSubtitleRelations = relations(tmdbSubtitle, ({ one }) => ({
   source: one(tmdbSource, {

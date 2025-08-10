@@ -7,7 +7,7 @@ import {
   tmdbSource,
   tmdbSubtitle,
 } from './db/schema';
-import { asc, and, eq, isNull } from 'drizzle-orm'; // <<< Import 'eq' from drizzle-orm
+import { asc, and, eq, isNull, sql } from 'drizzle-orm'; // <<< Import 'eq' from drizzle-orm
 import type { PuppeteerResult } from '~/type';
 
 export async function fetchTmdbTrendingViaApi(limit: number) {
@@ -97,6 +97,93 @@ function convertToVtt(subtitle: string): string {
   return 'WEBVTT\n\n' + newSubtitle.trim();
 }
 
+// FILE: your-function.ts
+
+async function upsertSrcAndSubtitle(
+  type: 'mv' | 'tv',
+  id: string,
+  results: PuppeteerResult[]
+) {
+  console.log(`upserting`);
+  let sourceIds: { id: string }[] = [];
+
+  if (type === 'mv') {
+    // 1. Prepare movie data
+    const sourcesToUpsert = results.map((result) => ({
+      mediaId: id, // episodeId is omitted (NULL)
+      provider: result.provider,
+      type: result.m3u8.type,
+      url: result.m3u8.url,
+      headers: result.m3u8.headers,
+    }));
+
+    // 2. Upsert using the movie-specific constraint
+    if (sourcesToUpsert.length > 0) {
+      sourceIds = await db
+        .insert(tmdbSource)
+        .values(sourcesToUpsert)
+        .onConflictDoUpdate({
+          target: [tmdbSource.mediaId, tmdbSource.provider], // Correct target for movies
+          set: {
+            url: sql`excluded.url`,
+            headers: sql`excluded.headers`,
+            type: sql`CASE WHEN excluded.type = 'master' THEN excluded.type ELSE tmdb_source.type END`,
+          },
+          where: sql`excluded.type = 'master' OR excluded.type = tmdb_source.type`,
+        })
+        .returning({ id: tmdbSource.id });
+    }
+  } else if (type === 'tv') {
+    // 1. Prepare TV show data
+    const sourcesToUpsert = results.map((result) => ({
+      episodeId: id, // mediaId is omitted (NULL)
+      provider: result.provider,
+      type: result.m3u8.type,
+      url: result.m3u8.url,
+      headers: result.m3u8.headers,
+    }));
+
+    // 2. Upsert using the TV-specific constraint
+    if (sourcesToUpsert.length > 0) {
+      sourceIds = await db
+        .insert(tmdbSource)
+        .values(sourcesToUpsert)
+        .onConflictDoUpdate({
+          target: [tmdbSource.episodeId, tmdbSource.provider], // Correct target for TV shows
+          set: {
+            url: sql`excluded.url`,
+            headers: sql`excluded.headers`,
+            type: sql`CASE WHEN excluded.type = 'master' THEN excluded.type ELSE tmdb_source.type END`,
+          },
+          where: sql`excluded.type = 'master' OR excluded.type = tmdb_source.type`,
+        })
+        .returning({ id: tmdbSource.id });
+    }
+  }
+
+  console.log(`upserted sources`);
+
+  if (sourceIds.length === 0) return; // Nothing to do for subtitles
+
+  const subtitlesToUpsert = results
+    .filter((result) => result.subtitle !== undefined)
+    .map((result, index) => ({
+      sourceId: sourceIds[index]!.id,
+      language: 'English',
+      content: result.subtitle!,
+    }));
+
+  if (subtitlesToUpsert.length > 0) {
+    await db
+      .insert(tmdbSubtitle)
+      .values(subtitlesToUpsert)
+      .onConflictDoUpdate({
+        target: [tmdbSubtitle.sourceId, tmdbSubtitle.language],
+        set: { content: sql`excluded.content` },
+      });
+  }
+}
+
 export async function fetchAndInsertMvSrc(tmdbId: number) {
   const results = await fetchSrcFromProviders('mv', `${tmdbId}`);
   if (results.length === 0) {
@@ -116,33 +203,53 @@ export async function fetchAndInsertMvSrc(tmdbId: number) {
   if (!mediaData) {
     throw new Error(`fetchMvSrc failed: media not found for tmdbId: ${tmdbId}`);
   }
-  // 3. Prepare the data for insertion.
-  const sourcesToInsert = results.map((result) => ({
-    mediaId: mediaData.id, // Link each source to the found media
-    provider: result.provider,
-    type: result.m3u8.type,
-    url: result.m3u8.url,
-    headers: result.m3u8.headers,
-  }));
-  // 4. Insert all new sources into the tmdbSource table in a single query.
-  const sourceIds = await db
-    .insert(tmdbSource)
-    .values(sourcesToInsert)
-    .returning({ id: tmdbSource.id });
-  console.log(
-    `Inserted ${sourcesToInsert.length} sources for tmdbId: ${tmdbId}`
-  );
-  // 5. Prepare subtitles for insertion
-  const subtitlesToInsert = results
-    .filter((result) => result.subtitle !== undefined)
-    .map((result, index) => ({
-      sourceId: sourceIds[index]!.id,
-      language: 'English',
-      content: result.subtitle!,
-    }));
-  // 6. insert all subtitles into the tmdbSubtitle table
-  await db.insert(tmdbSubtitle).values(subtitlesToInsert);
-  return results;
+  // 3. upsert sources and subtitles
+  await upsertSrcAndSubtitle('mv', mediaData.id, results);
+
+  // // 3. Prepare the data for insertion.
+  // const sourcesToUpsert = results.map((result) => ({
+  //   mediaId: mediaData.id, // Link each source to the found media
+  //   provider: result.provider,
+  //   type: result.m3u8.type,
+  //   url: result.m3u8.url,
+  //   headers: result.m3u8.headers,
+  // }));
+  // // 4. Upsert all new sources into the tmdbSource table
+  // // always use new headers/url (and also new type if it's master)
+  // const sourceIds = await db
+  //   .insert(tmdbSource)
+  //   .values(sourcesToUpsert)
+  //   .onConflictDoUpdate({
+  //     target: [tmdbSource.mediaId, tmdbSource.provider],
+  //     set: {
+  //       url: sql`excluded.url`,
+  //       headers: sql`excluded.headers`,
+  //       // Conditionally update the 'type' column
+  //       type: sql`CASE WHEN excluded.type = 'master' THEN excluded.type ELSE tmdb_source.type END`,
+  //     },
+  //     where: sql`excluded.type = 'master' OR excluded.type = tmdb_source.type`,
+  //   })
+  //   .returning({ id: tmdbSource.id });
+  // console.log(
+  //   `Inserted ${sourcesToUpsert.length} sources for tmdbId: ${tmdbId}`
+  // );
+  // // 5. Prepare subtitles for insertion
+  // const subtitlesToUpsert = results
+  //   .filter((result) => result.subtitle !== undefined)
+  //   .map((result, index) => ({
+  //     sourceId: sourceIds[index]!.id,
+  //     language: 'English',
+  //     content: result.subtitle!,
+  //   }));
+  // // 6. upsert all subtitles into the tmdbSubtitle table (always use new content)
+  // await db
+  //   .insert(tmdbSubtitle)
+  //   .values(subtitlesToUpsert)
+  //   .onConflictDoUpdate({
+  //     target: [tmdbSubtitle.sourceId, tmdbSubtitle.language],
+  //     set: { content: sql`excluded.content` },
+  //   });
+  // return results;
 }
 
 export async function fetchAndInsertTvSrc(
@@ -183,33 +290,56 @@ export async function fetchAndInsertTvSrc(
       `fetchTvSrc failed: episode not found for tmdbId: ${tmdbId}, season: ${season}, episode: ${episode}`
     );
   }
-  // 3. Prepare the data for insertion.
-  const sourcesToInsert = results.map((result) => ({
-    episodeId: episodeData.id, // Link each source to the found episode
-    provider: result.provider,
-    type: result.m3u8.type,
-    url: result.m3u8.url,
-    headers: result.m3u8.headers,
-  }));
-  // 4. Insert all new sources into the tmdbSource table in a single query.
-  const sourceIds = await db
-    .insert(tmdbSource)
-    .values(sourcesToInsert)
-    .returning({ id: tmdbSource.id });
-  console.log(
-    `Inserted ${sourcesToInsert.length} sources for tmdbId: ${tmdbId}, season: ${season}, episode: ${episode}`
-  );
-  //5. Prepare subtitles for insertion
-  const subtitlesToInsert = results
-    .filter((result) => result.subtitle !== undefined)
-    .map((result, index) => ({
-      sourceId: sourceIds[index]!.id,
-      language: 'English',
-      content: result.subtitle!,
-    }));
-  // 6. insert all subtitles into the tmdbSubtitle table
-  await db.insert(tmdbSubtitle).values(subtitlesToInsert);
-  return results;
+  // 3. upsert sources and subtitles
+  await upsertSrcAndSubtitle('tv', episodeData.id, results);
+
+  // // 3. Prepare the data for insertion.
+  // const sourcesToUpsert = results.map((result) => ({
+  //   episodeId: episodeData.id, // Link each source to the found episode
+  //   provider: result.provider,
+  //   type: result.m3u8.type,
+  //   url: result.m3u8.url,
+  //   headers: result.m3u8.headers,
+  // }));
+  // // 4. Insert all new sources into the tmdbSource table in a single query.
+  // // const sourceIds = await db
+  // //   .insert(tmdbSource)
+  // //   .values(sourcesToInsert)
+  // //   .returning({ id: tmdbSource.id });
+  // const sourceIds = await db
+  //   .insert(tmdbSource)
+  //   .values(sourcesToUpsert)
+  //   .onConflictDoUpdate({
+  //     target: [tmdbSource.episodeId, tmdbSource.provider],
+  //     set: {
+  //       url: sql`excluded.url`,
+  //       headers: sql`excluded.headers`,
+  //       // Conditionally update the 'type' column
+  //       type: sql`CASE WHEN excluded.type = 'master' THEN excluded.type ELSE tmdb_source.type END`,
+  //     },
+  //     where: sql`excluded.type = 'master' OR excluded.type = tmdb_source.type`,
+  //   })
+  //   .returning({ id: tmdbSource.id });
+  // console.log(
+  //   `Inserted ${sourcesToUpsert.length} sources for tmdbId: ${tmdbId}, season: ${season}, episode: ${episode}`
+  // );
+  // //5. Prepare subtitles for insertion
+  // const subtitlesToUpsert = results
+  //   .filter((result) => result.subtitle !== undefined)
+  //   .map((result, index) => ({
+  //     sourceId: sourceIds[index]!.id,
+  //     language: 'English',
+  //     content: result.subtitle!,
+  //   }));
+  // // 6. upsert all subtitles into the tmdbSubtitle table
+  // await db
+  //   .insert(tmdbSubtitle)
+  //   .values(subtitlesToUpsert)
+  //   .onConflictDoUpdate({
+  //     target: [tmdbSubtitle.sourceId, tmdbSubtitle.language],
+  //     set: { content: sql`excluded.content` },
+  //   });
+  // return results;
 }
 
 export async function upsertNewTvInfo(details: any, mediaId: string) {

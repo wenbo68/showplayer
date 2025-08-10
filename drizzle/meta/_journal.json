@@ -169,6 +169,27 @@
       "when": 1754488657652,
       "tag": "0023_open_unicorn",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1754833481149,
+      "tag": "0024_lying_killer_shrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1754833652759,
+      "tag": "0025_jazzy_mystique",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1754834528631,
+      "tag": "0026_fast_alex_wilder",
+      "breakpoints": true
     }
   ]
 }

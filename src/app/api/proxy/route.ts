@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withCors } from '~/utils/api';
 
 // rewrites vid seg urls within the m3u8 playlist
 function rewritePlaylist(
@@ -55,17 +56,16 @@ function rewritePlaylist(
     .join('\n');
 }
 
-// could be playlist url or vid seg url
+// could be playlist url or vidseg url
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
 
   // 1. Extract the target URL
   const targetUrl = searchParams.get('url');
-
   if (!targetUrl) {
-    return NextResponse.json(
-      { error: 'Target URL is required' },
-      { status: 400 }
+    return new NextResponse(
+      JSON.stringify({ error: 'Target URL is required' }),
+      { status: 400, headers: withCors({ 'Content-Type': 'application/json' }) }
     );
   }
 
@@ -81,23 +81,17 @@ export async function GET(request: NextRequest) {
   // 3. Make the proxied request
   try {
     // Step 1: Fetch the resource using the url and header
-    console.log('[PROXY] Initiating fetch for:', targetUrl);
-    const response = await fetch(targetUrl, {
-      headers: headers,
-    });
+    const response = await fetch(targetUrl, { headers });
 
     if (!response.ok) {
-      console.error(
-        `[PROXY] Error: Fetch failed with status ${response.status}`
-      );
-      // Log the error body text to see the error message
       const errorText = await response.text();
-      console.error('[PROXY] Error body:', errorText);
-      return new NextResponse(errorText, { status: response.status });
+      return new NextResponse(errorText, {
+        status: response.status,
+        headers: withCors(),
+      });
     }
 
     const contentType = response.headers.get('content-type') || '';
-    // console.log(`[PROXY] Step 3: Content-Type is "${contentType}"`);
 
     // Step 2: return result to frontend
     const buffer = Buffer.from(await response.arrayBuffer());
@@ -114,70 +108,25 @@ export async function GET(request: NextRequest) {
         headers
       );
 
-      // // save playlist content
-      // const downloadDir = path.join(process.cwd(), 'downloads');
-      // if (!fs.existsSync(downloadDir)) {
-      //   fs.mkdirSync(downloadDir, { recursive: true });
-      // }
-      // let filename =
-      //   path.basename(new URL(targetUrl).pathname) + crypto.randomUUID();
-      // if (!filename || filename === '/') {
-      //   filename = `playlist-${Date.now()}-${Math.floor(
-      //     Math.random() * 1000
-      //   )}.m3u8`;
-      // } else if (!filename.includes('.m3u8')) {
-      //   filename = `${filename}.m3u8`;
-      // }
-      // const savePath = path.join(downloadDir, filename);
-      // fs.writeFileSync(savePath, buffer);
-      // console.log(`Saved playlist to: ${savePath}`);
-
-      // // save rewritten playlist content
-      // const savePathRewritten = path.join(downloadDir, `rewritten-${filename}`);
-      // fs.writeFileSync(savePathRewritten, rewrittenPlaylist);
-      // console.log(`Saved rewritten playlist to: ${savePathRewritten}`);
-
       return new NextResponse(rewrittenPlaylist, {
-        headers: {
-          'Content-Type': contentType,
-          'Access-Control-Allow-Origin': '*',
-        },
+        headers: withCors({ 'Content-Type': contentType }),
       });
     } else {
       // if .ts (vid seg) or another file type => just send back to frontend
       console.log(`it's a vidseg`);
 
-      // // save vidseg content
-      // const downloadDir = path.join(process.cwd(), 'downloads');
-      // if (!fs.existsSync(downloadDir)) {
-      //   fs.mkdirSync(downloadDir, { recursive: true });
-      // }
-      // let filename = path.basename(new URL(targetUrl).pathname);
-      // if (!filename || filename === '/') {
-      //   filename = `segment-${Date.now()}-${Math.floor(
-      //     Math.random() * 1000
-      //   )}.ts`;
-      // }
-      // const savePath = path.join(downloadDir, filename);
-      // fs.writeFileSync(savePath, buffer);
-      // console.log(`Saved segment to: ${savePath}`);
-
       return new NextResponse(buffer, {
-        headers: {
-          'Content-Type': contentType,
-          'Access-Control-Allow-Origin': '*',
-        },
+        headers: withCors({ 'Content-Type': contentType }),
       });
     }
   } catch (error) {
-    // This will catch network errors or other unexpected issues
-    console.error(
-      '[PROXY] CRITICAL: A crash occurred in the try block.',
-      error
-    );
-    return NextResponse.json(
-      { error: 'Failed to proxy request' },
-      { status: 500 }
+    return new NextResponse(
+      JSON.stringify({ error: 'Failed to proxy request' }),
+      { status: 500, headers: withCors({ 'Content-Type': 'application/json' }) }
     );
   }
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { headers: withCors() });
 }

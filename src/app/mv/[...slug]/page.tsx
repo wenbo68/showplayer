@@ -1,14 +1,12 @@
 import { db } from '~/server/db';
-import { tmdbMedia, tmdbSource } from '~/server/db/schema';
+import { tmdbMedia } from '~/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { notFound, redirect } from 'next/navigation';
 import { VideoPlayer } from '~/app/_components/player/VideoPlayer';
 import { SourceSelector } from '~/app/_components/player/SourceSelector';
 
 interface PageProps {
-  params: {
-    slug: string[];
-  };
+  params: Promise<{ slug: string[] }>;
 }
 
 export default async function Page({ params }: PageProps) {
@@ -49,7 +47,7 @@ export default async function Page({ params }: PageProps) {
   // Step 2. If no provider is in the URL, redirect to the first available one
   if (!providerParam) {
     const firstSource = sources[0];
-    return redirect(`/movie/${tmdbId}/${firstSource.provider}`);
+    return redirect(`/mv/${tmdbId}/${firstSource.provider}`);
   }
 
   // Step 3. Find the selected source based on the provider in the URL
@@ -83,7 +81,7 @@ export default async function Page({ params }: PageProps) {
     source.subtitles.map((sub) => ({
       content: sub.content,
       lang: sub.language.slice(0, 2).toLowerCase(),
-      label: `${sub.language} (${source.provider})`,
+      label: `${sub.language} (${source.provider.substring(3)})`,
       default: source.id === selectedSrc?.id,
     }))
   );

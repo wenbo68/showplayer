@@ -19,5 +19,5 @@ export type M3U8Result = {
 export type PuppeteerResult = {
   provider: string;
   m3u8: M3U8Result;
-  subtitle: string;
+  subtitle?: string;
 };

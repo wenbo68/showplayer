@@ -12,14 +12,8 @@ import { SourceSelector } from '~/app/_components/player/SourceSelector';
 import { EpisodeList } from '~/app/_components/player/EpisodeList';
 
 interface PageProps {
-  params: {
-    slug: string[];
-  };
+  params: Promise<{ slug: string[] }>;
 }
-
-// now the subtitles work (but vidjoy's subtitle seems to be off sync => maybe we turn off vidjoy subtitle by default since it already has subtitles baked in?)
-// now we might wanna try testing other episodes/movies
-// then we would bulk fetch the trending ones
 
 export default async function Page({ params }: PageProps) {
   const { slug } = await params;

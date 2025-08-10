@@ -1,13 +1,13 @@
 import puppeteer, { HTTPRequest, type Page } from 'puppeteer';
 import type { M3U8Result, PuppeteerResult } from '~/type';
+import { NextResponse } from 'next/server';
+import { withCors } from '~/utils/api';
 
 // vidjoy: m3u8 before play (has antibot measures: wont load m3u8 if youre bot)
 // videasy: have to click play
 // vidfast: m3u8 before play
 // vidlink: auto plays
 // vidsrc: have to click play (if another play button shows up, just fail it)
-
-const providers = ['vidjoy', 'videasy', 'vidfast', 'vidlink'];
 
 const mvProvidersMap: Record<string, string> = {
   vidjoy: 'https://vidjoy.pro/embed/movie',
@@ -138,7 +138,7 @@ async function fetchSrcFromUrl(
   const browser = await puppeteer.launch({
     executablePath: '/usr/bin/chromium',
     headless: true,
-    // slowMo: 200,
+    // slowMo: 100,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -302,7 +302,7 @@ async function fetchSrcFromUrl(
 
 // ====== exported
 
-export async function fetchSrcFromProvider(
+async function fetchSrcFromProvider(
   type: 'mv' | 'tv',
   path: string,
   provider: string
@@ -312,4 +312,35 @@ export async function fetchSrcFromProvider(
   }/${path}`;
   console.log(`=======`);
   return fetchSrcFromUrl(provider, embedUrl);
+}
+
+export async function POST(req: Request) {
+  try {
+    const { type, path, provider } = await req.json();
+
+    if (!type || !path || !provider) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Missing required parameters' }),
+        {
+          status: 400,
+          headers: withCors({ 'Content-Type': 'application/json' }),
+        }
+      );
+    }
+
+    const data = await fetchSrcFromProvider(type, path, provider);
+    return new NextResponse(JSON.stringify(data), {
+      headers: withCors({ 'Content-Type': 'application/json' }),
+    });
+  } catch (err: any) {
+    return new NextResponse(
+      JSON.stringify({ error: err.message || 'Server error' }),
+      { status: 500, headers: withCors({ 'Content-Type': 'application/json' }) }
+    );
+  }
+}
+
+// Handle OPTIONS (CORS preflight)
+export async function OPTIONS() {
+  return new NextResponse(null, { headers: withCors() });
 }

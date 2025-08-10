@@ -8,14 +8,10 @@ import {
   notExists,
   sql,
   isNotNull,
-  exists,
 } from 'drizzle-orm';
 
 import { createTRPCRouter, publicProcedure } from '~/server/api/trpc';
 import {
-  anilistEpisode,
-  anilistMedia,
-  anilistTrending,
   tmdbEpisode,
   tmdbMedia,
   tmdbSeason,
@@ -25,7 +21,6 @@ import {
 import {
   fetchAndInsertMvSrc,
   fetchAndInsertTvSrc,
-  fetchAnilistTrending,
   fetchTmdbDetailViaApi,
   fetchTmdbTrendingViaApi,
   fetchSrcForEpisodes,
@@ -70,31 +65,9 @@ export const mediaRouter = createTRPCRouter({
     return trending;
   }),
 
-  // anilistTrending: publicProcedure.query(async ({ ctx }) => {
-  //   const trending = await ctx.db
-  //     .select({
-  //       rank: anilistTrending.rank,
-  //       mediaId: anilistTrending.mediaId,
-  //       anilistId: anilistMedia.anilistId,
-  //       type: anilistMedia.type,
-  //       title: anilistMedia.title,
-  //       description: anilistMedia.description,
-  //       imageUrl: anilistMedia.imageUrl,
-  //     })
-  //     .from(anilistTrending)
-  //     .innerJoin(anilistMedia, eq(anilistTrending.mediaId, anilistMedia.id))
-  //     .orderBy(anilistTrending.rank)
-  //     .execute();
-  //   return trending;
-  // }),
-
   clearTmdbTrending: publicProcedure.mutation(async ({ ctx }) => {
     await ctx.db.delete(tmdbTrending).execute();
   }),
-
-  // clearAnilistTrending: publicProcedure.mutation(async ({ ctx }) => {
-  //   await ctx.db.delete(anilistTrending).execute();
-  // }),
 
   fetchTmdbTrending: publicProcedure
     .input(z.object({ limit: z.number() }))
@@ -141,62 +114,6 @@ export const mediaRouter = createTRPCRouter({
 
       return { count: mediaInput.length };
     }),
-
-  // fetchAnilistTrending: publicProcedure
-  //   .input(z.object({ limit: z.number().min(1).max(100) }))
-  //   .mutation(async ({ input, ctx }) => {
-  //     // 1. fetch output from api
-  //     const fetchOutput = await fetchAnilistTrending(input.limit);
-
-  //     // 2. prepare db input from api fetch output
-  //     const mediaInput = fetchOutput.map((item: any) => ({
-  //       anilistId: item.id,
-  //       type: item.format,
-  //       episodes:
-  //         item.status === 'FINISHED'
-  //           ? item.episodes
-  //           : item.nextAiringEpisode.episode - 1,
-  //       title: item.title.romaji,
-  //       imageUrl: item.coverImage.extraLarge,
-  //       description: item.description,
-  //     }));
-  //     console.log(mediaInput);
-
-  //     // 3. insert/update the media table
-  //     const mediaOutput = await ctx.db
-  //       .insert(anilistMedia)
-  //       .values(mediaInput)
-  //       .onConflictDoUpdate({
-  //         target: anilistMedia.anilistId,
-  //         set: {
-  //           type: sql`excluded.type`,
-  //           title: sql`excluded.title`,
-  //           description: sql`excluded.description`,
-  //           imageUrl: sql`excluded.image_url`,
-  //           episodes: sql`excluded.episodes`,
-  //         },
-  //       })
-  //       .returning({
-  //         mediaId: anilistMedia.id,
-  //         anilistId: anilistMedia.anilistId,
-  //       })
-  //       .execute();
-  //     console.log(mediaOutput);
-
-  //     // 4. insert new items in trending table
-  //     const trendingInput = mediaOutput.map((item: any, index: number) => {
-  //       return {
-  //         ...item,
-  //         rank: index,
-  //       };
-  //     });
-  //     console.log(trendingInput);
-  //     await ctx.db.insert(anilistTrending).values(trendingInput).execute();
-
-  //     return { count: mediaInput.length };
-  //   }),
-
-  //keep debugging populateMediaDetails and dailySrcFetch (the fetch src condition for tv may be flawed. if the new episode is airing in the future, we won't fetch src for the existing episodes...)
 
   // for mv, get updateDate from api => no need to get src (bc dailySrcFetch will)
   // for tv, get seasons/episodes from api => need to get src for all episodes (dailySrcFetch only fetches the next episode to air)
@@ -256,11 +173,14 @@ export const mediaRouter = createTRPCRouter({
     }
   }),
 
+  // need to add logs and debug this
+
   // find all media who needs src then get src from providers
   dailySrcFetch: publicProcedure.mutation(async ({ ctx }) => {
     // 1. in tmdbMedia find updated records: (type is movie and mvReleaseDate is older than yesterday) or (type is tv and nextEpisodeDate is older than yesterday)
     const yesterday = new Date();
     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    console.log(`[dailySrcFetch] Yesterday: ${yesterday.toISOString()}.`);
 
     const mediaToUpdate = await ctx.db
       .select({
@@ -291,84 +211,33 @@ export const mediaRouter = createTRPCRouter({
         )
       )
       .execute();
+    console.log(
+      `[dailySrcFetch] Found ${mediaToUpdate.length} media items to update.`
+    );
 
-    mediaToUpdate.forEach(async (media) => {
+    for (const media of mediaToUpdate) {
+      console.log(`[dailySrcFetch] Processing ${media.type} ${media.tmdbId}.`);
       if (media.type === 'movie') {
         // 2. for updated movies, fetch sources and populate tmdbSource table
         await fetchAndInsertMvSrc(media.tmdbId);
+        console.log(
+          `[dailySrcFetch] Sources fetched for movie ${media.tmdbId}.`
+        );
       } else if (media.type === 'tv') {
         // 3. for updated tv, fetch details from api first and update nextEpisodeDate in tmdbMedia
         const details = await fetchTmdbDetailViaApi('tv', media.tmdbId);
         // then upsert seasons/episodes
         await upsertExistingTvInfo(details, media.id);
+        console.log(`[dailySrcFetch] Updated TV info for ${media.tmdbId}.`);
         // then fetch sources for all episodes whose source is null
         await fetchSrcForEpisodes(media.id, media.tmdbId);
+        console.log(`[dailySrcFetch] Sources fetched for TV ${media.tmdbId}.`);
       }
-    });
+    }
     console.log(
       `Daily source fetch completed for ${mediaToUpdate.length} media items.`
     );
   }),
-
-  // // for each record in anilistMedia,
-  // // increase or decrease the number of episode records (in anilistEpisode table)
-  // // according to the media's episodes count
-  // populateAnilistEpisodes: publicProcedure.mutation(async ({ ctx }) => {
-  //   const mediaRecords = await ctx.db.select().from(anilistMedia).execute();
-
-  //   for (const media of mediaRecords) {
-  //     const existingEpisodes = await ctx.db
-  //       .select()
-  //       .from(anilistEpisode)
-  //       .where(eq(anilistEpisode.mediaId, media.id))
-  //       .execute();
-
-  //     const episodesCount = media.episodes || 0;
-
-  //     if (existingEpisodes.length < episodesCount) {
-  //       // Insert missing episodes
-  //       const newEpisodes = Array.from(
-  //         { length: episodesCount - existingEpisodes.length },
-  //         (_, i) => ({
-  //           mediaId: media.id,
-  //           episodeNumber: existingEpisodes.length + i + 1,
-  //         })
-  //       );
-  //       await ctx.db.insert(anilistEpisode).values(newEpisodes).execute();
-  //     } else if (existingEpisodes.length > episodesCount) {
-  //       // Delete excess episodes
-  //       const excessEpisodes = existingEpisodes.slice(episodesCount);
-  //       const excessIds = excessEpisodes.map((ep) => ep.id);
-
-  //       await ctx.db
-  //         .delete(anilistEpisode)
-  //         .where(
-  //           and(
-  //             eq(anilistEpisode.mediaId, media.id),
-  //             inArray(anilistEpisode.id, excessIds)
-  //           )
-  //         )
-  //         .execute();
-  //     }
-  //   }
-  // }),
-
-  // // fetch from anilistMedia by id
-  // fetchAnilistMediaById: publicProcedure
-  //   .input(z.object({ id: z.string().min(1) }))
-  //   .query(async ({ input, ctx }) => {
-  //     const media = await ctx.db
-  //       .select()
-  //       .from(anilistMedia)
-  //       .where(eq(anilistMedia.id, input.id))
-  //       .execute();
-
-  //     if (media.length === 0) {
-  //       throw new Error(`Media with ID ${input.id} not found`);
-  //     }
-
-  //     return media[0];
-  //   }),
 
   fetchAndInsertMvSrc: publicProcedure
     .input(

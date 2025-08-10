@@ -1,4 +1,4 @@
-import { fetchMvSrc, fetchTvSrc } from '~/utils/puppeteer';
+import { fetchSrcFromProvider } from '~/utils/puppeteer';
 import { db } from './db';
 import {
   tmdbEpisode,
@@ -7,19 +7,7 @@ import {
   tmdbSource,
   tmdbSubtitle,
 } from './db/schema';
-import {
-  asc,
-  lte,
-  or,
-  and,
-  eq,
-  inArray,
-  isNull,
-  notExists,
-  sql,
-  isNotNull,
-  exists,
-} from 'drizzle-orm'; // <<< Import 'eq' from drizzle-orm
+import { asc, and, eq, isNull } from 'drizzle-orm'; // <<< Import 'eq' from drizzle-orm
 import type { PuppeteerResult } from '~/type';
 
 export async function fetchTmdbTrendingViaApi(limit: number) {
@@ -59,43 +47,35 @@ export async function fetchTmdbDetailViaApi(type: string, id: number) {
   return data;
 }
 
-export async function fetchAnilistTrending(limit: number) {
-  const currDate = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  console.log(currDate);
-
-  const query = `
-      query ($page: Int = 1, $perPage: Int = ${limit}, $format: [MediaFormat] = [TV, TV_SHORT, MOVIE, SPECIAL, OVA, ONA], $sort: [MediaSort] = [TRENDING_DESC], $startDateLesser: FuzzyDateInt = ${currDate}) {
-        Page(page: $page, perPage: $perPage) {
-          pageInfo {
-            hasNextPage
-          }
-          media(format_in: $format, sort: $sort, startDate_lesser: $startDateLesser) {
-            id
-            title {
-              romaji
-            }
-            format
-            description
-            nextAiringEpisode {
-              episode
-            }
-            episodes
-            status
-            coverImage {
-              extraLarge
-            }
-          }
-        }
-      }
-    `;
-  const resp = await fetch('https://graphql.anilist.co', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, variables: { page: 1 } }),
-  });
-  if (!resp.ok) throw new Error(`AniList API error: ${resp.status}`);
-  const { data } = await resp.json();
-  return data.Page.media;
+async function fetchSrcFromProviders(
+  type: 'mv' | 'tv',
+  path: string
+): Promise<PuppeteerResult[]> {
+  const providers = ['vidjoy', 'videasy', 'vidfast', 'vidlink'];
+  const results: PuppeteerResult[] = [];
+  for (const provider of providers) {
+    // i will run puppeteer api below (how to change result to PuppeteerResult?)
+    const result = await fetchSrcFromProvider(type, path, provider);
+    if (result) {
+      results.push({
+        provider: result.provider,
+        m3u8: result.m3u8,
+        subtitle:
+          result.subtitle === undefined
+            ? undefined
+            : convertToVtt(result.subtitle),
+      });
+      console.log(
+        `[${provider}] success: ${result.m3u8.type} ${
+          result.subtitle ? '+ subtitle' : ''
+        }`
+      );
+    } else {
+      console.error(`[${provider}] failed`);
+      continue;
+    }
+  }
+  return results;
 }
 
 function convertToVtt(subtitle: string): string {
@@ -111,7 +91,6 @@ function convertToVtt(subtitle: string): string {
   newSubtitle = newSubtitle.replace(/,(\d{3})/g, '.$1');
 
   // Remove SRT-style numeric cues AND the newline that follows them.
-  // This is the key change to prevent extra blank lines.
   newSubtitle = newSubtitle.replace(/^\d+\n/gm, '');
 
   // Add the standard WEBVTT header and clean up any leading/trailing space.
@@ -119,22 +98,7 @@ function convertToVtt(subtitle: string): string {
 }
 
 export async function fetchAndInsertMvSrc(tmdbId: number) {
-  const providers = ['vidjoy', 'videasy', 'vidfast', 'vidlink'];
-  const results: PuppeteerResult[] = [];
-  for (const provider of providers) {
-    const result = await fetchMvSrc(provider, tmdbId);
-    if (result) {
-      results.push({
-        provider: result.provider,
-        m3u8: result.m3u8,
-        subtitle: convertToVtt(result.subtitle),
-      });
-    } else {
-      console.error(`${provider} failed`);
-      continue;
-    }
-  }
-  // If no sources were found from fetching, exit early.
+  const results = await fetchSrcFromProviders('mv', `${tmdbId}`);
   if (results.length === 0) {
     console.log(`src not found for tmdbId: ${tmdbId}`);
     return [];
@@ -169,11 +133,13 @@ export async function fetchAndInsertMvSrc(tmdbId: number) {
     `Inserted ${sourcesToInsert.length} sources for tmdbId: ${tmdbId}`
   );
   // 5. Prepare subtitles for insertion
-  const subtitlesToInsert = results.map((result, index) => ({
-    sourceId: sourceIds[index]!.id,
-    language: 'English',
-    content: result.subtitle,
-  }));
+  const subtitlesToInsert = results
+    .filter((result) => result.subtitle !== undefined)
+    .map((result, index) => ({
+      sourceId: sourceIds[index]!.id,
+      language: 'English',
+      content: result.subtitle!,
+    }));
   // 6. insert all subtitles into the tmdbSubtitle table
   await db.insert(tmdbSubtitle).values(subtitlesToInsert);
   return results;
@@ -184,31 +150,16 @@ export async function fetchAndInsertTvSrc(
   season: number,
   episode: number
 ) {
-  const providers = ['vidjoy', 'videasy', 'vidfast', 'vidlink'];
-  const results: PuppeteerResult[] = [];
-  for (const provider of providers) {
-    const result = await fetchTvSrc(provider, tmdbId, season, episode);
-    if (result) {
-      // const newSubtitle = convertToVtt(result.subtitle);
-      // console.log(newSubtitle);
-      results.push({
-        provider: result.provider,
-        m3u8: result.m3u8,
-        subtitle: convertToVtt(result.subtitle),
-      });
-    } else {
-      console.error(`${provider} failed`);
-      continue;
-    }
-  }
-  // If no sources were found from fetching, exit early.
+  const results = await fetchSrcFromProviders(
+    'tv',
+    `${tmdbId}/${season}/${episode}`
+  );
   if (results.length === 0) {
     console.log(
       `src not found for tmdbId: ${tmdbId}, season: ${season}, episode: ${episode}`
     );
     return [];
   }
-
   // insert sources into tmdbSource table
   // 1. Find the episode's internal ID using a join.
   const [episodeData] = await db
@@ -226,14 +177,12 @@ export async function fetchAndInsertTvSrc(
       )
     )
     .limit(1);
-
   // 2. If the episode doesn't exist in your DB, throw an error.
   if (!episodeData) {
     throw new Error(
       `fetchTvSrc failed: episode not found for tmdbId: ${tmdbId}, season: ${season}, episode: ${episode}`
     );
   }
-
   // 3. Prepare the data for insertion.
   const sourcesToInsert = results.map((result) => ({
     episodeId: episodeData.id, // Link each source to the found episode
@@ -242,24 +191,22 @@ export async function fetchAndInsertTvSrc(
     url: result.m3u8.url,
     headers: result.m3u8.headers,
   }));
-
   // 4. Insert all new sources into the tmdbSource table in a single query.
-  const newSources = await db
+  const sourceIds = await db
     .insert(tmdbSource)
     .values(sourcesToInsert)
     .returning({ id: tmdbSource.id });
-
   console.log(
     `Inserted ${sourcesToInsert.length} sources for tmdbId: ${tmdbId}, season: ${season}, episode: ${episode}`
   );
-
   //5. Prepare subtitles for insertion
-  const subtitlesToInsert = results.map((result, index) => ({
-    sourceId: newSources[index]!.id,
-    language: 'English',
-    content: result.subtitle,
-  }));
-
+  const subtitlesToInsert = results
+    .filter((result) => result.subtitle !== undefined)
+    .map((result, index) => ({
+      sourceId: sourceIds[index]!.id,
+      language: 'English',
+      content: result.subtitle!,
+    }));
   // 6. insert all subtitles into the tmdbSubtitle table
   await db.insert(tmdbSubtitle).values(subtitlesToInsert);
   return results;

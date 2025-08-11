@@ -1,13 +1,22 @@
 services:
-  app1:
+  app3:
+    image: showplayer:0.3
     build:
       context: .
-    image: showplayer:0.1
+      args:
+        - AUTH_SECRET=${AUTH_SECRET}
+        - DATABASE_URL=${DATABASE_URL}
+        - TMDB_API_KEY=${TMDB_API_KEY}
+        - VPS_URL=${VPS_URL}
+        - FRONTEND_URL=${FRONTEND_URL}
+
     ports:
-      - '3000:3000'
+      - '8080:3000'
     environment:
       - NODE_ENV=production
       - AUTH_SECRET=${AUTH_SECRET}
       - DATABASE_URL=${DATABASE_URL}
       - TMDB_API_KEY=${TMDB_API_KEY}
+      - VPS_URL=${VPS_URL}
+      - FRONTEND_URL=${FRONTEND_URL}
     restart: unless-stopped

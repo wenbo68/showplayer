@@ -1,10 +1,13 @@
 # Use official Node.js image
 FROM node:20-slim
 
-# ==> Add these ARG declarations at the top
+# used when you build the image (only if your env vars are needed at build time, which is the case due to env.js)
+# these won't be included in the image
 ARG AUTH_SECRET
 ARG DATABASE_URL
 ARG TMDB_API_KEY
+ARG VPS_URL
+ARG FRONTEND_URL
 
 # Install Chromium dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -38,19 +41,17 @@ RUN npm install -g pnpm && pnpm install
 # Copy all project files
 COPY . .
 
-# ==> Add these ENV declarations before your build command
-ENV AUTH_SECRET=$AUTH_SECRET
-ENV DATABASE_URL=$DATABASE_URL
-ENV TMDB_API_KEY=$TMDB_API_KEY
-
-# Set environment variable for Puppeteer to find Chromium
+# Set environment variable for Puppeteer to find Chromium 
+# don't use secret env vars here bc they are visible in the image on docker hub
+# instead just inject the secret env vars via docker-compose (either hardcode env vars in docker-compose.yml or use .env file)
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 # Build Next.js app
 RUN pnpm build
 
-# Expose port and run
+# Expose whatever port nextjs is running on (default is 3000)
 EXPOSE 3000
 
+# Run the built app
 CMD ["pnpm", "start"]

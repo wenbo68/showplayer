@@ -50,8 +50,8 @@ function rewritePlaylist(
         }
       }
 
-      // only include relative proxy path (/api/proxy) + params
-      return newUrl.pathname + newUrl.search;
+      // use absolute URL for the rewritten vid seg
+      return newUrl.toString();
     })
     .join('\n');
 }

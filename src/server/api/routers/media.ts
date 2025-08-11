@@ -19,11 +19,11 @@ import {
   tmdbTrending,
 } from '~/server/db/schema';
 import {
-  fetchAndInsertMvSrc,
-  fetchAndInsertTvSrc,
+  fetchAndUpsertMvSrc,
+  fetchAndUpsertTvSrc,
   fetchTmdbDetailViaApi,
   fetchTmdbTrendingViaApi,
-  fetchSrcForEpisodes,
+  findSrclessEpisodesAndFetchSrc,
   upsertExistingTvInfo,
   upsertNewTvInfo,
 } from '~/server/utils';
@@ -165,7 +165,7 @@ export const mediaRouter = createTRPCRouter({
           `[populateMediaDetails] Inserted seasons and episodes for ${media.type} ${media.tmdbId}.`
         );
         // 5. fetch src for all episodes of this tv
-        await fetchSrcForEpisodes(media.id, details.id);
+        await findSrclessEpisodesAndFetchSrc(media.id, details.id);
         console.log(
           `[populateMediaDetails] Inserted sources for ${media.type} ${media.tmdbId}.`
         );
@@ -219,7 +219,7 @@ export const mediaRouter = createTRPCRouter({
       console.log(`[dailySrcFetch] Processing ${media.type} ${media.tmdbId}.`);
       if (media.type === 'movie') {
         // 2. for updated movies, fetch sources and populate tmdbSource table
-        await fetchAndInsertMvSrc(media.tmdbId);
+        await fetchAndUpsertMvSrc(media.tmdbId);
         console.log(
           `[dailySrcFetch] Sources fetched for movie ${media.tmdbId}.`
         );
@@ -230,7 +230,7 @@ export const mediaRouter = createTRPCRouter({
         await upsertExistingTvInfo(details, media.id);
         console.log(`[dailySrcFetch] Updated TV info for ${media.tmdbId}.`);
         // then fetch sources for all episodes whose source is null
-        await fetchSrcForEpisodes(media.id, media.tmdbId);
+        await findSrclessEpisodesAndFetchSrc(media.id, media.tmdbId);
         console.log(`[dailySrcFetch] Sources fetched for TV ${media.tmdbId}.`);
       }
     }
@@ -246,7 +246,7 @@ export const mediaRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input }) => {
-      return await fetchAndInsertMvSrc(input.tmdbId);
+      return await fetchAndUpsertMvSrc(input.tmdbId);
     }),
 
   fetchAndInsertTvSrc: publicProcedure
@@ -258,7 +258,7 @@ export const mediaRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input }) => {
-      return await fetchAndInsertTvSrc(
+      return await fetchAndUpsertTvSrc(
         input.tmdbId,
         input.season,
         input.episode

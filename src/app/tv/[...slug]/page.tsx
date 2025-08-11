@@ -10,6 +10,7 @@ import { notFound, redirect } from 'next/navigation';
 import { VideoPlayer } from '~/app/_components/player/VideoPlayer';
 import { SourceSelector } from '~/app/_components/player/SourceSelector';
 import { EpisodeList } from '~/app/_components/player/EpisodeList';
+import { getProxiedSrcUrl } from '~/utils/api';
 
 interface PageProps {
   params: Promise<{ slug: string[] }>;
@@ -90,26 +91,10 @@ export default async function Page({ params }: PageProps) {
     notFound();
   }
 
-  // Step 5. construct the proxy url with src url and headers included as params
-  let playerSrc: string | undefined;
-
-  // two ways to create url with params:
-  // 1. encode params and append them to to url as strings (encode the urls so that they can be included in another url otherwise the special characters in the embeded urls can cause confusions)
-  // 2. use URL obj and attach params (without encoding) as key/value
+  // Step 5. construct the proxied src url with the original src url and headers included as params
+  let proxiedSrcUrl: string | undefined;
   if (selectedSrc) {
-    const urlObject = new URL(`/api/proxy`, 'http://localhost');
-    urlObject.searchParams.set('url', selectedSrc.url);
-
-    if (selectedSrc.headers && typeof selectedSrc.headers === 'object') {
-      for (const [key, value] of Object.entries(selectedSrc.headers)) {
-        if (typeof value === 'string') {
-          urlObject.searchParams.set(key, value);
-        }
-      }
-    }
-    // final url = relative proxy path (/api/proxy) + params (playlist url + headers)
-    playerSrc = urlObject.pathname + urlObject.search;
-    // console.log(`playerSrc: `, playerSrc);
+    proxiedSrcUrl = getProxiedSrcUrl(selectedSrc);
   }
 
   // 6. find all subtitles
@@ -133,7 +118,7 @@ export default async function Page({ params }: PageProps) {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3">
           {/* Video Player Component */}
-          <VideoPlayer src={playerSrc} subtitles={subtitles} />
+          <VideoPlayer src={proxiedSrcUrl} subtitles={subtitles} />
 
           {/* Source Selector Component */}
           <SourceSelector

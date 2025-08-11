@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { notFound, redirect } from 'next/navigation';
 import { VideoPlayer } from '~/app/_components/player/VideoPlayer';
 import { SourceSelector } from '~/app/_components/player/SourceSelector';
+import { getProxiedSrcUrl } from '~/utils/api';
 
 interface PageProps {
   params: Promise<{ slug: string[] }>;
@@ -60,20 +61,9 @@ export default async function Page({ params }: PageProps) {
 
   // Step 4. Construct the proxy URL for the video player
   // This includes the source URL and any necessary headers as search parameters.
-  let playerSrc: string | undefined;
-
+  let proxiedSrcUrl: string | undefined;
   if (selectedSrc) {
-    const urlObject = new URL(`/api/proxy`, 'http://localhost');
-    urlObject.searchParams.set('url', selectedSrc.url);
-
-    if (selectedSrc.headers && typeof selectedSrc.headers === 'object') {
-      for (const [key, value] of Object.entries(selectedSrc.headers)) {
-        if (typeof value === 'string') {
-          urlObject.searchParams.set(key, value);
-        }
-      }
-    }
-    playerSrc = urlObject.pathname + urlObject.search;
+    proxiedSrcUrl = getProxiedSrcUrl(selectedSrc);
   }
 
   // Step 5. Aggregate all subtitles from all available sources
@@ -92,7 +82,7 @@ export default async function Page({ params }: PageProps) {
 
       <div className="w-full">
         {/* Video Player Component */}
-        <VideoPlayer src={playerSrc} subtitles={subtitles} />
+        <VideoPlayer src={proxiedSrcUrl} subtitles={subtitles} />
 
         {/* Source Selector Component */}
         <SourceSelector

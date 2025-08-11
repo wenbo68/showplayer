@@ -54,27 +54,41 @@ async function fetchSrcFromProviders(
   const providers = ['vidjoy', 'videasy', 'vidfast', 'vidlink'];
   const results: PuppeteerResult[] = [];
   for (const provider of providers) {
-    // i will run puppeteer api below (how to change result to PuppeteerResult?)
-    const result = await fetchSrcFromProvider(type, path, provider);
-    if (result) {
-      results.push({
-        provider: result.provider,
-        m3u8: result.m3u8,
-        subtitle:
-          result.subtitle === undefined
-            ? undefined
-            : convertToVtt(result.subtitle),
+    try {
+      const res = await fetch(`${process.env.VPS_URL}/api/puppeteer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, path, provider }),
       });
-      console.log(
-        `[${provider}] success: ${result.m3u8.type} ${
-          result.subtitle ? '+ subtitle' : ''
-        }`
-      );
-    } else {
-      console.error(`[${provider}] failed`);
+      if (!res.ok) {
+        console.error(`[${provider}] failed with status ${res.status}`);
+        continue;
+      }
+
+      const result = await res.json();
+      if (result) {
+        results.push({
+          provider: result.provider,
+          m3u8: result.m3u8,
+          subtitle:
+            result.subtitle === undefined
+              ? undefined
+              : convertToVtt(result.subtitle),
+        });
+        console.log(
+          `[${provider}] success: ${result.m3u8.type} ${
+            result.subtitle ? '+ subtitle' : ''
+          }`
+        );
+      } else {
+        console.error(`[${provider}] empty result`);
+      }
+    } catch (error) {
+      console.error(`[${provider}] error:`, error);
       continue;
     }
   }
+
   return results;
 }
 
@@ -184,7 +198,7 @@ async function upsertSrcAndSubtitle(
   }
 }
 
-export async function fetchAndInsertMvSrc(tmdbId: number) {
+export async function fetchAndUpsertMvSrc(tmdbId: number) {
   const results = await fetchSrcFromProviders('mv', `${tmdbId}`);
   if (results.length === 0) {
     console.log(`src not found for tmdbId: ${tmdbId}`);
@@ -205,54 +219,9 @@ export async function fetchAndInsertMvSrc(tmdbId: number) {
   }
   // 3. upsert sources and subtitles
   await upsertSrcAndSubtitle('mv', mediaData.id, results);
-
-  // // 3. Prepare the data for insertion.
-  // const sourcesToUpsert = results.map((result) => ({
-  //   mediaId: mediaData.id, // Link each source to the found media
-  //   provider: result.provider,
-  //   type: result.m3u8.type,
-  //   url: result.m3u8.url,
-  //   headers: result.m3u8.headers,
-  // }));
-  // // 4. Upsert all new sources into the tmdbSource table
-  // // always use new headers/url (and also new type if it's master)
-  // const sourceIds = await db
-  //   .insert(tmdbSource)
-  //   .values(sourcesToUpsert)
-  //   .onConflictDoUpdate({
-  //     target: [tmdbSource.mediaId, tmdbSource.provider],
-  //     set: {
-  //       url: sql`excluded.url`,
-  //       headers: sql`excluded.headers`,
-  //       // Conditionally update the 'type' column
-  //       type: sql`CASE WHEN excluded.type = 'master' THEN excluded.type ELSE tmdb_source.type END`,
-  //     },
-  //     where: sql`excluded.type = 'master' OR excluded.type = tmdb_source.type`,
-  //   })
-  //   .returning({ id: tmdbSource.id });
-  // console.log(
-  //   `Inserted ${sourcesToUpsert.length} sources for tmdbId: ${tmdbId}`
-  // );
-  // // 5. Prepare subtitles for insertion
-  // const subtitlesToUpsert = results
-  //   .filter((result) => result.subtitle !== undefined)
-  //   .map((result, index) => ({
-  //     sourceId: sourceIds[index]!.id,
-  //     language: 'English',
-  //     content: result.subtitle!,
-  //   }));
-  // // 6. upsert all subtitles into the tmdbSubtitle table (always use new content)
-  // await db
-  //   .insert(tmdbSubtitle)
-  //   .values(subtitlesToUpsert)
-  //   .onConflictDoUpdate({
-  //     target: [tmdbSubtitle.sourceId, tmdbSubtitle.language],
-  //     set: { content: sql`excluded.content` },
-  //   });
-  // return results;
 }
 
-export async function fetchAndInsertTvSrc(
+export async function fetchAndUpsertTvSrc(
   tmdbId: number,
   season: number,
   episode: number
@@ -292,54 +261,6 @@ export async function fetchAndInsertTvSrc(
   }
   // 3. upsert sources and subtitles
   await upsertSrcAndSubtitle('tv', episodeData.id, results);
-
-  // // 3. Prepare the data for insertion.
-  // const sourcesToUpsert = results.map((result) => ({
-  //   episodeId: episodeData.id, // Link each source to the found episode
-  //   provider: result.provider,
-  //   type: result.m3u8.type,
-  //   url: result.m3u8.url,
-  //   headers: result.m3u8.headers,
-  // }));
-  // // 4. Insert all new sources into the tmdbSource table in a single query.
-  // // const sourceIds = await db
-  // //   .insert(tmdbSource)
-  // //   .values(sourcesToInsert)
-  // //   .returning({ id: tmdbSource.id });
-  // const sourceIds = await db
-  //   .insert(tmdbSource)
-  //   .values(sourcesToUpsert)
-  //   .onConflictDoUpdate({
-  //     target: [tmdbSource.episodeId, tmdbSource.provider],
-  //     set: {
-  //       url: sql`excluded.url`,
-  //       headers: sql`excluded.headers`,
-  //       // Conditionally update the 'type' column
-  //       type: sql`CASE WHEN excluded.type = 'master' THEN excluded.type ELSE tmdb_source.type END`,
-  //     },
-  //     where: sql`excluded.type = 'master' OR excluded.type = tmdb_source.type`,
-  //   })
-  //   .returning({ id: tmdbSource.id });
-  // console.log(
-  //   `Inserted ${sourcesToUpsert.length} sources for tmdbId: ${tmdbId}, season: ${season}, episode: ${episode}`
-  // );
-  // //5. Prepare subtitles for insertion
-  // const subtitlesToUpsert = results
-  //   .filter((result) => result.subtitle !== undefined)
-  //   .map((result, index) => ({
-  //     sourceId: sourceIds[index]!.id,
-  //     language: 'English',
-  //     content: result.subtitle!,
-  //   }));
-  // // 6. upsert all subtitles into the tmdbSubtitle table
-  // await db
-  //   .insert(tmdbSubtitle)
-  //   .values(subtitlesToUpsert)
-  //   .onConflictDoUpdate({
-  //     target: [tmdbSubtitle.sourceId, tmdbSubtitle.language],
-  //     set: { content: sql`excluded.content` },
-  //   });
-  // return results;
 }
 
 export async function upsertNewTvInfo(details: any, mediaId: string) {
@@ -466,7 +387,10 @@ export async function upsertExistingTvInfo(details: any, mediaId: string) {
   });
 }
 
-export async function fetchSrcForEpisodes(mediaId: string, tmdbId: number) {
+export async function findSrclessEpisodesAndFetchSrc(
+  mediaId: string,
+  tmdbId: number
+) {
   // Use a LEFT JOIN to find episodes with no corresponding source
   const results = await db
     .select({
@@ -490,9 +414,8 @@ export async function fetchSrcForEpisodes(mediaId: string, tmdbId: number) {
     `[fetchSrcForEpisodes] Found ${results.length} episodes without sources for ${tmdbId}`
   );
 
-  // Note: The loop needs to be updated to handle the new result shape { episode, season }
   for (const { episode, season } of results) {
-    await fetchAndInsertTvSrc(
+    await fetchAndUpsertTvSrc(
       tmdbId,
       season.seasonNumber,
       episode.episodeNumber

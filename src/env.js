@@ -16,7 +16,7 @@ export const env = createEnv({
     DATABASE_URL: z.string().url(),
     TMDB_API_KEY: z.string(),
     VPS_URL: z.string().url(),
-    FRONTEND_URL: z.string().url(),
+    FRONTEND_URL: z.string(),
     NODE_ENV: z
       .enum(['development', 'test', 'production'])
       .default('development'),

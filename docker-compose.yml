@@ -1,17 +1,19 @@
 services:
+  #container name
   app3:
     image: showplayer:0.3
     build:
       context: .
+      # only needed if you have env vars that are needed at build time
       args:
         - AUTH_SECRET=${AUTH_SECRET}
         - DATABASE_URL=${DATABASE_URL}
         - TMDB_API_KEY=${TMDB_API_KEY}
         - VPS_URL=${VPS_URL}
         - FRONTEND_URL=${FRONTEND_URL}
-
     ports:
       - '8080:3000'
+    # docker compose will use the .env file
     environment:
       - NODE_ENV=production
       - AUTH_SECRET=${AUTH_SECRET}

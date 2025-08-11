@@ -53,6 +53,7 @@ async function fetchSrcFromProviders(
 ): Promise<PuppeteerResult[]> {
   const providers = ['vidjoy', 'videasy', 'vidfast', 'vidlink'];
   const results: PuppeteerResult[] = [];
+  console.log('VPS_URL is:', process.env.VPS_URL);
   for (const provider of providers) {
     try {
       const res = await fetch(`${process.env.VPS_URL}/api/puppeteer`, {
@@ -88,7 +89,6 @@ async function fetchSrcFromProviders(
       continue;
     }
   }
-
   return results;
 }
 

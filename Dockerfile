@@ -50,7 +50,7 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 # Build Next.js app
 RUN pnpm build
 
-# Expose whatever port nextjs is running on (default is 3000)
+# Let the container expose whatever port nextjs occupies (default is 3000)
 EXPOSE 3000
 
 # Run the built app

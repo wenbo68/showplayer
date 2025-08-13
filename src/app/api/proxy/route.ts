@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withCors } from '~/utils/api';
 
+//bunny caching behavior is weird: different comb of Smart Cache and Optimize for Video Delivery result in different caching behavior
+
 // rewrites vid seg urls within the m3u8 playlist
 function rewritePlaylist(
   playlistText: string,
@@ -42,7 +44,7 @@ function rewritePlaylist(
       }
 
       // Step 2: new url = point to proxy + params (vidSegUrl + headers)
-      const newUrl = new URL(proxyUrl, 'http://localhost');
+      const newUrl = new URL(proxyUrl);
       newUrl.searchParams.set('url', vidSegUrl);
       for (const [key, value] of headers.entries()) {
         if (key.toLowerCase() !== 'url') {
@@ -58,9 +60,11 @@ function rewritePlaylist(
 
 // could be playlist url or vidseg url
 export async function GET(request: NextRequest) {
+  console.log(`[GET] Proxy request received.`);
   const { searchParams } = new URL(request.url);
 
   // 1. Extract the target URL
+  console.log(`[GET] extracting target url.`);
   const targetUrl = searchParams.get('url');
   if (!targetUrl) {
     return new NextResponse(
@@ -70,6 +74,7 @@ export async function GET(request: NextRequest) {
   }
 
   // 2. Prepare the headers for the outgoing request
+  console.log(`[GET] extracting headers.`);
   const headers = new Headers();
   for (const [key, value] of searchParams.entries()) {
     // Add all search parameters except for 'url' itself to the headers
@@ -81,6 +86,7 @@ export async function GET(request: NextRequest) {
   // 3. Make the proxied request
   try {
     // Step 1: Fetch the resource using the url and header
+    console.log(`[GET] Fetching target URL.`);
     const response = await fetch(targetUrl, { headers });
 
     if (!response.ok) {
@@ -100,7 +106,7 @@ export async function GET(request: NextRequest) {
       // if playlist => rewrite the vidseg urls to be directed to proxy and include our headers here => send it back to frontend
       console.log(`it's a playlist`);
       const playlistText = buffer.toString('utf-8');
-      const proxyUrl = `${request.nextUrl.origin}/api/proxy`;
+      const proxyUrl = `${process.env.VPS_URL}/api/proxy`;
       const rewrittenPlaylist = rewritePlaylist(
         playlistText,
         proxyUrl,
@@ -109,14 +115,22 @@ export async function GET(request: NextRequest) {
       );
 
       return new NextResponse(rewrittenPlaylist, {
-        headers: withCors({ 'Content-Type': contentType }),
+        headers: withCors({
+          'Content-Type': contentType,
+          'Cache-Control':
+            'public, max-age=15, s-maxage=15, stale-while-revalidate=30',
+        }),
       });
     } else {
       // if .ts (vid seg) or another file type => just send back to frontend
       console.log(`it's a vidseg`);
 
       return new NextResponse(buffer, {
-        headers: withCors({ 'Content-Type': contentType }),
+        headers: withCors({
+          'Content-Type': contentType,
+          'Cache-Control':
+            'public, max-age=3600, s-maxage=3600, stale-while-revalidate=60',
+        }),
       });
     }
   } catch (error) {

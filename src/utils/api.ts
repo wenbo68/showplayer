@@ -2,8 +2,7 @@
 export function withCors(headers: Record<string, string> = {}) {
   return {
     ...headers,
-    // 'Access-Control-Allow-Origin': `${process.env.FRONTEND_URL}`, // Replace '*' with your Vercel domain in production
-    'Access-Control-Allow-Origin': `${process.env.FRONTEND_URL || '*'}`,
+    'Access-Control-Allow-Origin': `${process.env.FRONTEND_URL}`,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
@@ -37,5 +36,6 @@ export function getProxiedSrcUrl(selectedSrc: {
       }
     }
   }
+  console.log(`[getProxiedSrcUrl]: `, urlObject.toString());
   return urlObject.toString();
 }

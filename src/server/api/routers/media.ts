@@ -75,16 +75,23 @@ export const mediaRouter = createTRPCRouter({
       // 1. fetch output from api
       const fetchOutput = await fetchTmdbTrendingViaApi(input.limit);
 
-      // 2. Prepare db input from api fetch ouput
-      let mediaInput = fetchOutput.map((item: any) => ({
-        tmdbId: item.id,
-        type: item.media_type,
-        title: item.name || item.title,
-        description: item.overview,
-        imageUrl: item.poster_path
-          ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
-          : null,
-      }));
+      // 2. Prepare db input from api fetch ouput (removes duplicates)
+      const mediaInput = Array.from(
+        new Map(
+          fetchOutput.map((item: any) => [
+            item.id,
+            {
+              tmdbId: item.id,
+              type: item.media_type,
+              title: item.name || item.title,
+              description: item.overview,
+              imageUrl: item.poster_path
+                ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
+                : null,
+            },
+          ])
+        ).values()
+      );
 
       // 3. Insert or update media table
       const mediaOutput = await ctx.db
@@ -137,14 +144,15 @@ export const mediaRouter = createTRPCRouter({
         )
       )
       .execute();
-    console.log(
-      `[populateMediaDetails] Found ${newMediaRecords.length} new media records to process.`
-    );
+
+    let count = 0;
+    const total = newMediaRecords.length;
 
     // 2. for each record, fetch details from tmdb api
     for (const media of newMediaRecords) {
+      count = count + 1;
       console.log(
-        `[populateMediaDetails] Processing ${media.type} ${media.tmdbId}: ${media.title}.`
+        `[populateMediaDetails] Progress: ${count}/${total} (${media.type} ${media.tmdbId}: ${media.title})`
       );
       const details = await fetchTmdbDetailViaApi(media.type, media.tmdbId);
       if (media.type === 'movie') {
@@ -161,32 +169,26 @@ export const mediaRouter = createTRPCRouter({
       } else if (media.type === 'tv' && details?.seasons) {
         // 4. for tv, update nextEpisodeDate in tmdbMedia then populate seasons and episodes
         await upsertNewTvInfo(details, media.id);
-        console.log(
-          `[populateMediaDetails] Inserted seasons and episodes for ${media.type} ${media.tmdbId}.`
-        );
-        // 5. fetch src for all episodes of this tv
-        await findSrclessEpisodesAndFetchSrc(media.id, details.id);
-        console.log(
-          `[populateMediaDetails] Inserted sources for ${media.type} ${media.tmdbId}.`
-        );
+        // // 5. fetch src for all episodes of this tv
+        // await findSrclessEpisodesAndFetchSrc(media.id, details.id);
       }
     }
   }),
 
-  // need to add logs and debug this
+  // fully test populateMediaDetails and dailySrcFetch then run them in vps (vercel can only run for 300s)
 
   // find all media who needs src then get src from providers
   dailySrcFetch: publicProcedure.mutation(async ({ ctx }) => {
-    // 1. in tmdbMedia find updated records: (type is movie and mvReleaseDate is older than yesterday) or (type is tv and nextEpisodeDate is older than yesterday)
+    // 1. in tmdbMedia find updated records: updateDate is not null and older than yesterday
     const yesterday = new Date();
     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-    console.log(`[dailySrcFetch] Yesterday: ${yesterday.toISOString()}.`);
 
     const mediaToUpdate = await ctx.db
       .select({
         id: tmdbMedia.id,
         tmdbId: tmdbMedia.tmdbId,
         type: tmdbMedia.type,
+        title: tmdbMedia.title,
       })
       .from(tmdbMedia)
       .where(
@@ -194,6 +196,7 @@ export const mediaRouter = createTRPCRouter({
           // Movie Logic: Released and has no sources yet.
           and(
             eq(tmdbMedia.type, 'movie'),
+            isNotNull(tmdbMedia.updateDate),
             lte(tmdbMedia.updateDate, yesterday),
             notExists(
               ctx.db
@@ -202,7 +205,7 @@ export const mediaRouter = createTRPCRouter({
                 .where(eq(tmdbSource.mediaId, tmdbMedia.id))
             )
           ),
-          // TV Logic: Next episode was supposed to air.
+          // TV Logic: new episode was aired.
           and(
             eq(tmdbMedia.type, 'tv'),
             isNotNull(tmdbMedia.updateDate),
@@ -211,32 +214,46 @@ export const mediaRouter = createTRPCRouter({
         )
       )
       .execute();
-    console.log(
-      `[dailySrcFetch] Found ${mediaToUpdate.length} media items to update.`
-    );
+    let count1 = 0;
+    const total1 = mediaToUpdate.length;
 
     for (const media of mediaToUpdate) {
-      console.log(`[dailySrcFetch] Processing ${media.type} ${media.tmdbId}.`);
+      count1 += 1;
+      console.log(
+        `[dailySrcFetch] Progress1: ${count1}/${total1} (${media.type} ${media.tmdbId}: ${media.title}).`
+      );
       if (media.type === 'movie') {
         // 2. for updated movies, fetch sources and populate tmdbSource table
         await fetchAndUpsertMvSrc(media.tmdbId);
-        console.log(
-          `[dailySrcFetch] Sources fetched for movie ${media.tmdbId}.`
-        );
       } else if (media.type === 'tv') {
         // 3. for updated tv, fetch details from api first and update nextEpisodeDate in tmdbMedia
         const details = await fetchTmdbDetailViaApi('tv', media.tmdbId);
-        // then upsert seasons/episodes
+        // then upsert new seasons/episodes
         await upsertExistingTvInfo(details, media.id);
-        console.log(`[dailySrcFetch] Updated TV info for ${media.tmdbId}.`);
-        // then fetch sources for all episodes whose source is null
-        await findSrclessEpisodesAndFetchSrc(media.id, media.tmdbId);
-        console.log(`[dailySrcFetch] Sources fetched for TV ${media.tmdbId}.`);
       }
     }
-    console.log(
-      `Daily source fetch completed for ${mediaToUpdate.length} media items.`
-    );
+
+    // 4. get all tv media from tmdbMedia
+    const allTvMedia = await ctx.db
+      .select({
+        id: tmdbMedia.id,
+        tmdbId: tmdbMedia.tmdbId,
+        title: tmdbMedia.title,
+      })
+      .from(tmdbMedia)
+      .where(eq(tmdbMedia.type, 'tv'))
+      .execute();
+    let count2 = 0;
+    const total2 = allTvMedia.length;
+
+    //5. for each tv media, check if it has srcless episodes (if it does, then fetch src for those episodes)
+    for (const media of allTvMedia) {
+      count2 += 1;
+      console.log(
+        `[dailySrcFetch] Progress2: ${count2}/${total2} (tv ${media.tmdbId}: ${media.title}).`
+      );
+      await findSrclessEpisodesAndFetchSrc(media.id, media.tmdbId);
+    }
   }),
 
   fetchAndInsertMvSrc: publicProcedure

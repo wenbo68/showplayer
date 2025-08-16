@@ -1,4 +1,3 @@
-import { fetchSrcFromProvider } from '~/utils/puppeteer';
 import { db } from './db';
 import {
   tmdbEpisode,
@@ -51,9 +50,8 @@ async function fetchSrcFromProviders(
   type: 'mv' | 'tv',
   path: string
 ): Promise<PuppeteerResult[]> {
-  const providers = ['vidjoy', 'videasy', 'vidfast', 'vidlink'];
+  const providers = ['joy', 'easy', 'fast', 'link'];
   const results: PuppeteerResult[] = [];
-  console.log('VPS_URL is:', process.env.VPS_URL);
   for (const provider of providers) {
     try {
       const res = await fetch(`${process.env.VPS_URL}/api/puppeteer`, {
@@ -82,7 +80,7 @@ async function fetchSrcFromProviders(
           }`
         );
       } else {
-        console.error(`[${provider}] empty result`);
+        console.error(`[${provider}] failed`);
       }
     } catch (error) {
       console.error(`[${provider}] error:`, error);
@@ -118,7 +116,6 @@ async function upsertSrcAndSubtitle(
   id: string,
   results: PuppeteerResult[]
 ) {
-  console.log(`upserting`);
   let sourceIds: { id: string }[] = [];
 
   if (type === 'mv') {
@@ -175,8 +172,6 @@ async function upsertSrcAndSubtitle(
     }
   }
 
-  console.log(`upserted sources`);
-
   if (sourceIds.length === 0) return; // Nothing to do for subtitles
 
   const subtitlesToUpsert = results
@@ -201,8 +196,7 @@ async function upsertSrcAndSubtitle(
 export async function fetchAndUpsertMvSrc(tmdbId: number) {
   const results = await fetchSrcFromProviders('mv', `${tmdbId}`);
   if (results.length === 0) {
-    console.log(`src not found for tmdbId: ${tmdbId}`);
-    return [];
+    return;
   }
   // insert sources into tmdbSource table
   // 1. Find the media's internal ID using a join.
@@ -231,10 +225,7 @@ export async function fetchAndUpsertTvSrc(
     `${tmdbId}/${season}/${episode}`
   );
   if (results.length === 0) {
-    console.log(
-      `src not found for tmdbId: ${tmdbId}, season: ${season}, episode: ${episode}`
-    );
-    return [];
+    return;
   }
   // insert sources into tmdbSource table
   // 1. Find the episode's internal ID using a join.
@@ -256,7 +247,7 @@ export async function fetchAndUpsertTvSrc(
   // 2. If the episode doesn't exist in your DB, throw an error.
   if (!episodeData) {
     throw new Error(
-      `fetchTvSrc failed: episode not found for tmdbId: ${tmdbId}, season: ${season}, episode: ${episode}`
+      `[fetchAndUpsertTcSrc] failed: episode not found for ${tmdbId}/${season}/${episode}`
     );
   }
   // 3. upsert sources and subtitles
@@ -408,13 +399,16 @@ export async function findSrclessEpisodesAndFetchSrc(
         isNull(tmdbSource.id)
       )
     )
-    .orderBy(asc(tmdbEpisode.episodeNumber));
+    .orderBy(asc(tmdbSeason.seasonNumber), asc(tmdbEpisode.episodeNumber));
 
-  console.log(
-    `[fetchSrcForEpisodes] Found ${results.length} episodes without sources for ${tmdbId}`
-  );
+  let count = 0;
+  const total = results.length;
 
-  for (const { episode, season } of results) {
+  for (const { season, episode } of results) {
+    count = count + 1;
+    console.log(
+      `[findSrclessEpisodesAndFetchSrc] Progress: ${count}/${total} (${tmdbId}/${season.seasonNumber}/${episode.episodeNumber})`
+    );
     await fetchAndUpsertTvSrc(
       tmdbId,
       season.seasonNumber,

@@ -70,11 +70,9 @@ export default function TrendingList() {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
         {filteredTmdb.map((media) => (
           <Link
-            href={`${
-              media.type === 'movie'
-                ? `/mv/${media.tmdbId}`
-                : `/tv/${media.tmdbId}/1/1`
-            }`}
+            href={`${`/${media.type}/${media.tmdbId}${
+              media.type === 'movie' ? `` : `/1/1`
+            }`}`}
             key={media.mediaId}
             className="border rounded-lg overflow-hidden shadow-lg flex flex-col"
           >

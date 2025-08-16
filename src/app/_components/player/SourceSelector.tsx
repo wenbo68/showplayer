@@ -30,7 +30,7 @@ export function SourceSelector({
                 : 'bg-gray-700 hover:bg-gray-600'
             }`}
           >
-            {source.provider.substring(3)}
+            {source.provider}
           </Link>
         ))}
       </div>

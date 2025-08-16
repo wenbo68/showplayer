@@ -1,21 +1,13 @@
-import puppeteer, { ElementHandle, HTTPRequest, type Page } from 'puppeteer';
+import puppeteer, { Browser, HTTPRequest, type Page } from 'puppeteer';
 import type { M3U8Result, PuppeteerResult } from '~/type';
 import { NextResponse } from 'next/server';
 import { withCors } from '~/utils/api';
-import { EventEmitter } from 'events';
-import { use } from 'react';
 
 // vidjoy: m3u8 before play (has antibot measures: wont load m3u8 if youre bot)
 // videasy: have to click play
 // vidfast: m3u8 before play
 // vidlink: auto plays
 // vidsrc: have to click play (if another play button shows up, just fail it)
-
-const firstClickWaitTime = 2000;
-const enSubtitleFindTime = 500;
-const enSubtitleWaitTime = 2000;
-const enSubtitleFindFailM3u8WaitTime = 3000;
-const enSubtitleWaitFailM3u8WaitTime = 1;
 
 const firstClickMap: Record<string, string> = {
   vidjoy: 'settings',
@@ -92,6 +84,18 @@ const enSubtitleSelectorsMap: Record<string, string> = {
 
 // ====== helpers
 
+function getTime(start: number) {
+  return (performance.now() - start).toFixed(1);
+}
+
+function timeoutPromise(timeout: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve();
+    }, timeout);
+  });
+}
+
 function generateEnSubtitleSelector(selector: string) {
   const variations = [
     'en',
@@ -106,17 +110,11 @@ function generateEnSubtitleSelector(selector: string) {
   return variations.map((v) => selector.replace('""', `"${v}"`)).join(', ');
 }
 
-function getTime(start: number) {
-  return (performance.now() - start).toFixed(1);
-}
-
 async function clickPlayInFrame(provider: string, page: Page) {
   try {
     // Step 1: Find the iframe that contains the video player.
     const t1 = performance.now();
-    const iframeHandle = await page.waitForSelector('iframe', {
-      // timeout: 5000,
-    });
+    const iframeHandle = await page.waitForSelector('iframe', {});
     if (!iframeHandle) {
       throw new Error('Could not find iframe');
     }
@@ -133,7 +131,6 @@ async function clickPlayInFrame(provider: string, page: Page) {
       playButtonSelectorsMap[provider] ?? '',
       {
         visible: true,
-        // timeout: 5000,
       }
     );
     console.log(`-found play: ${getTime(t2)} ms`);
@@ -150,72 +147,68 @@ async function clickPlayInFrame(provider: string, page: Page) {
   }
 }
 
+const firstClickWaitTime = 3000;
+const longClickWaitTime = 4000;
+const shortClickWaitTime = 1000;
 async function findAndClick(
   provider: string,
   name: string,
   selector: string,
   page: Page
 ) {
-  const t1 = performance.now();
-  let resolutionButton: ElementHandle<Element> | null = null;
-  // 1. find the thing
-  if (name === firstClickMap[provider]) {
-    await page.waitForSelector(selector, {
-      visible: true,
-      timeout: firstClickWaitTime,
-    });
-  } else if (name === 'en subtitle') {
-    await page.waitForSelector(selector, {
-      visible: true,
-      timeout: enSubtitleFindTime,
-    });
-  } else if (name === 'highest resolution') {
-    resolutionButton = await page.waitForSelector(selector, {
-      visible: true,
-    });
-  } else {
-    await page.waitForSelector(selector, {
-      visible: true,
-    });
+  try {
+    const t1 = performance.now();
+    // 1. find the thing
+    if (name === firstClickMap[provider]) {
+      await page.waitForSelector(selector, {
+        visible: true,
+        timeout: firstClickWaitTime,
+      });
+    } else if (name === 'highest resolution') {
+      await page.waitForSelector(selector, {
+        visible: true,
+        timeout: longClickWaitTime,
+      });
+    } else {
+      await page.waitForSelector(selector, {
+        visible: true,
+        timeout: shortClickWaitTime,
+      });
+    }
+    // 2. click the thing
+    await page.click(selector);
+    console.log(`[${provider}] clicked ${name}: ${getTime(t1)} ms`);
+  } catch (error) {
+    throw new Error(`click failed: ${name}`);
   }
-  // 2. click the thing
-  if (resolutionButton) {
-    console.log(`returning if resolution has shadow-lg`);
-    return await page.evaluate(
-      (el) => el.classList.contains('shadow-lg'),
-      resolutionButton
-    );
-  }
-  await page.click(selector);
-  console.log(`[${provider}] clicked ${name}: ${getTime(t1)} ms`);
 }
 
-function timeoutPromise(timeout: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve();
-    }, timeout);
-  });
+let browser: Browser | null = null;
+async function getBrowser() {
+  if (!browser || !browser.connected) {
+    browser = await puppeteer.launch({
+      executablePath: '/usr/bin/chromium',
+      headless: false,
+      // slowMo: 100,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+      ],
+    });
+  }
+  return browser;
 }
 
 async function fetchSrcFromUrl(
   provider: string,
   embedUrl: string
 ): Promise<PuppeteerResult | null> {
-  const browser = await puppeteer.launch({
-    executablePath: '/usr/bin/chromium',
-    headless: false,
-    // slowMo: 100,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-    ],
-  });
+  const browser = await getBrowser();
 
   // configure page to bypass antibot and return full headers and don't open popups
-  const page = (await browser.pages())[0]!;
+  const page = await browser.newPage();
   await page.setUserAgent(
     'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36'
   );
@@ -231,30 +224,8 @@ async function fetchSrcFromUrl(
     window.open = () => null;
   });
 
-  let m3u8BackupResolver: (value: M3U8Result) => void;
-  let m3u8Resolver: (value: M3U8Result) => void;
-  let subtitleResolver: (value: string) => void;
-  const m3u8BackupPromise = new Promise<M3U8Result>((resolve) => {
-    m3u8BackupResolver = resolve;
-  });
-  const m3u8Promise = new Promise<M3U8Result>((resolve) => {
-    m3u8Resolver = resolve;
-  });
-  const subtitlePromise = new Promise<string>((resolve) => {
-    subtitleResolver = resolve;
-  });
-  const m3u8AndSubtitlePromise = Promise.race([
-    Promise.allSettled([m3u8Promise, subtitlePromise]),
-    timeoutPromise(provider === 'vidjoy' ? 10000 : 7000),
-  ]);
-
-  let setResolution = true;
-  if (provider === 'vidjoy') {
-    setResolution = false;
-  }
-  let m3u8Pending = true;
-  let captureSubtitle = false;
-  let subtitlePending = true;
+  const m3u8List: M3U8Result[] = [];
+  const subtitleList: string[] = [];
   page.on('response', async (res) => {
     if (!res.ok()) return;
     const url = res.url();
@@ -269,185 +240,80 @@ async function fetchSrcFromUrl(
 
     try {
       const text = await res.text();
-      if (isSubtitle && captureSubtitle && subtitlePending) {
+      if (isSubtitle) {
         console.log(`[${provider}] Subtitle captured`);
-        subtitleResolver(text);
-        subtitlePending = false;
+        subtitleList.push(text);
         return;
       }
-      if (m3u8Pending) {
-        if (text.includes('#EXTM3U')) {
-          const headers = res.request().headers();
-          if (text.includes('#EXT-X-STREAM-INF')) {
-            console.log(`[${provider}] Master captured`);
-            if (setResolution) {
-              m3u8Resolver({ type: 'master', url: res.url(), headers });
-            } else {
-              m3u8BackupResolver({ type: 'master', url: res.url(), headers });
-            }
-          } else if (text.includes('#EXTINF')) {
+      if (text.includes('#EXTM3U')) {
+        const headers = res.request().headers();
+        if (text.includes('#EXT-X-STREAM-INF')) {
+          console.log(`[${provider}] Master captured`);
+          m3u8List.push({ type: 'master', url: res.url(), headers });
+        } else if (text.includes('#EXTINF')) {
+          if (!m3u8List.some((item) => item.type === 'master')) {
             console.log(`[${provider}] Media captured`);
-            if (setResolution) {
-              m3u8Resolver({ type: 'media', url: res.url(), headers });
-            } else {
-              m3u8BackupResolver({ type: 'media', url: res.url(), headers });
-            }
+            m3u8List.push({ type: 'media', url: res.url(), headers });
           }
-
-          // m3u8Pending is trivial but does make puppeteer do less work
-          if (setResolution) m3u8Pending = false;
         }
       }
     } catch (error) {}
   });
 
-  let useBackup = false;
-  const clickEvents = new EventEmitter();
-  const firstClickFailPromise = new Promise<string>((resolve) =>
-    clickEvents.once('firstClickFailed', () => resolve('firstClickFailed'))
-  );
-  const enSubtitleFindFailPromise = new Promise<string>((resolve) =>
-    clickEvents.once('enSubtitleFindFailed', () =>
-      resolve('enSubtitleFindFailed')
-    )
-  );
-  const enSubtitleWaitFailPromise = new Promise<string>((resolve) =>
-    clickEvents.once('enSubtitleWaitFailed', () =>
-      resolve('enSubtitleWaitFailed')
-    )
-  );
-
+  async function click(name: string, selector: string | undefined) {
+    if (!selector) return;
+    await findAndClick(provider, name, selector, page);
+  }
   const t0 = performance.now();
   try {
-    // run step 1&2 in parallel with waiting for subtitle/m3u8
-    (async () => {
-      try {
-        //1. go to url
-        const t1 = performance.now();
-        await page.goto(embedUrl, {
-          waitUntil: 'domcontentloaded',
-          // timeout: 5000,
-        });
-        console.log(`[${provider}] entered page: ${getTime(t1)} ms`);
+    try {
+      //1. go to url
+      const t1 = performance.now();
+      await page.goto(embedUrl, {
+        waitUntil: 'domcontentloaded',
+      });
+      console.log(`[${provider}] entered page: ${getTime(t1)} ms`);
 
-        // 2. click play, select quality/subtitle
-        async function click(name: string, selector: string | undefined) {
-          if (!selector) {
-            return;
-          }
-          try {
-            return await findAndClick(provider, name, selector, page);
-          } catch (error) {
-            if (name === firstClickMap[provider]) {
-              clickEvents.emit('firstClickFailed');
-              // throw new Error('first click failed');
-            } else if (name === 'en subtitle') {
-              if (subtitlePending) clickEvents.emit('enSubtitleFindFailed');
-              // throw new Error('en subtitle failed');
-            }
-            throw error;
-          }
-        }
-        if (provider === 'videasy') {
-          await click('play button', playButtonSelectorsMap[provider]);
-          await click('video', videoSelectorsMap[provider]);
-        } else if (provider === 'vidsrc') {
-          await clickPlayInFrame(provider, page);
-        }
-        if (provider === 'vidjoy') {
-          await click('settings', settingsButtonSelectorsMap[provider]);
-          //this aint working for some reason
-          const alreadyHighestResolution = await click(
-            'highest resolution',
-            highestResolutionSelectorsMap[provider]
-          );
-          console.log(
-            `[${provider}] already highest resolution: ${alreadyHighestResolution}`
-          );
-          useBackup = alreadyHighestResolution ?? false;
-          setResolution = true;
-        }
-        await click('subtitle button', subtitleButtonSelectorsMap[provider]);
-        if (provider === 'videasy') {
-          await click('subtitle tab', subtitleTabSelectorsMap[provider]);
-        }
-        await click('en subtitle', enSubtitleSelectorsMap[provider]);
-        console.log(`[${provider}] DONE: ${getTime(t0)} ms`);
-        setTimeout(() => {
-          if (subtitlePending) clickEvents.emit('enSubtitleWaitFailed');
-        }, enSubtitleWaitTime);
-      } catch (error) {
-        // console.log(`[${provider}] DONE: ${getTime(t0)} ms`);
-        // const errorMessage = error.message || '';
-        // const isIgnorableError =
-        //   errorMessage.includes('closed') || errorMessage.includes('detached');
-        // if (!isIgnorableError) {
-        //   console.error(`[${provider}] clicking failed`);
-        // }
+      // 2. click play/quality/subtitle
+      if (provider === 'videasy') {
+        await click('play button', playButtonSelectorsMap[provider]);
+        await click('video', videoSelectorsMap[provider]);
+      } else if (provider === 'vidsrc') {
+        await clickPlayInFrame(provider, page);
       }
-    })();
-
-    // 3. race all promises (only timeout returns void/undefined)
-
-    // might have to race backup promise here as well? (but then if backup promise wins, we might need another race for enSubtitle and m3u8/subtitle promises)
-    const raceResult1 = await Promise.race([
-      firstClickFailPromise,
-      enSubtitleWaitFailPromise,
-      enSubtitleFindFailPromise,
-      m3u8AndSubtitlePromise,
-    ]);
-
-    if (typeof raceResult1 === 'string') {
-      console.warn(`[${provider}] ${raceResult1}`);
-      // 1st click failed
-      if (raceResult1 === 'firstClickFailed') {
-        console.warn(`[${provider}] failed: 1st click failed`);
-        return null;
-      } else {
-        // en subtitle failed
-        const raceResult2 = await Promise.race([
-          useBackup ? m3u8BackupPromise : m3u8Promise,
-          timeoutPromise(
-            raceResult1 === 'enSubtitleFindFailed'
-              ? enSubtitleFindFailM3u8WaitTime
-              : raceResult1 === 'enSubtitleWaitFailed'
-              ? enSubtitleWaitFailM3u8WaitTime
-              : 1
-          ),
-        ]);
-        if (raceResult2 === undefined) {
-          console.warn(`[${provider}] failed: m3u8 timeout`);
-          return null;
-        }
-        return {
-          provider: provider.substring(3),
-          m3u8: raceResult2 as M3U8Result,
-          subtitle: undefined,
-        };
+      if (provider === 'vidjoy') {
+        await click('settings', settingsButtonSelectorsMap[provider]);
+        await click(
+          'highest resolution',
+          highestResolutionSelectorsMap[provider]
+        );
       }
-    } else if (raceResult1 === undefined) {
-      // failed to get m3u8 & subtitle within time limit
-      console.warn(`[${provider}] failed: m3u8/subtitle timeout`);
-      return null;
-    } else {
-      // got both m3u8 and subtitle (but still need checks, why?)
-      const [m3u8Result, subtitleResult] = raceResult1;
-      return m3u8Result.status === 'fulfilled'
-        ? {
-            provider: provider.substring(3), // remove 'vid' prefix
-            m3u8: m3u8Result.value as M3U8Result,
-            subtitle:
-              subtitleResult.status === 'fulfilled'
-                ? (subtitleResult.value as string)
-                : undefined,
-          }
-        : null;
+      await click('subtitle button', subtitleButtonSelectorsMap[provider]);
+      if (provider === 'videasy') {
+        await click('subtitle tab', subtitleTabSelectorsMap[provider]);
+      }
+      await click('en subtitle', enSubtitleSelectorsMap[provider]);
+      console.log(`[${provider}] DONE: ${getTime(t0)} ms`);
+    } catch (error: any) {
+      if (error.message.includes(firstClickMap[provider])) {
+        throw new Error(`first click failed`);
+      }
+      console.warn(`[${provider}] ${error.message}`);
     }
-  } catch (error) {
-    console.error('fetchSrcFromUrl failed:', error);
+
+    // 3. use the flags and arrays to compose the return value
+    await timeoutPromise(500);
+    if (m3u8List.length === 0) throw new Error(`m3u8 timeout`);
+    return {
+      provider,
+      m3u8: m3u8List.at(-1)!,
+      subtitle: subtitleList.at(-1),
+    };
+  } catch (error: any) {
+    console.error(`[fetchSrcFromUrl] failed: ${error.message}`);
     return null;
   } finally {
-    await browser.close();
+    await page.close();
     console.log(`Total: ${getTime(t0)} ms`);
     console.log(`=======`);
   }
@@ -498,3 +364,18 @@ export async function POST(req: Request) {
 export async function OPTIONS() {
   return new NextResponse(null, { headers: withCors() });
 }
+
+// close the browser when you exit/interrupt the nextjs app
+process.on('exit', async () => {
+  if (browser) await browser.close();
+});
+
+process.on('SIGINT', async () => {
+  if (browser) await browser.close();
+  process.exit();
+});
+
+process.on('SIGTERM', async () => {
+  if (browser) await browser.close();
+  process.exit();
+});

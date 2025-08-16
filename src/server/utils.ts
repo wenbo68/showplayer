@@ -91,86 +91,51 @@ async function fetchSrcFromProviders(
 }
 
 function convertToVtt(subtitle: string): string {
-  // Return immediately if it's already VTT.
-  if (subtitle.trim().startsWith('WEBVTT')) {
-    return subtitle;
-  }
+  if (subtitle.trim().startsWith('WEBVTT')) return subtitle;
   // First, normalize all line endings to \n for consistency.
   // This handles files from both Windows (\r\n) and Unix (\n).
   let newSubtitle = subtitle.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
   // Replace SRT's comma decimal format with VTT's period format.
   newSubtitle = newSubtitle.replace(/,(\d{3})/g, '.$1');
-
   // Remove SRT-style numeric cues AND the newline that follows them.
   newSubtitle = newSubtitle.replace(/^\d+\n/gm, '');
-
   // Add the standard WEBVTT header and clean up any leading/trailing space.
   return 'WEBVTT\n\n' + newSubtitle.trim();
 }
-
-// FILE: your-function.ts
 
 async function upsertSrcAndSubtitle(
   type: 'mv' | 'tv',
   id: string,
   results: PuppeteerResult[]
 ) {
-  let sourceIds: { id: string }[] = [];
+  const isMovie = type === 'mv';
+  const sourcesToUpsert = results.map((result) => ({
+    mediaId: isMovie ? id : null,
+    episodeId: isMovie ? null : id,
+    provider: result.provider,
+    type: result.m3u8.type,
+    url: result.m3u8.url,
+    headers: result.m3u8.headers,
+  }));
 
-  if (type === 'mv') {
-    // 1. Prepare movie data
-    const sourcesToUpsert = results.map((result) => ({
-      mediaId: id, // episodeId is omitted (NULL)
-      provider: result.provider,
-      type: result.m3u8.type,
-      url: result.m3u8.url,
-      headers: result.m3u8.headers,
-    }));
-
-    // 2. Upsert using the movie-specific constraint
-    if (sourcesToUpsert.length > 0) {
-      sourceIds = await db
-        .insert(tmdbSource)
-        .values(sourcesToUpsert)
-        .onConflictDoUpdate({
-          target: [tmdbSource.mediaId, tmdbSource.provider], // Correct target for movies
-          set: {
-            url: sql`excluded.url`,
-            headers: sql`excluded.headers`,
-            type: sql`CASE WHEN excluded.type = 'master' THEN excluded.type ELSE tmdb_source.type END`,
-          },
-          where: sql`excluded.type = 'master' OR excluded.type = tmdb_source.type`,
-        })
-        .returning({ id: tmdbSource.id });
-    }
-  } else if (type === 'tv') {
-    // 1. Prepare TV show data
-    const sourcesToUpsert = results.map((result) => ({
-      episodeId: id, // mediaId is omitted (NULL)
-      provider: result.provider,
-      type: result.m3u8.type,
-      url: result.m3u8.url,
-      headers: result.m3u8.headers,
-    }));
-
-    // 2. Upsert using the TV-specific constraint
-    if (sourcesToUpsert.length > 0) {
-      sourceIds = await db
-        .insert(tmdbSource)
-        .values(sourcesToUpsert)
-        .onConflictDoUpdate({
-          target: [tmdbSource.episodeId, tmdbSource.provider], // Correct target for TV shows
-          set: {
-            url: sql`excluded.url`,
-            headers: sql`excluded.headers`,
-            type: sql`CASE WHEN excluded.type = 'master' THEN excluded.type ELSE tmdb_source.type END`,
-          },
-          where: sql`excluded.type = 'master' OR excluded.type = tmdb_source.type`,
-        })
-        .returning({ id: tmdbSource.id });
-    }
-  }
+  const conflictTarget = isMovie
+    ? [tmdbSource.mediaId, tmdbSource.provider]
+    : [tmdbSource.episodeId, tmdbSource.provider];
+  const sourceIds = await db
+    .insert(tmdbSource)
+    .values(sourcesToUpsert)
+    .onConflictDoUpdate({
+      target: conflictTarget,
+      set: {
+        url: sql`excluded.url`,
+        headers: sql`excluded.headers`,
+        type: sql`CASE WHEN excluded.type = 'master' 
+                       THEN excluded.type 
+                       ELSE tmdb_source.type END`,
+      },
+      where: sql`excluded.type = 'master' OR excluded.type = tmdb_source.type`,
+    })
+    .returning({ id: tmdbSource.id });
 
   if (sourceIds.length === 0) return; // Nothing to do for subtitles
 
@@ -195,6 +160,7 @@ async function upsertSrcAndSubtitle(
 
 export async function fetchAndUpsertMvSrc(tmdbId: number) {
   const results = await fetchSrcFromProviders('mv', `${tmdbId}`);
+  console.log(`[fetchAndUpsertMvSrc] Fetched ${results.length} sources.`);
   if (results.length === 0) {
     return;
   }
@@ -224,6 +190,7 @@ export async function fetchAndUpsertTvSrc(
     'tv',
     `${tmdbId}/${season}/${episode}`
   );
+  console.log(`[fetchAndUpsertMvSrc] Fetched ${results.length} sources.`);
   if (results.length === 0) {
     return;
   }

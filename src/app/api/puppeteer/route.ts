@@ -149,6 +149,7 @@ async function clickPlayInFrame(provider: string, page: Page) {
 
 const firstClickWaitTime = 3000;
 const longClickWaitTime = 4000;
+const midClickWaitTime = 2000;
 const shortClickWaitTime = 1000;
 async function findAndClick(
   provider: string,
@@ -159,22 +160,17 @@ async function findAndClick(
   try {
     const t1 = performance.now();
     // 1. find the thing
-    if (name === firstClickMap[provider]) {
-      await page.waitForSelector(selector, {
-        visible: true,
-        timeout: firstClickWaitTime,
-      });
-    } else if (name === 'highest resolution') {
-      await page.waitForSelector(selector, {
-        visible: true,
-        timeout: longClickWaitTime,
-      });
-    } else {
-      await page.waitForSelector(selector, {
-        visible: true,
-        timeout: shortClickWaitTime,
-      });
-    }
+    await page.waitForSelector(selector, {
+      visible: true,
+      timeout:
+        name === firstClickMap[provider] // takes abt 2500-3000
+          ? firstClickWaitTime
+          : name === 'highest resolution' // takes abt 3500-4000
+          ? longClickWaitTime
+          : provider === 'vidfast' && name === 'en subtitle' // takes abt 1500
+          ? midClickWaitTime
+          : shortClickWaitTime, // takes abt 500-1000
+    });
     // 2. click the thing
     await page.click(selector);
     console.log(`[${provider}] clicked ${name}: ${getTime(t1)} ms`);
@@ -188,7 +184,7 @@ async function getBrowser() {
   if (!browser || !browser.connected) {
     browser = await puppeteer.launch({
       executablePath: '/usr/bin/chromium',
-      headless: false,
+      headless: true,
       // slowMo: 100,
       args: [
         '--no-sandbox',
@@ -293,12 +289,13 @@ async function fetchSrcFromUrl(
         await click('subtitle tab', subtitleTabSelectorsMap[provider]);
       }
       await click('en subtitle', enSubtitleSelectorsMap[provider]);
-      console.log(`[${provider}] DONE: ${getTime(t0)} ms`);
+      // console.log(`[${provider}] DONE: ${getTime(t0)} ms`);
     } catch (error: any) {
-      if (error.message.includes(firstClickMap[provider])) {
-        throw new Error(`first click failed`);
-      }
-      console.warn(`[${provider}] ${error.message}`);
+      console.warn(
+        `[${provider}] ${error.message} ${
+          error.message.includes(firstClickMap[provider]) ? `(1st click)` : ``
+        }`
+      );
     }
 
     // 3. use the flags and arrays to compose the return value

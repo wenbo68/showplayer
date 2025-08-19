@@ -190,6 +190,34 @@
       "when": 1754834528631,
       "tag": "0026_fast_alex_wilder",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1755437421536,
+      "tag": "0027_crazy_punisher",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1755440106791,
+      "tag": "0028_vengeful_sway",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1755499685645,
+      "tag": "0029_acoustic_norman_osborn",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1755601881840,
+      "tag": "0030_dark_stephen_strange",
+      "breakpoints": true
     }
   ]
 }

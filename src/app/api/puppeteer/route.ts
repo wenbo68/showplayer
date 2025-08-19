@@ -178,23 +178,55 @@ async function findAndClick(
     throw new Error(`click failed: ${name}`);
   }
 }
-
 let browser: Browser | null = null;
-async function getBrowser() {
-  if (!browser || !browser.connected) {
-    browser = await puppeteer.launch({
-      executablePath: '/usr/bin/chromium',
-      headless: true,
-      // slowMo: 100,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-      ],
-    });
+let isLaunching = false; // Our "lock" to prevent race conditions
+let requestCount = 0;
+const MAX_REQUESTS_PER_BROWSER = 20; // Increased limit
+
+async function getBrowser(): Promise<Browser> {
+  // If the browser is launching, wait for it to be ready
+  while (isLaunching) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  return browser;
+
+  // Restart the browser if it's dead or has served too many requests
+  if (
+    !browser ||
+    !browser.connected ||
+    requestCount >= MAX_REQUESTS_PER_BROWSER
+  ) {
+    isLaunching = true;
+    try {
+      if (browser) {
+        await browser
+          .close()
+          .catch((e) => console.error('Failed to close browser:', e));
+      }
+      browser = await puppeteer.launch({
+        executablePath: '/usr/bin/chromium',
+        headless: false,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--no-zygote',
+          '--single-process',
+        ],
+      });
+      console.log('New browser instance launched.');
+      requestCount = 0;
+    } catch (error) {
+      console.error('Failed to launch browser:', error);
+      browser = null; // Ensure we don't use a broken instance
+      throw error; // Propagate the error
+    } finally {
+      isLaunching = false; // Release the lock
+    }
+  }
+
+  requestCount++;
+  return browser!;
 }
 
 async function fetchSrcFromUrl(
@@ -213,8 +245,13 @@ async function fetchSrcFromUrl(
   });
   await page.setCacheEnabled(false);
   await page.setRequestInterception(true);
-  page.on('request', (request: HTTPRequest) => {
-    request.continue();
+  page.on('request', (req: HTTPRequest) => {
+    try {
+      req.continue();
+    } catch (err) {
+      console.error('request.continue() failed', err);
+      req.abort();
+    }
   });
   await page.evaluateOnNewDocument(() => {
     window.open = () => null;
@@ -299,20 +336,19 @@ async function fetchSrcFromUrl(
     }
 
     // 3. use the flags and arrays to compose the return value
-    await timeoutPromise(500);
+    await timeoutPromise(1000);
     if (m3u8List.length === 0) throw new Error(`m3u8 timeout`);
     return {
-      provider,
+      provider: provider.substring(3),
       m3u8: m3u8List.at(-1)!,
       subtitle: subtitleList.at(-1),
     };
   } catch (error: any) {
-    console.error(`[fetchSrcFromUrl] failed: ${error.message}`);
+    console.error(`[${provider}] failed: ${error.message}`);
     return null;
   } finally {
     await page.close();
-    console.log(`Total: ${getTime(t0)} ms`);
-    console.log(`=======`);
+    console.log(`[${provider}] total: ${getTime(t0)} ms`);
   }
 }
 
@@ -327,7 +363,6 @@ async function fetchSrcFromProvider(
   const embedUrl = `${
     type === 'mv' ? mvProvidersMap[fullProvider] : tvProvidersMap[fullProvider]
   }/${path}`;
-  console.log(`=======`);
   return fetchSrcFromUrl(fullProvider, embedUrl);
 }
 

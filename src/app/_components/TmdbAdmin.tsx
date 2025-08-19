@@ -10,18 +10,18 @@ export default function TmdbAdmin() {
   const [season, setSeason] = useState('');
   const [episode, setEpisode] = useState('');
 
-  const clearTmdbTrendingMutation = api.media.clearTmdbTrending.useMutation();
+  const fetchGenresMutation = api.media.fetchGenres.useMutation();
   const fetchTmdbTrendingMutation = api.media.fetchTmdbTrending.useMutation();
   const populateDetailsMutation = api.media.populateMediaDetails.useMutation();
-  const dailySrcFetchMutation = api.media.dailySrcFetch.useMutation();
+  const dailySrcFetchMutation = api.media.mediaSrcFetch.useMutation();
   const fetchMvSrcMutation = api.media.fetchAndInsertMvSrc.useMutation();
   const insertEpisodeMutation = api.media.insertSeasonAndEpisode.useMutation();
   const fetchTvSrcMutation = api.media.fetchAndInsertTvSrc.useMutation();
 
-  const handleClearTmdbTrending = () => {
-    clearTmdbTrendingMutation.mutate(undefined, {
-      onSuccess: () => console.log('Trending cleared'),
-      onError: (err) => console.error('Error clearing trending:', err),
+  const handleFetchGenres = () => {
+    fetchGenresMutation.mutate(undefined, {
+      onSuccess: (data) => console.log('Fetch genres:', data),
+      onError: (err) => console.error('Error:', err),
     });
   };
   const handleFetchTmdbTrending = () => {
@@ -92,23 +92,23 @@ export default function TmdbAdmin() {
           className="px-3 py-2 border rounded w-60 text-black"
         />
         <button
-          onClick={handleClearTmdbTrending}
-          disabled={clearTmdbTrendingMutation.isPending}
+          onClick={handleFetchGenres}
+          disabled={fetchGenresMutation.isPending}
           className="px-4 py-2 bg-red-600 text-white rounded"
         >
-          {clearTmdbTrendingMutation.isPending
-            ? 'Clearing...'
-            : 'Clear Tmdb Trending'}
+          {fetchGenresMutation.isPending
+            ? 'Fetching genres...'
+            : 'Fetch genres'}
         </button>
-        {clearTmdbTrendingMutation.error && (
+        {fetchGenresMutation.error && (
           <p className="text-red-500 mt-2">
-            Error: {clearTmdbTrendingMutation.error.message}
+            Error: {fetchGenresMutation.error.message}
           </p>
         )}
         <button
           onClick={handleFetchTmdbTrending}
           disabled={fetchTmdbTrendingMutation.isPending}
-          className="px-4 py-2 bg-blue-600 text-white rounded"
+          className="px-4 py-2 bg-green-600 text-white rounded"
         >
           {fetchTmdbTrendingMutation.isPending
             ? 'Fetching...'

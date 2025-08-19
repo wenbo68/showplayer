@@ -1,0 +1,1 @@
+ALTER TABLE "tmdb_episode" ALTER COLUMN "air_date" SET DATA TYPE timestamp with time zone;

@@ -79,7 +79,10 @@ export default function TrendingList() {
             <div>
               <div className="flex-shrink-0">
                 <img
-                  src={media.imageUrl || '/no_image_available.webp'}
+                  src={
+                    `https://image.tmdb.org/t/p/w500${media.imageUrl}` ||
+                    '/no_image_available.webp'
+                  }
                   alt={media.title}
                   className="w-full aspect-[2/3] object-cover"
                 />

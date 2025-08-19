@@ -1,32 +1,23 @@
 import { z } from 'zod';
-import {
-  lte,
-  or,
-  and,
-  eq,
-  isNull,
-  notExists,
-  sql,
-  isNotNull,
-} from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 
 import { createTRPCRouter, publicProcedure } from '~/server/api/trpc';
 import {
   tmdbEpisode,
+  tmdbGenre,
   tmdbMedia,
+  tmdbMediaToTmdbGenre,
   tmdbSeason,
-  tmdbSource,
   tmdbTrending,
 } from '~/server/db/schema';
 import {
   fetchAndUpsertMvSrc,
   fetchAndUpsertTvSrc,
-  fetchTmdbDetailViaApi,
+  fetchTmdbMvGenreViaApi,
   fetchTmdbTrendingViaApi,
-  findSrclessEpisodesAndFetchSrc,
-  upsertExistingTvInfo,
-  upsertNewTvInfo,
+  fetchTmdbTvGenreViaApi,
 } from '~/server/utils';
+import { inngest } from '~/inngest/client';
 
 export const mediaRouter = createTRPCRouter({
   //fetch from tmdbMedia by uuid
@@ -65,13 +56,40 @@ export const mediaRouter = createTRPCRouter({
     return trending;
   }),
 
-  clearTmdbTrending: publicProcedure.mutation(async ({ ctx }) => {
-    await ctx.db.delete(tmdbTrending).execute();
+  fetchGenres: publicProcedure.mutation(async ({ ctx }) => {
+    const { genres: mvGenres } = await fetchTmdbMvGenreViaApi();
+    const { genres: tvGenres } = await fetchTmdbTvGenreViaApi();
+
+    // 1. Combine both lists
+    const genres = [...mvGenres, ...tvGenres];
+
+    // 2. Use a Map to automatically handle duplicates based on the 'id'
+    const genreInput = Array.from(
+      new Map(genres.map((genre) => [genre.id, genre])).values()
+    );
+
+    // 3. Insert or update the genres in the database
+    const genreOutput = await ctx.db
+      .insert(tmdbGenre)
+      .values(genreInput)
+      .onConflictDoUpdate({
+        target: tmdbGenre.id, // The column to check for conflicts
+        set: {
+          name: sql`excluded.name`, // Update the name if the ID already exists
+        },
+      })
+      .returning(); // Optional: get the inserted/updated rows back
+
+    console.log(`Upserted ${genreOutput.length} unique genres.`);
+    return { count: genreOutput.length };
   }),
 
   fetchTmdbTrending: publicProcedure
     .input(z.object({ limit: z.number() }))
     .mutation(async ({ input, ctx }) => {
+      // delete trending list first
+      await ctx.db.delete(tmdbTrending).execute();
+
       // 1. fetch output from api
       const fetchOutput = await fetchTmdbTrendingViaApi(input.limit);
 
@@ -85,9 +103,13 @@ export const mediaRouter = createTRPCRouter({
               type: item.media_type,
               title: item.name || item.title,
               description: item.overview,
-              imageUrl: item.poster_path
-                ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
+              imageUrl: item.poster_path ? item.poster_path : null,
+              releaseDate: !!item.release_date
+                ? new Date(item.release_date)
+                : !!item.first_air_date
+                ? new Date(item.first_air_date)
                 : null,
+              genreIds: item.genre_ids || [],
             },
           ])
         ).values()
@@ -96,7 +118,7 @@ export const mediaRouter = createTRPCRouter({
       // 3. Insert or update media table
       const mediaOutput = await ctx.db
         .insert(tmdbMedia)
-        .values(mediaInput)
+        .values(mediaInput.map(({ genreIds, ...rest }) => rest))
         .onConflictDoUpdate({
           target: tmdbMedia.tmdbId,
           set: {
@@ -104,15 +126,42 @@ export const mediaRouter = createTRPCRouter({
             title: sql`excluded.title`,
             description: sql`excluded.description`,
             imageUrl: sql`excluded.image_url`,
+            releaseDate: sql`excluded.release_date`,
           },
         })
-        .returning({ mediaId: tmdbMedia.id })
+        .returning({
+          mediaId: tmdbMedia.id,
+          tmdbId: tmdbMedia.tmdbId,
+        })
         .execute();
 
-      // 4. insert new items in trending table
+      // 4. Create a lookup map for easy access: { tmdbId => mediaId }
+      const tmdbIdToMediaIdMap = new Map(
+        mediaOutput.map((item) => [item.tmdbId, item.mediaId])
+      );
+
+      // 5. Prepare the data for the mediaToGenres join table
+      const genreInput = mediaInput.flatMap((media) => {
+        const mediaId = tmdbIdToMediaIdMap.get(media.tmdbId);
+        if (!mediaId || !media.genreIds) {
+          return []; // Skip if media wasn't inserted or has no genres
+        }
+        return media.genreIds.map((genreId: number) => ({
+          mediaId: mediaId,
+          genreId: genreId,
+        }));
+      });
+
+      // 6. Insert all genre relationships in a single batch
+      await ctx.db
+        .insert(tmdbMediaToTmdbGenre)
+        .values(genreInput)
+        .onConflictDoNothing();
+
+      // 7. insert new items in trending table
       const trendingInput = mediaOutput.map((item: any, index: number) => {
         return {
-          ...item,
+          mediaId: item.mediaId,
           rank: index,
         };
       });
@@ -122,138 +171,24 @@ export const mediaRouter = createTRPCRouter({
       return { count: mediaInput.length };
     }),
 
-  // for mv, get updateDate from api => no need to get src (bc dailySrcFetch will)
-  // for tv, get seasons/episodes from api => need to get src for all episodes (dailySrcFetch only fetches the next episode to air)
   populateMediaDetails: publicProcedure.mutation(async ({ ctx }) => {
-    //1. fetch new records: tmdbMedia where (type is movie and updateDate is null) or (type is tv and it has no season in tmdbSeason table)
-    const newMediaRecords = await ctx.db
-      .select()
-      .from(tmdbMedia)
-      .where(
-        or(
-          and(eq(tmdbMedia.type, 'movie'), isNull(tmdbMedia.updateDate)),
-          and(
-            eq(tmdbMedia.type, 'tv'),
-            notExists(
-              ctx.db
-                .select()
-                .from(tmdbSeason)
-                .where(eq(tmdbSeason.mediaId, tmdbMedia.id))
-            )
-          )
-        )
-      )
-      .execute();
+    await inngest.send({
+      name: 'app/populate.media.details',
+      data: { batch: 10 },
+    });
 
-    let count = 0;
-    const total = newMediaRecords.length;
-
-    // 2. for each record, fetch details from tmdb api
-    for (const media of newMediaRecords) {
-      count = count + 1;
-      console.log(
-        `[populateMediaDetails] Progress: ${count}/${total} (${media.type} ${media.tmdbId}: ${media.title})`
-      );
-      const details = await fetchTmdbDetailViaApi(media.type, media.tmdbId);
-      if (media.type === 'movie') {
-        // 3. for movies, update mvReleaseDate in tmdbMedia
-        await ctx.db
-          .update(tmdbMedia)
-          .set({
-            updateDate: !!details.release_date
-              ? new Date(details.release_date)
-              : null,
-          })
-          .where(eq(tmdbMedia.id, media.id))
-          .execute();
-      } else if (media.type === 'tv' && details?.seasons) {
-        // 4. for tv, update nextEpisodeDate in tmdbMedia then populate seasons and episodes
-        await upsertNewTvInfo(details, media.id);
-        // // 5. fetch src for all episodes of this tv
-        // await findSrclessEpisodesAndFetchSrc(media.id, details.id);
-      }
-    }
+    // Return an immediate response to the client
+    return { status: 'success', message: 'populateMediaDetails scheduled.' };
   }),
 
-  // fully test populateMediaDetails and dailySrcFetch then run them in vps (vercel can only run for 300s)
+  mediaSrcFetch: publicProcedure.mutation(async ({ ctx }) => {
+    await inngest.send({
+      name: 'app/media-src-fetch',
+      data: { batch: 1, fast: false },
+    });
 
-  // find all media who needs src then get src from providers
-  dailySrcFetch: publicProcedure.mutation(async ({ ctx }) => {
-    // 1. in tmdbMedia find updated records: updateDate is not null and older than yesterday
-    const yesterday = new Date();
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-
-    const mediaToUpdate = await ctx.db
-      .select({
-        id: tmdbMedia.id,
-        tmdbId: tmdbMedia.tmdbId,
-        type: tmdbMedia.type,
-        title: tmdbMedia.title,
-      })
-      .from(tmdbMedia)
-      .where(
-        or(
-          // Movie Logic: Released and has no sources yet.
-          and(
-            eq(tmdbMedia.type, 'movie'),
-            isNotNull(tmdbMedia.updateDate),
-            lte(tmdbMedia.updateDate, yesterday),
-            notExists(
-              ctx.db
-                .select()
-                .from(tmdbSource)
-                .where(eq(tmdbSource.mediaId, tmdbMedia.id))
-            )
-          ),
-          // TV Logic: new episode was aired.
-          and(
-            eq(tmdbMedia.type, 'tv'),
-            isNotNull(tmdbMedia.updateDate),
-            lte(tmdbMedia.updateDate, yesterday)
-          )
-        )
-      )
-      .execute();
-    let count1 = 0;
-    const total1 = mediaToUpdate.length;
-
-    for (const media of mediaToUpdate) {
-      count1 += 1;
-      console.log(
-        `[dailySrcFetch] Progress1: ${count1}/${total1} (${media.type} ${media.tmdbId}: ${media.title}).`
-      );
-      if (media.type === 'movie') {
-        // 2. for updated movies, fetch sources and populate tmdbSource table
-        await fetchAndUpsertMvSrc(media.tmdbId);
-      } else if (media.type === 'tv') {
-        // 3. for updated tv, fetch details from api first and update nextEpisodeDate in tmdbMedia
-        const details = await fetchTmdbDetailViaApi('tv', media.tmdbId);
-        // then upsert new seasons/episodes
-        await upsertExistingTvInfo(details, media.id);
-      }
-    }
-
-    // 4. get all tv media from tmdbMedia
-    const allTvMedia = await ctx.db
-      .select({
-        id: tmdbMedia.id,
-        tmdbId: tmdbMedia.tmdbId,
-        title: tmdbMedia.title,
-      })
-      .from(tmdbMedia)
-      .where(eq(tmdbMedia.type, 'tv'))
-      .execute();
-    let count2 = 0;
-    const total2 = allTvMedia.length;
-
-    //5. for each tv media, check if it has srcless episodes (if it does, then fetch src for those episodes)
-    for (const media of allTvMedia) {
-      count2 += 1;
-      console.log(
-        `[dailySrcFetch] Progress2: ${count2}/${total2} (tv ${media.tmdbId}: ${media.title}).`
-      );
-      await findSrclessEpisodesAndFetchSrc(media.id, media.tmdbId);
-    }
+    // Return an immediate response to the client
+    return { status: 'success', message: 'mediaSrcFetch scheduled.' };
   }),
 
   fetchAndInsertMvSrc: publicProcedure
@@ -263,7 +198,7 @@ export const mediaRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input }) => {
-      return await fetchAndUpsertMvSrc(input.tmdbId);
+      return await fetchAndUpsertMvSrc(false, input.tmdbId);
     }),
 
   fetchAndInsertTvSrc: publicProcedure
@@ -276,8 +211,10 @@ export const mediaRouter = createTRPCRouter({
     )
     .mutation(async ({ input }) => {
       return await fetchAndUpsertTvSrc(
+        false,
         input.tmdbId,
         input.season,
+        input.episode,
         input.episode
       );
     }),

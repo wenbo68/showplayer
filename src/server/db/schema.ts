@@ -24,6 +24,42 @@ import { type AdapterAccount } from 'next-auth/adapters';
 export const tmdbTypeEnum = pgEnum('tmdb_type', ['movie', 'tv']);
 export const m3u8TypeEnum = pgEnum('m3u8_type', ['master', 'media']);
 
+export const tmdbGenre = pgTable('tmdb_genre', {
+  id: integer('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+});
+
+export const tmdbGenreRelations = relations(tmdbGenre, ({ many }) => ({
+  tmdbMediaToTmdbGenre: many(tmdbMediaToTmdbGenre),
+}));
+
+export const tmdbMediaToTmdbGenre = pgTable(
+  'tmdb_media_to_tmdb_genre',
+  {
+    mediaId: varchar('media_id', { length: 255 })
+      .notNull()
+      .references(() => tmdbMedia.id, { onDelete: 'cascade' }),
+    genreId: integer('genre_id')
+      .notNull()
+      .references(() => tmdbGenre.id, { onDelete: 'cascade' }),
+  },
+  (t) => [primaryKey({ columns: [t.mediaId, t.genreId] })]
+);
+
+export const mediaToGenresRelations = relations(
+  tmdbMediaToTmdbGenre,
+  ({ one }) => ({
+    media: one(tmdbMedia, {
+      fields: [tmdbMediaToTmdbGenre.mediaId],
+      references: [tmdbMedia.id],
+    }),
+    genre: one(tmdbGenre, {
+      fields: [tmdbMediaToTmdbGenre.genreId],
+      references: [tmdbGenre.id],
+    }),
+  })
+);
+
 // trending api doesn't return seasons, so we dont store them in media
 export const tmdbMedia = pgTable('tmdb_media', {
   id: varchar({ length: 255 })
@@ -35,7 +71,7 @@ export const tmdbMedia = pgTable('tmdb_media', {
   title: text('title').notNull(),
   description: text('description'),
   imageUrl: text('image_url'),
-  updateDate: timestamp('update_date', {
+  releaseDate: timestamp('release_date', {
     mode: 'date',
     withTimezone: true,
   }),
@@ -58,6 +94,7 @@ export const tmdbMediaRelations = relations(tmdbMedia, ({ one, many }) => ({
   }),
   sources: many(tmdbSource),
   seasons: many(tmdbSeason),
+  genres: many(tmdbMediaToTmdbGenre),
 }));
 
 export const tmdbTrending = pgTable('tmdb_trending', {
@@ -99,7 +136,7 @@ export const tmdbSeason = pgTable(
   ]
 );
 
-export const seasonRelations = relations(tmdbSeason, ({ one, many }) => ({
+export const tmdbSeasonRelations = relations(tmdbSeason, ({ one, many }) => ({
   media: one(tmdbMedia, {
     fields: [tmdbSeason.mediaId],
     references: [tmdbMedia.id],
@@ -120,13 +157,14 @@ export const tmdbEpisode = pgTable(
     episodeNumber: integer('episode_number').notNull(),
     title: text('title'),
     description: text('description'),
+    airDate: timestamp('air_date', { mode: 'date', withTimezone: true }),
   },
   (table) => [
     uniqueIndex('unq_season_episode').on(table.seasonId, table.episodeNumber),
   ]
 );
 
-export const episodeRelations = relations(tmdbEpisode, ({ one, many }) => ({
+export const tmdbEpisodeRelations = relations(tmdbEpisode, ({ one, many }) => ({
   season: one(tmdbSeason, {
     fields: [tmdbEpisode.seasonId],
     references: [tmdbSeason.id],

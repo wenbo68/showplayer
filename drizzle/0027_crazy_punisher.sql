@@ -1,0 +1,1 @@
+ALTER TABLE "tmdb_episode" ADD COLUMN "update_date" timestamp;

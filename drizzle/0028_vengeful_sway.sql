@@ -1,0 +1,1 @@
+ALTER TABLE "tmdb_episode" RENAME COLUMN "update_date" TO "air_date";

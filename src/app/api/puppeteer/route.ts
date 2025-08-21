@@ -63,7 +63,7 @@ const subtitleButtonSelectorsMap: Record<string, string> = {
 };
 
 const subtitleTabSelectorsMap: Record<string, string> = {
-  videasy: '::-p-xpath(//button[contains(text(), "Subtitles")])',
+  videasy: '::-p-xpath(//button[span[contains(text(), "Subtitles")]])',
 };
 
 const enSubtitleSelectorsMap: Record<string, string> = {
@@ -71,7 +71,7 @@ const enSubtitleSelectorsMap: Record<string, string> = {
     '::-p-xpath(//button[h1[contains(text(), "")]])'
   ),
   videasy: generateEnSubtitleSelector(
-    '::-p-xpath(//div[contains(text(), "")])'
+    '::-p-xpath(//div[span[contains(text(), "")]])'
   ),
   vidfast: generateEnSubtitleSelector(
     '::-p-xpath(//div[div[contains(text(), "")]])'
@@ -178,6 +178,7 @@ async function findAndClick(
     throw new Error(`click failed: ${name}`);
   }
 }
+
 let browser: Browser | null = null;
 let isLaunching = false; // Our "lock" to prevent race conditions
 let requestCount = 0;
@@ -204,7 +205,7 @@ async function getBrowser(): Promise<Browser> {
       }
       browser = await puppeteer.launch({
         executablePath: '/usr/bin/chromium',
-        headless: false,
+        headless: true,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -274,18 +275,18 @@ async function fetchSrcFromUrl(
     try {
       const text = await res.text();
       if (isSubtitle) {
-        console.log(`[${provider}] Subtitle captured`);
+        console.log(`[${provider}] >>> Subtitle captured`);
         subtitleList.push(text);
         return;
       }
       if (text.includes('#EXTM3U')) {
         const headers = res.request().headers();
         if (text.includes('#EXT-X-STREAM-INF')) {
-          console.log(`[${provider}] Master captured`);
+          console.log(`[${provider}] >>> Master captured`);
           m3u8List.push({ type: 'master', url: res.url(), headers });
         } else if (text.includes('#EXTINF')) {
           if (!m3u8List.some((item) => item.type === 'master')) {
-            console.log(`[${provider}] Media captured`);
+            console.log(`[${provider}] >>> Media captured`);
             m3u8List.push({ type: 'media', url: res.url(), headers });
           }
         }
@@ -299,15 +300,16 @@ async function fetchSrcFromUrl(
   }
   const t0 = performance.now();
   try {
-    try {
-      //1. go to url
-      const t1 = performance.now();
-      await page.goto(embedUrl, {
-        waitUntil: 'domcontentloaded',
-      });
-      console.log(`[${provider}] entered page: ${getTime(t1)} ms`);
+    //1. go to url
+    const t1 = performance.now();
+    await page.goto(embedUrl, {
+      waitUntil: 'domcontentloaded',
+      timeout: 10000,
+    });
+    // console.log(`[${provider}] entered page: ${getTime(t1)} ms`);
 
-      // 2. click play/quality/subtitle
+    // 2. click play/quality/subtitle
+    try {
       if (provider === 'videasy') {
         await click('play button', playButtonSelectorsMap[provider]);
         await click('video', videoSelectorsMap[provider]);
@@ -379,8 +381,9 @@ export async function POST(req: Request) {
         }
       );
     }
-
+    console.log('=======');
     const data = await fetchSrcFromProvider(type, path, provider);
+    console.log('=======');
     return new NextResponse(JSON.stringify(data), {
       headers: withCors({ 'Content-Type': 'application/json' }),
     });

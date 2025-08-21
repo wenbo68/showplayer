@@ -176,7 +176,5 @@ export const mediaSrcFetch = inngest.createFunction(
   }
 );
 
-// remove console.log and upload to vps
-// figure out where to check inngest logs from production
 // let it run for 1 day
 // meanwhile, work on improving frontend

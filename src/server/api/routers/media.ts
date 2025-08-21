@@ -96,22 +96,27 @@ export const mediaRouter = createTRPCRouter({
       // 2. Prepare db input from api fetch ouput (removes duplicates)
       const mediaInput = Array.from(
         new Map(
-          fetchOutput.map((item: any) => [
-            item.id,
-            {
-              tmdbId: item.id,
-              type: item.media_type,
-              title: item.name || item.title,
-              description: item.overview,
-              imageUrl: item.poster_path ? item.poster_path : null,
-              releaseDate: !!item.release_date
-                ? new Date(item.release_date)
-                : !!item.first_air_date
-                ? new Date(item.first_air_date)
-                : null,
-              genreIds: item.genre_ids || [],
-            },
-          ])
+          fetchOutput
+            .filter(
+              (item: any) =>
+                item.media_type === 'movie' || item.media_type === 'tv'
+            )
+            .map((item: any) => [
+              item.id,
+              {
+                tmdbId: item.id,
+                type: item.media_type,
+                title: item.name || item.title,
+                description: item.overview,
+                imageUrl: item.poster_path ? item.poster_path : null,
+                releaseDate: item.release_date
+                  ? new Date(item.release_date)
+                  : item.first_air_date
+                  ? new Date(item.first_air_date)
+                  : null,
+                genreIds: item.genre_ids || [],
+              },
+            ])
         ).values()
       );
 

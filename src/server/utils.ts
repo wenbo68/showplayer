@@ -292,7 +292,8 @@ export async function fetchAndUpsertTvSrc(
   let results = fast
     ? await fetchSrcFromProvidersFast('tv', `${tmdbId}/${season}/${episode}`)
     : await fetchSrcFromProvidersSlow('tv', `${tmdbId}/${season}/${episode}`);
-  console.log(`[fetchAndUpsertMvSrc] Fetched ${results.length} sources.`);
+  console.log(`[fetchAndUpsertTvSrc] ${episode} <==> ${episodeIndex}`);
+  console.log(`[fetchAndUpsertTvSrc] Fetched ${results.length} sources.`);
   if (results.length === 0) {
     if (episode === episodeIndex) return;
     console.log(

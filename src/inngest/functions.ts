@@ -14,15 +14,6 @@ import {
 } from '~/server/db/schema';
 import { eq, and, isNotNull, lte, notExists, sql, asc } from 'drizzle-orm';
 
-export const helloWorld = inngest.createFunction(
-  { id: 'hello-world' },
-  { event: 'test/hello.world' },
-  async ({ event, step }) => {
-    await step.sleep('wait-a-moment', '1s');
-    return { message: `Hello ${event.data.email}!` };
-  }
-);
-
 // Helper function to process arrays in batches
 async function batchProcess<T>(
   items: T[],
@@ -175,7 +166,7 @@ export const mediaSrcFetch = inngest.createFunction(
           media.tmdbId,
           season.seasonNumber,
           episode.episodeNumber,
-          episodeIndex
+          episodeIndex + 1
         );
       });
       return { count };
@@ -184,3 +175,8 @@ export const mediaSrcFetch = inngest.createFunction(
     return { status: 'complete' };
   }
 );
+
+// remove console.log and upload to vps
+// figure out where to check inngest logs from production
+// let it run for 1 day
+// meanwhile, work on improving frontend

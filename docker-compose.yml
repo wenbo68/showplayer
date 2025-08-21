@@ -11,6 +11,8 @@ services:
         - TMDB_API_KEY=${TMDB_API_KEY}
         - VPS_URL=${VPS_URL}
         - FRONTEND_URL=${FRONTEND_URL}
+        - INNGEST_EVENT_KEY=${INNGEST_EVENT_KEY}
+        - INNGEST_SIGNING_KEY=${INNGEST_SIGNING_KEY}
     # maps the vps port 8080 to the container's port 3000
     ports:
       - '8080:3000'
@@ -22,4 +24,6 @@ services:
       - TMDB_API_KEY=${TMDB_API_KEY}
       - VPS_URL=${VPS_URL}
       - FRONTEND_URL=${FRONTEND_URL}
+      - INNGEST_EVENT_KEY=${INNGEST_EVENT_KEY}
+      - INNGEST_SIGNING_KEY=${INNGEST_SIGNING_KEY}
     restart: unless-stopped

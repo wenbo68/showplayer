@@ -6,5 +6,5 @@ import { mediaSrcFetch, populateMediaDetails } from '~/inngest/functions';
 export const { GET, POST, PUT } = serve({
   client: inngest,
   functions: [populateMediaDetails, mediaSrcFetch],
-  signingKey: process.env.INNGEST_SIGNING_KEY,
+  // signingKey: process.env.INNGEST_SIGNING_KEY,
 });

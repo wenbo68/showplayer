@@ -304,7 +304,7 @@ async function fetchSrcFromUrl(
     const t1 = performance.now();
     await page.goto(embedUrl, {
       waitUntil: 'domcontentloaded',
-      timeout: 10000,
+      timeout: 15000,
     });
     // console.log(`[${provider}] entered page: ${getTime(t1)} ms`);
 

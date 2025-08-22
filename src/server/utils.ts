@@ -91,7 +91,18 @@ export async function fetchTmdbSeasonDetailViaApi(
   return data;
 }
 
-// use faster fetch initially (use slower fetch for those still without src)
+// Helper function to process arrays in batches
+export async function batchProcess<T>(
+  items: T[],
+  batchSize: number,
+  processFn: (item: T) => Promise<void>
+): Promise<void> {
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    await Promise.all(batch.map(processFn));
+  }
+}
+
 async function fetchSrcFromProvidersFast(
   type: 'mv' | 'tv',
   path: string
@@ -140,6 +151,7 @@ async function fetchSrcFromProvidersFast(
   return successfulResults;
 }
 
+//works better than fast
 async function fetchSrcFromProvidersSlow(
   type: 'mv' | 'tv',
   path: string

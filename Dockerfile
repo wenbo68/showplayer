@@ -8,8 +8,6 @@ ARG DATABASE_URL
 ARG TMDB_API_KEY
 ARG VPS_URL
 ARG FRONTEND_URL
-ARG INNGEST_EVENT_KEY
-ARG INNGEST_SIGNING_KEY
 
 # Install Chromium dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \

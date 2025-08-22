@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, isNotNull, lte, notExists, sql } from 'drizzle-orm';
 
 import { createTRPCRouter, publicProcedure } from '~/server/api/trpc';
 import {
@@ -8,16 +8,19 @@ import {
   tmdbMedia,
   tmdbMediaToTmdbGenre,
   tmdbSeason,
+  tmdbSource,
   tmdbTrending,
 } from '~/server/db/schema';
 import {
+  batchProcess,
   fetchAndUpsertMvSrc,
   fetchAndUpsertTvSrc,
+  fetchTmdbDetailViaApi,
   fetchTmdbMvGenreViaApi,
   fetchTmdbTrendingViaApi,
   fetchTmdbTvGenreViaApi,
+  upsertSeasonsAndEpisodes,
 } from '~/server/utils';
-import { inngest } from '~/inngest/client';
 
 export const mediaRouter = createTRPCRouter({
   //fetch from tmdbMedia by uuid
@@ -176,24 +179,131 @@ export const mediaRouter = createTRPCRouter({
       return { count: mediaInput.length };
     }),
 
+  // let it run for 1 day
+  // meanwhile, work on improving frontend
+  // (show release date, show without src mark, add search function, if clicked media wihtout src land on noSrcPage)
+
   populateMediaDetails: publicProcedure.mutation(async ({ ctx }) => {
-    await inngest.send({
-      name: 'app/populate.media.details',
-      data: { batch: 10 },
+    // 1. find all tv
+    const allTv = await ctx.db.query.tmdbMedia.findMany({
+      where: eq(tmdbMedia.type, 'tv'),
+      with: { seasons: true },
     });
 
-    // Return an immediate response to the client
-    return { status: 'success', message: 'populateMediaDetails scheduled.' };
+    let count = 0;
+    await batchProcess(allTv, 10, async (tv) => {
+      count++;
+      console.log(
+        `[populateMediaDetails] tv progress: ${count}/${allTv.length} (${tv.tmdbId}:${tv.title})`
+      );
+
+      // 2. for tv, check if db has the right number of seasons (need to exclude s0 from details)
+      const details = await fetchTmdbDetailViaApi('tv', tv.tmdbId);
+      if (!details.seasons) {
+        console.log(
+          `[populateMediaDetails] tv ${tv.tmdbId}: no seasons from api`
+        );
+        return;
+      }
+      const seasonNum = details.seasons.some(
+        (season: { season_number: number }) => season.season_number === 0
+      )
+        ? details.seasons.length - 1
+        : details.seasons.length;
+      console.log(
+        `[populateMediaDetails] tv ${tv.tmdbId}: ${tv.seasons.length} vs ${seasonNum}`
+      );
+      // 3. if yes, skip (if not, upsert seasons/episodes)
+      if (tv.seasons.length === seasonNum) return;
+      await upsertSeasonsAndEpisodes(details, tv.id);
+    });
   }),
 
   mediaSrcFetch: publicProcedure.mutation(async ({ ctx }) => {
-    await inngest.send({
-      name: 'app/media-src-fetch',
-      data: { batch: 1, fast: false },
+    const yesterday = new Date();
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+
+    // 1. find mv whose releaseDate is older than yesterday but have no src
+    const srclessMv = await ctx.db
+      .select({
+        id: tmdbMedia.id,
+        tmdbId: tmdbMedia.tmdbId,
+        type: tmdbMedia.type,
+        title: tmdbMedia.title,
+      })
+      .from(tmdbMedia)
+      .where(
+        and(
+          eq(tmdbMedia.type, 'movie'),
+          isNotNull(tmdbMedia.releaseDate),
+          lte(tmdbMedia.releaseDate, yesterday),
+          notExists(
+            ctx.db
+              .select()
+              .from(tmdbSource)
+              .where(eq(tmdbSource.mediaId, tmdbMedia.id))
+          )
+        )
+      )
+      .execute();
+
+    let mvCount = 0;
+    await batchProcess(srclessMv, 1, async (media) => {
+      mvCount++;
+      console.log(
+        `[mediaSrcFetch] mv progress: ${mvCount}/${srclessMv.length} (${media.tmdbId}: ${media.title})`
+      );
+
+      // 2. for mv, fetch src
+      await fetchAndUpsertMvSrc(false, media.tmdbId);
     });
 
-    // Return an immediate response to the client
-    return { status: 'success', message: 'mediaSrcFetch scheduled.' };
+    // 3. find episodes whose airDate is older than yesterday but have no src
+    const srclessEpisodes = await ctx.db
+      .select({
+        episode: tmdbEpisode,
+        season: tmdbSeason,
+        media: tmdbMedia,
+      })
+      .from(tmdbEpisode)
+      .innerJoin(tmdbSeason, eq(tmdbEpisode.seasonId, tmdbSeason.id))
+      .innerJoin(tmdbMedia, eq(tmdbSeason.mediaId, tmdbMedia.id))
+      .where(
+        and(
+          isNotNull(tmdbEpisode.airDate),
+          lte(tmdbEpisode.airDate, yesterday),
+          notExists(
+            ctx.db
+              .select({ one: sql`1` })
+              .from(tmdbSource)
+              .where(eq(tmdbSource.episodeId, tmdbEpisode.id))
+          )
+        )
+      )
+      .orderBy(
+        asc(tmdbMedia.tmdbId),
+        asc(tmdbSeason.seasonNumber),
+        asc(tmdbEpisode.episodeNumber)
+      )
+      .execute();
+
+    let episodeCount = 0;
+    await batchProcess(srclessEpisodes, 1, async (item) => {
+      episodeCount++;
+      console.log(
+        `[mediaSrcFetch] tv progress: ${episodeCount}/${srclessEpisodes.length} (${item.media.tmdbId}/${item.season.seasonNumber}/${item.episode.episodeNumber}: ${item.media.title})`
+      );
+
+      // 4. for episode, fetch src
+      const { episode, season, media } = item;
+      await fetchAndUpsertTvSrc(
+        false,
+        media.tmdbId,
+        season.seasonNumber,
+        episode.episodeNumber,
+        episode.episodeIndex
+      );
+    });
   }),
 
   fetchAndInsertMvSrc: publicProcedure

@@ -174,6 +174,7 @@ export const mediaSrcFetch = inngest.createFunction(
 
 // let it run for 1 day
 // meanwhile, work on improving frontend
+// (show release date, show without src mark, add search function, if clicked media wihtout src land on noSrcPage)
 
 // where are the logs? i ran mediaFetchSrc from 37.60.250.227:8080 but cannot see logs (other than puppeteer logs) in vps
 // seems like since inngest cloud registered vercel as the app, no matter where i click the function, inngest will let vercel run

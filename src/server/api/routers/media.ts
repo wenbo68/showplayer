@@ -282,6 +282,7 @@ export const mediaRouter = createTRPCRouter({
           .values({
             seasonId: existingSeason.id,
             episodeNumber: episode,
+            episodeIndex: episode,
           })
           .onConflictDoNothing(); // If the episode (seasonId, episodeNumber) exists, ignore the insert
 

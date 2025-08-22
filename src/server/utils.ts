@@ -293,7 +293,11 @@ export async function fetchAndUpsertTvSrc(
     ? await fetchSrcFromProvidersFast('tv', `${tmdbId}/${season}/${episode}`)
     : await fetchSrcFromProvidersSlow('tv', `${tmdbId}/${season}/${episode}`);
   console.log(`[fetchAndUpsertTvSrc] ${episode} <==> ${episodeIndex}`);
-  console.log(`[fetchAndUpsertTvSrc] Fetched ${results.length} sources.`);
+  console.log(
+    `[fetchAndUpsertTvSrc] Fetched ${results.length} sources: ${results.map(
+      (result) => result.provider
+    )}`
+  );
   if (results.length === 0) {
     if (episode === episodeIndex) return;
     console.log(
@@ -386,9 +390,10 @@ export async function upsertSeasonsAndEpisodes(details: any, mediaId: string) {
         return []; // Skip if season wasn't upserted or has no episodes
       }
 
-      return seasonDetail.episodes.map((episode: any) => ({
+      return seasonDetail.episodes.map((episode: any, index: number) => ({
         seasonId: seasonId,
         episodeNumber: episode.episode_number,
+        episodeIndex: index + 1,
         title: episode.name,
         description: episode.overview,
         airDate: !!episode.air_date ? new Date(episode.air_date) : null,

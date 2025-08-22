@@ -71,7 +71,7 @@ const enSubtitleSelectorsMap: Record<string, string> = {
     '::-p-xpath(//button[h1[contains(text(), "")]])'
   ),
   videasy: generateEnSubtitleSelector(
-    '::-p-xpath(//div[span[contains(text(), "")]])'
+    '::-p-xpath(//button[span[contains(text(), "")]])'
   ),
   vidfast: generateEnSubtitleSelector(
     '::-p-xpath(//div[div[contains(text(), "")]])'

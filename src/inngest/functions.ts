@@ -30,7 +30,7 @@ async function batchProcess<T>(
 export const populateMediaDetails = inngest.createFunction(
   { id: 'populate-media-details', concurrency: 1 },
   { event: 'app/populate.media.details' },
-  async ({ event, step, logger }) => {
+  async ({ event, step }) => {
     await step.run('fetch-tv-and-check-seasons', async () => {
       // 1. find all tv
       const allTv = await db.query.tmdbMedia.findMany({
@@ -41,14 +41,14 @@ export const populateMediaDetails = inngest.createFunction(
       let count = 0;
       await batchProcess(allTv, event.data.batch, async (tv) => {
         count++;
-        logger.info(
+        console.log(
           `[populateMediaDetails] tv progress: ${count}/${allTv.length} (${tv.tmdbId}:${tv.title})`
         );
 
         // 2. for tv, check if db has the right number of seasons (need to exclude s0 from details)
         const details = await fetchTmdbDetailViaApi('tv', tv.tmdbId);
         if (!details.seasons) {
-          logger.info(
+          console.log(
             `[populateMediaDetails] tv ${tv.tmdbId}: no seasons from api`
           );
           return;
@@ -58,7 +58,7 @@ export const populateMediaDetails = inngest.createFunction(
         )
           ? details.seasons.length - 1
           : details.seasons.length;
-        logger.info(
+        console.log(
           `[populateMediaDetails] tv ${tv.tmdbId}: ${tv.seasons.length} vs ${seasonNum}`
         );
         // 3. if yes, skip (if not, upsert seasons/episodes)
@@ -76,7 +76,7 @@ export const populateMediaDetails = inngest.createFunction(
 export const mediaSrcFetch = inngest.createFunction(
   { id: 'media-src-fetch', concurrency: 1 },
   { event: 'app/media-src-fetch' },
-  async ({ event, step, logger }) => {
+  async ({ event, step }) => {
     const yesterday = new Date();
     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
 
@@ -108,7 +108,7 @@ export const mediaSrcFetch = inngest.createFunction(
       let count = 0;
       await batchProcess(srclessMv, event.data.batch, async (media) => {
         count++;
-        logger.info(
+        console.log(
           `[mediaSrcFetch] mv progress: ${count}/${srclessMv.length} (${media.tmdbId}: ${media.title})`
         );
 
@@ -125,10 +125,6 @@ export const mediaSrcFetch = inngest.createFunction(
           episode: tmdbEpisode,
           season: tmdbSeason,
           media: tmdbMedia,
-          episodeIndex:
-            sql<number>`row_number() over (partition by ${tmdbSeason.id} order by ${tmdbEpisode.episodeNumber} asc)`.as(
-              'episodeIndex'
-            ),
         })
         .from(tmdbEpisode)
         .innerJoin(tmdbSeason, eq(tmdbEpisode.seasonId, tmdbSeason.id))
@@ -155,18 +151,18 @@ export const mediaSrcFetch = inngest.createFunction(
       let count = 0;
       await batchProcess(srclessEpisodes, event.data.batch, async (item) => {
         count++;
-        logger.info(
+        console.log(
           `[mediaSrcFetch] tv progress: ${count}/${srclessEpisodes.length} (${item.media.tmdbId}/${item.season.seasonNumber}/${item.episode.episodeNumber}: ${item.media.title})`
         );
 
         // 4. for episode, fetch src
-        const { episode, season, media, episodeIndex } = item;
+        const { episode, season, media } = item;
         await fetchAndUpsertTvSrc(
           event.data.fast,
           media.tmdbId,
           season.seasonNumber,
           episode.episodeNumber,
-          episodeIndex + 1
+          episode.episodeIndex
         );
       });
       return { count };

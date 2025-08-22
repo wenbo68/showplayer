@@ -155,6 +155,7 @@ export const tmdbEpisode = pgTable(
       .notNull()
       .references(() => tmdbSeason.id, { onDelete: 'cascade' }),
     episodeNumber: integer('episode_number').notNull(),
+    episodeIndex: integer('episode_index').notNull(), // eg. the 4th episode of any season should have index 4
     title: text('title'),
     description: text('description'),
     airDate: timestamp('air_date', { mode: 'date', withTimezone: true }),

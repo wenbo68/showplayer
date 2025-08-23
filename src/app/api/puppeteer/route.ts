@@ -63,7 +63,8 @@ const subtitleButtonSelectorsMap: Record<string, string> = {
 };
 
 const subtitleTabSelectorsMap: Record<string, string> = {
-  videasy: '::-p-xpath(//button[span[contains(text(), "Subtitles")]])',
+  videasy:
+    '::-p-xpath(//button[span[contains(text(), "Subtitles") and not(contains(text(), "OpenSubtitles"))]])',
 };
 
 const enSubtitleSelectorsMap: Record<string, string> = {
@@ -147,10 +148,10 @@ async function clickPlayInFrame(provider: string, page: Page) {
   }
 }
 
-const firstClickWaitTime = 4000;
-const longClickWaitTime = 5000;
-const midClickWaitTime = 3000;
-const shortClickWaitTime = 2000;
+// const firstClickWaitTime = 4000;
+// const longClickWaitTime = 4000;
+// const midClickWaitTime = 2000;
+// const shortClickWaitTime = 1000;
 async function findAndClick(
   provider: string,
   name: string,
@@ -164,12 +165,12 @@ async function findAndClick(
       visible: true,
       timeout:
         name === firstClickMap[provider] // takes abt 2500-3000
-          ? firstClickWaitTime
+          ? Number(process.env.FIRST_CLICK)
           : name === 'highest resolution' // takes abt 3500-4000
-          ? longClickWaitTime
+          ? Number(process.env.LONG_CLICK)
           : provider === 'vidfast' && name === 'en subtitle' // takes abt 1500
-          ? midClickWaitTime
-          : shortClickWaitTime, // takes abt 500-1000
+          ? Number(process.env.MID_CLICK)
+          : Number(process.env.SHORT_CLICK), // takes abt 500-1000
     });
     // 2. click the thing
     await page.click(selector);
@@ -205,7 +206,7 @@ async function getBrowser(): Promise<Browser> {
       }
       browser = await puppeteer.launch({
         executablePath: '/usr/bin/chromium',
-        headless: true,
+        headless: false,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -338,7 +339,11 @@ async function fetchSrcFromUrl(
     }
 
     // 3. use the flags and arrays to compose the return value
-    await timeoutPromise(provider === 'videasy' ? 3000 : 1000);
+    await timeoutPromise(
+      provider === 'videasy'
+        ? Number(process.env.M3U8_WAIT_EASY)
+        : Number(process.env.M3U8_WAIT)
+    );
     if (m3u8List.length === 0) throw new Error(`m3u8 timeout`);
     return {
       provider: provider.substring(3),

@@ -8,6 +8,12 @@ ARG DATABASE_URL
 ARG TMDB_API_KEY
 ARG VPS_URL
 ARG FRONTEND_URL
+ARG FIRST_CLICK
+ARG LONG_CLICK
+ARG MID_CLICK
+ARG SHORT_CLICK
+ARG M3U8_WAIT
+ARG M3U8_WAIT_EASY
 
 # Install Chromium dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \

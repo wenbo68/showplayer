@@ -250,6 +250,7 @@ export const mediaRouter = createTRPCRouter({
     let mvCount = 0;
     await batchProcess(srclessMv, 1, async (media) => {
       mvCount++;
+      console.log(`=======`);
       console.log(
         `[mediaSrcFetch] mv progress: ${mvCount}/${srclessMv.length} (${media.tmdbId}: ${media.title})`
       );
@@ -290,6 +291,7 @@ export const mediaRouter = createTRPCRouter({
     let episodeCount = 0;
     await batchProcess(srclessEpisodes, 1, async (item) => {
       episodeCount++;
+      console.log(`=======`);
       console.log(
         `[mediaSrcFetch] tv progress: ${episodeCount}/${srclessEpisodes.length} (${item.media.tmdbId}/${item.season.seasonNumber}/${item.episode.episodeNumber}: ${item.media.title})`
       );

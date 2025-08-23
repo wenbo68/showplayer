@@ -17,6 +17,12 @@ export const env = createEnv({
     TMDB_API_KEY: z.string(),
     VPS_URL: z.string().url(),
     FRONTEND_URL: z.string(),
+    FIRST_CLICK: z.string(),
+    LONG_CLICK: z.string(),
+    MID_CLICK: z.string(),
+    SHORT_CLICK: z.string(),
+    M3U8_WAIT: z.string(),
+    M3U8_WAIT_EASY: z.string(),
     NODE_ENV: z
       .enum(['development', 'test', 'production'])
       .default('development'),
@@ -44,6 +50,12 @@ export const env = createEnv({
     VPS_URL: process.env.VPS_URL,
     FRONTEND_URL: process.env.FRONTEND_URL,
     NODE_ENV: process.env.NODE_ENV,
+    FIRST_CLICK: process.env.FIRST_CLICK,
+    LONG_CLICK: process.env.LONG_CLICK,
+    MID_CLICK: process.env.MID_CLICK,
+    SHORT_CLICK: process.env.SHORT_CLICK,
+    M3U8_WAIT: process.env.M3U8_WAIT,
+    M3U8_WAIT_EASY: process.env.M3U8_WAIT_EASY,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

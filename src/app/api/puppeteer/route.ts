@@ -63,8 +63,7 @@ const subtitleButtonSelectorsMap: Record<string, string> = {
 };
 
 const subtitleTabSelectorsMap: Record<string, string> = {
-  videasy:
-    '::-p-xpath(//button[span[contains(text(), "Subtitles") and not(contains(text(), "OpenSubtitles"))]])',
+  videasy: '::-p-xpath(//button[span[starts-with(text(), "Subtitles")]])',
 };
 
 const enSubtitleSelectorsMap: Record<string, string> = {
@@ -206,7 +205,7 @@ async function getBrowser(): Promise<Browser> {
       }
       browser = await puppeteer.launch({
         executablePath: '/usr/bin/chromium',
-        headless: false,
+        headless: Boolean(process.env.HEADLESS),
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',

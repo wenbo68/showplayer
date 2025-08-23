@@ -1,7 +1,7 @@
 services:
   #container name
   app:
-    image: showplayer:1.9
+    image: showplayer:2.1
     build:
       context: .
       # only needed if you have env vars that are needed at build time
@@ -11,6 +11,7 @@ services:
         - TMDB_API_KEY=${TMDB_API_KEY}
         - VPS_URL=${VPS_URL}
         - FRONTEND_URL=${FRONTEND_URL}
+        - HEADLESS=${HEADLESS}
         - FIRST_CLICK=${FIRST_CLICK}
         - LONG_CLICK=${LONG_CLICK}
         - MID_CLICK=${MID_CLICK}
@@ -28,6 +29,7 @@ services:
       - TMDB_API_KEY=${TMDB_API_KEY}
       - VPS_URL=${VPS_URL}
       - FRONTEND_URL=${FRONTEND_URL}
+      - HEADLESS=${HEADLESS}
       - FIRST_CLICK=${FIRST_CLICK}
       - LONG_CLICK=${LONG_CLICK}
       - MID_CLICK=${MID_CLICK}

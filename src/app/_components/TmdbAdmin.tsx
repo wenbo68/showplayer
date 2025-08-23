@@ -89,65 +89,65 @@ export default function TmdbAdmin() {
           placeholder="Trending Limit"
           value={trendingLimit}
           onChange={(e) => setTrendingLimit(Number(e.target.value))}
-          className="px-3 py-2 border rounded w-60 text-black"
+          className="px-3 py-2 rounded w-60 text-gray-900 dark:text-gray-300 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
         />
         <button
           onClick={handleFetchGenres}
           disabled={fetchGenresMutation.isPending}
-          className="px-4 py-2 bg-red-600 text-white rounded"
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 dark:hover:bg-red-500"
         >
           {fetchGenresMutation.isPending
             ? 'Fetching genres...'
             : 'Fetch genres'}
         </button>
         {fetchGenresMutation.error && (
-          <p className="text-red-500 mt-2">
+          <p className="text-red-600 dark:text-red-400 mt-2">
             Error: {fetchGenresMutation.error.message}
           </p>
         )}
         <button
           onClick={handleFetchTmdbTrending}
           disabled={fetchTmdbTrendingMutation.isPending}
-          className="px-4 py-2 bg-green-600 text-white rounded"
+          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 dark:hover:bg-green-500"
         >
           {fetchTmdbTrendingMutation.isPending
             ? 'Fetching...'
             : 'Fetch TMDB Trending'}
         </button>
         {fetchTmdbTrendingMutation.error && (
-          <p className="text-red-500">
+          <p className="text-red-600 dark:text-red-400">
             Error: {fetchTmdbTrendingMutation.error.message}
           </p>
         )}
         <button
           onClick={handlePopulateDetails}
           disabled={populateDetailsMutation.isPending}
-          className="px-4 py-2 bg-red-600 text-white rounded"
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 dark:hover:bg-red-500"
         >
           {populateDetailsMutation.isPending
             ? 'Populating...'
             : 'Populate media details'}
         </button>
         {populateDetailsMutation.error && (
-          <p className="text-red-500 mt-2">
+          <p className="text-red-600 dark:text-red-400 mt-2">
             Error: {populateDetailsMutation.error.message}
           </p>
         )}
         <button
           onClick={handleDailySrcFetch}
           disabled={dailySrcFetchMutation.isPending}
-          className="px-4 py-2 bg-blue-600 text-white rounded"
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-500"
         >
           {dailySrcFetchMutation.isPending ? 'Fetching...' : 'Daily src fetch'}
         </button>
         {dailySrcFetchMutation.error && (
-          <p className="text-red-500">
+          <p className="text-red-600 dark:text-red-400">
             Error: {dailySrcFetchMutation.error.message}
           </p>
         )}
       </div>
 
-      <hr className="w-full my-4" />
+      <hr className="w-full my-4 border-gray-300 dark:border-gray-700" />
 
       <div className="flex flex-col items-center gap-2">
         <input
@@ -155,25 +155,25 @@ export default function TmdbAdmin() {
           placeholder="Movie TMDB ID"
           value={mvTmdbId}
           onChange={(e) => setMvTmdbId(e.target.value)}
-          className="px-3 py-2 border rounded w-60 text-black"
+          className="px-3 py-2 rounded w-60 text-gray-900 dark:text-gray-300 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
         />
         <button
           onClick={handleFetchMvSrc}
           disabled={fetchMvSrcMutation.isPending}
-          className="px-4 py-2 bg-green-600 text-white rounded w-60"
+          className="px-4 py-2 bg-green-600 text-white rounded w-60 hover:bg-green-700 dark:hover:bg-green-500"
         >
           {fetchMvSrcMutation.isPending
             ? 'Fetching Source...'
             : 'Fetch Movie Source'}
         </button>
         {fetchMvSrcMutation.error && (
-          <p className="text-red-500 mt-2">
+          <p className="text-red-600 dark:text-red-400 mt-2">
             Error: {fetchMvSrcMutation.error.message}
           </p>
         )}
       </div>
 
-      <hr className="w-full my-4" />
+      <hr className="w-full my-4 border-gray-300 dark:border-gray-700" />
 
       <div className="flex flex-col items-center gap-2">
         <input
@@ -181,27 +181,27 @@ export default function TmdbAdmin() {
           placeholder="TV Show TMDB ID"
           value={tvTmdbId}
           onChange={(e) => setTvTmdbId(e.target.value)}
-          className="px-3 py-2 border rounded w-60 text-black"
+          className="px-3 py-2 rounded w-60 text-gray-900 dark:text-gray-300 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
         />
         <input
           type="number"
           placeholder="Season Number"
           value={season}
           onChange={(e) => setSeason(e.target.value)}
-          className="px-3 py-2 border rounded w-60 text-black"
+          className="px-3 py-2 rounded w-60 text-gray-900 dark:text-gray-300 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
         />
         <input
           type="number"
           placeholder="Episode Number"
           value={episode}
           onChange={(e) => setEpisode(e.target.value)}
-          className="px-3 py-2 border rounded w-60 text-black"
+          className="px-3 py-2 rounded w-60 text-gray-900 dark:text-gray-300 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
         />
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-60">
           <button
             onClick={handleInsertEpisode}
             disabled={insertEpisodeMutation.isPending}
-            className="px-4 py-2 bg-purple-600 text-white rounded flex-1"
+            className="px-4 py-2 bg-purple-600 text-white rounded flex-1 hover:bg-purple-700 dark:hover:bg-purple-500"
           >
             {insertEpisodeMutation.isPending
               ? 'Inserting...'
@@ -210,7 +210,7 @@ export default function TmdbAdmin() {
           <button
             onClick={handleFetchTvSrc}
             disabled={fetchTvSrcMutation.isPending}
-            className="px-4 py-2 bg-green-600 text-white rounded flex-1"
+            className="px-4 py-2 bg-green-600 text-white rounded flex-1 hover:bg-green-700 dark:hover:bg-green-500"
           >
             {fetchTvSrcMutation.isPending
               ? 'Fetching Source...'
@@ -218,12 +218,12 @@ export default function TmdbAdmin() {
           </button>
         </div>
         {insertEpisodeMutation.error && (
-          <p className="text-red-500 mt-2">
+          <p className="text-red-600 dark:text-red-400 mt-2">
             Error: {insertEpisodeMutation.error.message}
           </p>
         )}
         {fetchTvSrcMutation.error && (
-          <p className="text-red-500 mt-2">
+          <p className="text-red-600 dark:text-red-400 mt-2">
             Error: {fetchTvSrcMutation.error.message}
           </p>
         )}

@@ -40,7 +40,25 @@ export const mediaRouter = createTRPCRouter({
       return media[0];
     }),
 
-  // get all trending media (with their media details)
+  // // get all trending media (with their media details)
+  // tmdbTrendingWithDetails: publicProcedure.query(async ({ ctx }) => {
+  //   const trending = await ctx.db
+  //     .select({
+  //       rank: tmdbTrending.rank,
+  //       mediaId: tmdbTrending.mediaId,
+  //       tmdbId: tmdbMedia.tmdbId,
+  //       type: tmdbMedia.type,
+  //       title: tmdbMedia.title,
+  //       description: tmdbMedia.description,
+  //       imageUrl: tmdbMedia.imageUrl,
+  //     })
+  //     .from(tmdbTrending)
+  //     .innerJoin(tmdbMedia, eq(tmdbTrending.mediaId, tmdbMedia.id))
+  //     .orderBy(tmdbTrending.rank)
+  //     .execute();
+  //   return trending;
+  // }),
+
   tmdbTrendingWithDetails: publicProcedure.query(async ({ ctx }) => {
     const trending = await ctx.db
       .select({
@@ -51,11 +69,33 @@ export const mediaRouter = createTRPCRouter({
         title: tmdbMedia.title,
         description: tmdbMedia.description,
         imageUrl: tmdbMedia.imageUrl,
+        releaseDate: tmdbMedia.releaseDate,
+
+        availabilityCount: sql<number>`
+        CASE
+          WHEN ${tmdbMedia.type} = 'movie'
+          THEN (
+            SELECT COUNT(*)
+            FROM ${tmdbSource}
+            WHERE ${tmdbSource.mediaId} = ${tmdbMedia.id}
+          )
+          WHEN ${tmdbMedia.type} = 'tv'
+          THEN (
+            SELECT COUNT(DISTINCT ${tmdbEpisode}.id)
+            FROM ${tmdbSource}
+            JOIN ${tmdbEpisode} ON ${tmdbSource.episodeId} = ${tmdbEpisode.id}
+            JOIN ${tmdbSeason} ON ${tmdbEpisode.seasonId} = ${tmdbSeason.id}
+            WHERE ${tmdbSeason.mediaId} = ${tmdbMedia.id}
+          )
+          ELSE 0
+        END
+      `.mapWith(Number),
       })
       .from(tmdbTrending)
       .innerJoin(tmdbMedia, eq(tmdbTrending.mediaId, tmdbMedia.id))
       .orderBy(tmdbTrending.rank)
       .execute();
+
     return trending;
   }),
 
@@ -178,10 +218,6 @@ export const mediaRouter = createTRPCRouter({
 
       return { count: mediaInput.length };
     }),
-
-  // let it run for 1 day
-  // meanwhile, work on improving frontend
-  // (show release date, show without src mark, add search function, if clicked media wihtout src land on noSrcPage)
 
   populateMediaDetails: publicProcedure.mutation(async ({ ctx }) => {
     // 1. find all tv

@@ -21,3 +21,15 @@ export type PuppeteerResult = {
   m3u8: M3U8Result;
   subtitle?: string;
 };
+
+export type TrendingMedia = {
+  rank: number;
+  mediaId: string;
+  tmdbId: number;
+  type: 'movie' | 'tv';
+  title: string;
+  description: string | null;
+  imageUrl: string | null;
+  releaseDate: Date | null;
+  availabilityCount: number;
+};

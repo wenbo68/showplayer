@@ -147,10 +147,10 @@ async function clickPlayInFrame(provider: string, page: Page) {
   }
 }
 
-const firstClickWaitTime = 3000;
-const longClickWaitTime = 4000;
-const midClickWaitTime = 2000;
-const shortClickWaitTime = 1000;
+const firstClickWaitTime = 4000;
+const longClickWaitTime = 5000;
+const midClickWaitTime = 3000;
+const shortClickWaitTime = 2000;
 async function findAndClick(
   provider: string,
   name: string,
@@ -338,7 +338,7 @@ async function fetchSrcFromUrl(
     }
 
     // 3. use the flags and arrays to compose the return value
-    await timeoutPromise(1000);
+    await timeoutPromise(provider === 'videasy' ? 3000 : 1000);
     if (m3u8List.length === 0) throw new Error(`m3u8 timeout`);
     return {
       provider: provider.substring(3),

@@ -100,7 +100,7 @@ export default function TrendingList() {
             <button
               key={media.mediaId}
               onClick={() => setSelectedMedia(media)}
-              className="border-gray-300 dark:border-gray-700 overflow-hidden flex flex-col group text-left transition"
+              className="border-gray-300 dark:border-gray-700 overflow-hidden flex flex-col group items-center transition gap-4"
             >
               <div className="relative">
                 <img
@@ -112,8 +112,8 @@ export default function TrendingList() {
                   className="w-full aspect-[2/3] object-cover rounded-lg"
                 />
               </div>
-              <div className="p-4 flex flex-col flex-grow">
-                <h3 className="text-lg font-semibold mb-2 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors text-gray-900 dark:text-gray-300">
+              <div className="flex flex-col flex-grow items-center">
+                <h3 className="text-base font-semibold mb-2 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors text-gray-900 dark:text-gray-300">
                   {media.title}
                 </h3>
 

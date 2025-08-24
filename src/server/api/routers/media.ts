@@ -40,25 +40,6 @@ export const mediaRouter = createTRPCRouter({
       return media[0];
     }),
 
-  // // get all trending media (with their media details)
-  // tmdbTrendingWithDetails: publicProcedure.query(async ({ ctx }) => {
-  //   const trending = await ctx.db
-  //     .select({
-  //       rank: tmdbTrending.rank,
-  //       mediaId: tmdbTrending.mediaId,
-  //       tmdbId: tmdbMedia.tmdbId,
-  //       type: tmdbMedia.type,
-  //       title: tmdbMedia.title,
-  //       description: tmdbMedia.description,
-  //       imageUrl: tmdbMedia.imageUrl,
-  //     })
-  //     .from(tmdbTrending)
-  //     .innerJoin(tmdbMedia, eq(tmdbTrending.mediaId, tmdbMedia.id))
-  //     .orderBy(tmdbTrending.rank)
-  //     .execute();
-  //   return trending;
-  // }),
-
   tmdbTrendingWithDetails: publicProcedure.query(async ({ ctx }) => {
     const trending = await ctx.db
       .select({
@@ -70,26 +51,32 @@ export const mediaRouter = createTRPCRouter({
         description: tmdbMedia.description,
         imageUrl: tmdbMedia.imageUrl,
         releaseDate: tmdbMedia.releaseDate,
-
+        // Add this field to aggregate genre names
+        genres: sql<string[]>`(
+          SELECT array_agg(${tmdbGenre.name})
+          FROM ${tmdbMediaToTmdbGenre}
+          INNER JOIN ${tmdbGenre} ON ${tmdbMediaToTmdbGenre.genreId} = ${tmdbGenre.id}
+          WHERE ${tmdbMediaToTmdbGenre.mediaId} = ${tmdbMedia.id}
+        )`,
         availabilityCount: sql<number>`
-        CASE
-          WHEN ${tmdbMedia.type} = 'movie'
-          THEN (
-            SELECT COUNT(*)
-            FROM ${tmdbSource}
-            WHERE ${tmdbSource.mediaId} = ${tmdbMedia.id}
-          )
-          WHEN ${tmdbMedia.type} = 'tv'
-          THEN (
-            SELECT COUNT(DISTINCT ${tmdbEpisode}.id)
-            FROM ${tmdbSource}
-            JOIN ${tmdbEpisode} ON ${tmdbSource.episodeId} = ${tmdbEpisode.id}
-            JOIN ${tmdbSeason} ON ${tmdbEpisode.seasonId} = ${tmdbSeason.id}
-            WHERE ${tmdbSeason.mediaId} = ${tmdbMedia.id}
-          )
-          ELSE 0
-        END
-      `.mapWith(Number),
+          CASE
+            WHEN ${tmdbMedia.type} = 'movie'
+            THEN (
+              SELECT COUNT(*)
+              FROM ${tmdbSource}
+              WHERE ${tmdbSource.mediaId} = ${tmdbMedia.id}
+            )
+            WHEN ${tmdbMedia.type} = 'tv'
+            THEN (
+              SELECT COUNT(DISTINCT ${tmdbEpisode}.id)
+              FROM ${tmdbSource}
+              JOIN ${tmdbEpisode} ON ${tmdbSource.episodeId} = ${tmdbEpisode.id}
+              JOIN ${tmdbSeason} ON ${tmdbEpisode.seasonId} = ${tmdbSeason.id}
+              WHERE ${tmdbSeason.mediaId} = ${tmdbMedia.id}
+            )
+            ELSE 0
+          END
+        `.mapWith(Number),
       })
       .from(tmdbTrending)
       .innerJoin(tmdbMedia, eq(tmdbTrending.mediaId, tmdbMedia.id))

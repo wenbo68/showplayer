@@ -1,6 +1,6 @@
 import { db } from '~/server/db';
-import { tmdbMedia } from '~/server/db/schema';
-import { eq } from 'drizzle-orm';
+import { tmdbMedia, tmdbSource } from '~/server/db/schema';
+import { asc, eq } from 'drizzle-orm';
 import { notFound, redirect } from 'next/navigation';
 import { VideoPlayer } from '~/app/_components/player/VideoPlayer';
 import { SourceSelector } from '~/app/_components/player/SourceSelector';
@@ -27,6 +27,7 @@ export default async function Page({ params }: PageProps) {
     with: {
       // For movies, we fetch sources directly linked to the mediaId
       sources: {
+        orderBy: asc(tmdbSource.provider),
         with: {
           subtitles: true,
         },
@@ -77,7 +78,7 @@ export default async function Page({ params }: PageProps) {
   );
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="mx-auto p-4">
       <h1 className="text-3xl font-bold mb-4">{mediaData.title}</h1>
 
       <div className="w-full">

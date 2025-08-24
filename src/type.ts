@@ -31,5 +31,6 @@ export type TrendingMedia = {
   description: string | null;
   imageUrl: string | null;
   releaseDate: Date | null;
+  genres: string[];
   availabilityCount: number;
 };

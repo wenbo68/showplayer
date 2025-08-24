@@ -2,22 +2,8 @@
 import { useState } from 'react';
 import { api } from '~/trpc/react';
 import type { TrendingMedia } from '~/type';
-import { MediaModal } from './MediaModal';
-
-// Helper component for a clean badge
-const Badge = ({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) => (
-  <span
-    className={`inline-block text-xs font-medium px-2.5 py-0.5 rounded-full ${className}`}
-  >
-    {children}
-  </span>
-);
+import { MediaPopup } from './MediaPopup';
+import { MediaBadge } from './MediaBadge';
 
 export default function TrendingList() {
   // fetch from client side cache
@@ -45,9 +31,7 @@ export default function TrendingList() {
   if (tmdbStatus === 'pending') {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <span className="animate-pulse text-gray-800 dark:text-gray-300">
-          Loading...
-        </span>
+        <span className="animate-pulse">Loading...</span>
       </div>
     );
   }
@@ -56,9 +40,7 @@ export default function TrendingList() {
   if (tmdbStatus === 'error') {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <span className="text-gray-500 dark:text-gray-400">
-          Error: {tmdbError.message}
-        </span>
+        <span className="">Error: {tmdbError.message}</span>
       </div>
     );
   }
@@ -67,17 +49,15 @@ export default function TrendingList() {
     tmdbType === 'all' ? tmdbData : tmdbData.filter((m) => m.type === tmdbType);
 
   return (
-    <div className="p-4">
+    <div className="w-full">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-300">
-          Trending Media
-        </h2>
+        <h2 className="text-2xl font-bold">Trending Media</h2>
         {/* dropdown to select media type */}
         <div className="flex items-center">
           <select
             value={tmdbType}
             onChange={handleTmdbTypeChange}
-            className="border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300 px-4 py-2 rounded"
+            className="bg-gray-800 py-2 rounded"
           >
             <option value="all">All</option>
             {tmdbTypes.map((type) => (
@@ -89,7 +69,7 @@ export default function TrendingList() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] justify-center gap-6">
         {filteredTmdb.map((media) => {
           // Create a flag to check if the media has been released
           const isReleased = media.releaseDate
@@ -100,7 +80,7 @@ export default function TrendingList() {
             <button
               key={media.mediaId}
               onClick={() => setSelectedMedia(media)}
-              className="border-gray-300 dark:border-gray-700 overflow-hidden flex flex-col group items-center transition gap-4"
+              className="overflow-hidden flex flex-col group items-center transition gap-3"
             >
               <div className="relative">
                 <img
@@ -112,48 +92,29 @@ export default function TrendingList() {
                   className="w-full aspect-[2/3] object-cover rounded-lg"
                 />
               </div>
-              <div className="flex flex-col flex-grow items-center">
-                <h3 className="text-base font-semibold mb-2 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors text-gray-900 dark:text-gray-300">
+              <div className="flex flex-col items-center gap-1">
+                <h3 className="text-base font-semibold group-hover:text-blue-400 transition-colors">
                   {media.title}
                 </h3>
-
-                {/* Kept metadata on the card for scannability */}
-                <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                  {/* {media.releaseDate && (
-                    <span>
-                      🗓️{' '}
-                      {new Date(media.releaseDate).toLocaleDateString(
-                        undefined,
-                        { year: 'numeric', month: 'numeric', day: 'numeric' }
-                      )}
-                    </span>
-                  )} */}
-                  {!isReleased ? (
-                    <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                      ⏳ Not Released
-                    </Badge>
-                  ) : media.type === 'movie' ? (
-                    media.availabilityCount > 0 ? (
-                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                        ✅ Watchable
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-gray-300 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                        🚫 No Source
-                      </Badge>
-                    )
+                {!isReleased ? (
+                  <MediaBadge className="bg-yellow-900 text-yellow-200">
+                    Not Released
+                  </MediaBadge>
+                ) : media.availabilityCount > 0 ? (
+                  media.type === 'movie' ? (
+                    <MediaBadge className="bg-green-900 text-green-200">
+                      Available
+                    </MediaBadge>
                   ) : (
-                    <Badge
-                      className={
-                        media.availabilityCount > 0
-                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                          : 'bg-gray-300 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                      }
-                    >
-                      📺 {media.availabilityCount} Episodes
-                    </Badge>
-                  )}
-                </div>
+                    <MediaBadge className="bg-blue-900 text-blue-200">
+                      {media.availabilityCount} Episodes
+                    </MediaBadge>
+                  )
+                ) : (
+                  <MediaBadge className="bg-gray-700 text-gray-300">
+                    No Source
+                  </MediaBadge>
+                )}
               </div>
             </button>
           );
@@ -162,7 +123,7 @@ export default function TrendingList() {
 
       {/* Conditionally render the modal outside the grid */}
       {selectedMedia && (
-        <MediaModal
+        <MediaPopup
           media={selectedMedia}
           onClose={() => setSelectedMedia(null)}
         />

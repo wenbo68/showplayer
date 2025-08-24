@@ -16,7 +16,7 @@ export function EpisodeList({
   selectedEpisodeId,
 }: EpisodeListProps) {
   return (
-    <div className="bg-gray-800 p-4 rounded max-h-[80vh] overflow-y-auto">
+    <div className="bg-gray-800 p-4 rounded max-h-[100vh] overflow-y-auto">
       <h3 className="text-xl font-bold mb-4">Seasons & Episodes</h3>
       {seasons.map((season) => (
         <div key={season.id} className="mb-4">

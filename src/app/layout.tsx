@@ -21,9 +21,15 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${geist.variable}`}>
-      <body className="bg-white dark:bg-gray-900 text-black dark:text-gray-300">
+      <body className="bg-gray-900 text-gray-400">
         <TRPCReactProvider>{children}</TRPCReactProvider>
       </body>
     </html>
   );
 }
+
+// popup and player page: add genres
+// add dark mode button
+// remove watch now button from mv/tv with no src/episode
+// season/episode section: add season posters/descriptions, create dropdown for episodes, add no src marker and make srcless episodes unclickable
+// player page: add episode description, add media poster/backdrop (need to add backdrop of all media to db), add recommendations (how to implement?)

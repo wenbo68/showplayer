@@ -108,7 +108,7 @@ export default async function Page({ params }: PageProps) {
   );
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="mx-auto p-4">
       <h1 className="text-3xl font-bold">{mediaData.title}</h1>
       <h2 className="text-xl text-gray-400 mb-4">
         S{season.toString().padStart(2, '0')}E

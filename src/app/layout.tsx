@@ -28,7 +28,10 @@ export default function RootLayout({
   );
 }
 
-// episode selector: add no src marker (can click in and read descriptions and also report so that i can manually get m3u8 and insert to db)
-// player page: add overview section where i can select show/season/episode to view their poster/description
-// fix the player to the top while i scroll down
+// add search function
+// add login: add admin, add favorite button, add watch later button
 // add recommendations (how to implement?)
+// add comment function
+
+// player page: add report function (if theres no src) so that i can manually get m3u8 and insert to db
+// fix the player to the top while i scroll down

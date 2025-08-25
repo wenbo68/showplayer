@@ -34,34 +34,35 @@ export function SourceSelector({
 
   useEffect(() => {
     const container = serversContainerRef.current;
-    if (!container) return;
+    if (!container || isServersExpanded) return;
 
-    // A small delay can help ensure the element is ready after navigation
-    const timer = setTimeout(() => {
-      const activeEpisode = container.querySelector('[data-active="true"]');
-      if (activeEpisode) {
-        activeEpisode.scrollIntoView({
-          behavior: 'smooth',
-          inline: 'center',
-          block: 'nearest',
-        });
-      }
-    }, 100); // 100ms delay
+    const activeEpisode = container.querySelector<HTMLElement>(
+      '[data-active="true"]'
+    );
+    if (activeEpisode) {
+      const containerWidth = container.offsetWidth;
+      const elementLeft = activeEpisode.offsetLeft;
+      const newScrollPosition = elementLeft - containerWidth / 2;
 
-    return () => clearTimeout(timer); // Cleanup the timer
-  }, [selectedProvider]);
+      // Apply the scroll only to the horizontal container
+      container.scrollTo({
+        left: newScrollPosition,
+        behavior: 'smooth',
+      });
+    }
+  }, [selectedProvider, isServersExpanded]); // Reruns when the page/episode or season changes
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-0">
       <div
         className="flex cursor-pointer"
         onClick={() => setIsServersExpanded(!isServersExpanded)}
       >
         <span className="font-semibold">Servers</span>
         {isServersExpanded ? (
-          <MdOutlineKeyboardArrowDown className="relative top-[3px] left-[3px]" />
+          <MdOutlineKeyboardArrowDown className="relative top-[3px] left-[1px]" />
         ) : (
-          <MdOutlineKeyboardArrowLeft className="relative top-[3px] left-[3px]" />
+          <MdOutlineKeyboardArrowLeft className="relative top-[3px] left-[1px]" />
         )}
       </div>
       <div

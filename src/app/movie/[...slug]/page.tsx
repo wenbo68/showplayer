@@ -5,6 +5,7 @@ import { notFound, redirect } from 'next/navigation';
 import { VideoPlayer } from '~/app/_components/player/VideoPlayer';
 import { SourceSelector } from '~/app/_components/player/SourceSelector';
 import { getProxiedSrcUrl } from '~/utils/api';
+import { MvOverview } from '~/app/_components/player/MvOverview';
 
 interface PageProps {
   params: Promise<{ slug: string[] }>;
@@ -29,7 +30,9 @@ export default async function Page({ params }: PageProps) {
       sources: {
         orderBy: asc(tmdbSource.provider),
         with: {
-          subtitles: true,
+          subtitles: {
+            orderBy: [asc(tmdbSource.provider)],
+          },
         },
       },
     },
@@ -40,63 +43,53 @@ export default async function Page({ params }: PageProps) {
     notFound();
   }
 
-  const sources = mediaData.sources;
+  const sourcesWithSubtitles = mediaData.sources;
 
-  if (!sources[0]) {
-    notFound();
-  }
+  // if (!sourcesWithSubtitles[0]) {
+  //   notFound();
+  // }
 
-  // Step 2. If no provider is in the URL, redirect to the first available one
-  if (!providerParam) {
-    const firstSource = sources[0];
-    return redirect(`/movie/${tmdbId}/${firstSource.provider}`);
+  // Step 2. If no provider is in the URL, redirect to the 1st available one (if there is a provider)
+  if (!providerParam && sourcesWithSubtitles[0]) {
+    return redirect(`/movie/${tmdbId}/${sourcesWithSubtitles[0].provider}`);
   }
 
   // Step 3. Find the selected source based on the provider in the URL
-  const selectedSrc = sources.find((s) => s.provider === providerParam);
+  const selectedSrc = sourcesWithSubtitles.find(
+    (s) => s.provider === providerParam
+  );
 
-  // If a provider is in the URL but doesn't exist for this media, 404
-  if (!selectedSrc) {
-    notFound();
+  // If a provider is in the URL (but doesn't exist for this media) then redirect to 1st available one (if there is a provider)
+  if (!selectedSrc && sourcesWithSubtitles[0]) {
+    return redirect(`/movie/${tmdbId}/${sourcesWithSubtitles[0].provider}`);
   }
 
   // Step 4. Construct the proxy URL for the video player
   // This includes the source URL and any necessary headers as search parameters.
-  let proxiedSrcUrl: string | undefined;
-  if (selectedSrc) {
-    proxiedSrcUrl = getProxiedSrcUrl(selectedSrc);
-  }
+  const proxiedSrcUrl = getProxiedSrcUrl(selectedSrc);
 
   // Step 5. Aggregate all subtitles from all available sources
-  const subtitles = sources.flatMap((source, index) =>
-    source.subtitles.map((sub) => ({
-      content: sub.content,
-      lang: sub.language.slice(0, 2).toLowerCase(),
-      label: `${sub.language} (${source.provider})`,
+  const subtitles = sourcesWithSubtitles.flatMap((source, index) =>
+    source.subtitles.map((subtitle) => ({
+      content: subtitle.content,
+      lang: subtitle.language.slice(0, 2).toLowerCase(),
+      label: `${subtitle.language} (${source.provider})`,
       default: source.id === selectedSrc?.id,
     }))
   );
 
   return (
-    <div className="mx-auto p-4 max-w-7xl">
-      <h1 className="text-3xl font-bold mb-4">{mediaData.title}</h1>
+    <div className="mx-auto p-4 max-w-6xl flex flex-col gap-2">
+      <MvOverview selectedMedia={mediaData} />
 
-      <div className="w-full">
-        {/* Video Player Component */}
-        <VideoPlayer src={proxiedSrcUrl} subtitles={subtitles} />
+      {/* Video Player Component */}
+      <VideoPlayer src={proxiedSrcUrl} subtitles={subtitles} />
 
-        {/* Source Selector Component */}
-        <SourceSelector
-          sources={sources}
-          selectedProvider={providerParam ?? sources[0].provider}
-        />
-
-        {/* Movie Description */}
-        <div className="mt-4 p-4 bg-gray-800 rounded">
-          <h3 className="text-2xl font-semibold">{mediaData.title}</h3>
-          <p className="text-gray-400 mt-2">{mediaData.description}</p>
-        </div>
-      </div>
+      {/* Source Selector Component */}
+      <SourceSelector
+        sources={sourcesWithSubtitles}
+        selectedProvider={providerParam ?? sourcesWithSubtitles[0]?.provider}
+      />
     </div>
   );
 }

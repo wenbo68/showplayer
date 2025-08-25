@@ -14,10 +14,12 @@ interface TvSelector {
   tmdbId: number;
   mediaData: Media & {
     seasons: (Season & {
-      episodes: (Episode & { sources: Source[] })[];
+      episodes: (Episode & {
+        sources: Source[];
+      })[];
     })[];
   };
-  sources: Source[];
+  episodeSources: Source[];
   selectedProvider?: string;
   selectedSeasonId: string;
   selectedEpisodeId: string;
@@ -26,18 +28,18 @@ interface TvSelector {
 export function TvSelector({
   tmdbId,
   mediaData,
-  sources,
+  episodeSources,
   selectedProvider,
   selectedSeasonId: seasonIdParam,
   selectedEpisodeId: episodeIdParam,
 }: TvSelector) {
   const [selectedSeasonId, setSelectedSeasonId] = useState(seasonIdParam);
   const [isEpisodesExpanded, setIsEpisodesExpanded] = useState(() => {
-    if (typeof window === 'undefined') return false; // Guard for SSR
+    if (typeof window === 'undefined') return false;
     return sessionStorage.getItem('isEpisodesExpanded') === 'true';
   });
   const [isSeasonsExpanded, setIsSeasonsExpanded] = useState(() => {
-    if (typeof window === 'undefined') return false; // Guard for SSR
+    if (typeof window === 'undefined') return false;
     return sessionStorage.getItem('isSeasonsExpanded') === 'true';
   });
 
@@ -64,54 +66,64 @@ export function TvSelector({
   // --- 2. useEffect to scroll the active season into view ---
   useEffect(() => {
     const container = seasonsContainerRef.current;
-    if (!container) return;
+    if (!container || isSeasonsExpanded) return;
 
-    const activeSeason = container.querySelector('[data-active="true"]');
+    const activeSeason = container.querySelector<HTMLElement>(
+      '[data-active="true"]'
+    );
     if (activeSeason) {
-      activeSeason.scrollIntoView({
+      const containerWidth = container.offsetWidth;
+      const elementLeft = activeSeason.offsetLeft;
+      const newScrollPosition = elementLeft - containerWidth / 2;
+
+      // Apply the scroll only to the horizontal container
+      container.scrollTo({
+        left: newScrollPosition,
         behavior: 'smooth',
-        inline: 'center', // This centers the item horizontally
-        block: 'nearest',
       });
     }
-  }, [selectedSeasonId]); // Reruns when the selected season changes
+  }, [selectedSeasonId, isSeasonsExpanded]); // Reruns when the selected season changes
 
   // --- 3. useEffect to scroll the active episode into view ---
   useEffect(() => {
     const container = episodesContainerRef.current;
-    if (!container) return;
+    if (!container || isEpisodesExpanded) return;
 
-    // A small delay can help ensure the element is ready after navigation
-    const timer = setTimeout(() => {
-      const activeEpisode = container.querySelector('[data-active="true"]');
-      if (activeEpisode) {
-        activeEpisode.scrollIntoView({
-          behavior: 'smooth',
-          inline: 'center',
-          block: 'nearest',
-        });
-      }
-    }, 100); // 100ms delay
+    const activeEpisode = container.querySelector<HTMLElement>(
+      '[data-active="true"]'
+    );
+    if (activeEpisode) {
+      const containerWidth = container.offsetWidth;
+      const elementLeft = activeEpisode.offsetLeft;
+      const newScrollPosition = elementLeft - containerWidth / 2;
 
-    return () => clearTimeout(timer); // Cleanup the timer
-  }, [episodeIdParam, selectedSeason]); // Reruns when the page/episode or season changes
+      // Apply the scroll only to the horizontal container
+      container.scrollTo({
+        left: newScrollPosition,
+        behavior: 'smooth',
+      });
+    }
+  }, [episodeIdParam, selectedSeason, isEpisodesExpanded]); // Reruns when the page/episode or season changes
 
   return (
     <div className="flex flex-col gap-2">
-      {/* Sources (remains unchanged) */}
-      <SourceSelector sources={sources} selectedProvider={selectedProvider} />
+      {/* Sources */}
+      <SourceSelector
+        sources={episodeSources}
+        selectedProvider={selectedProvider}
+      />
 
       {/* Seasons */}
-      <div className="flex flex-col">
+      <div className="flex flex-col gap-0">
         <div
           className="flex cursor-pointer"
           onClick={() => setIsSeasonsExpanded(!isSeasonsExpanded)}
         >
           <span className="font-semibold">Seasons</span>
           {isSeasonsExpanded ? (
-            <MdOutlineKeyboardArrowDown className="relative top-[3px] left-[3px]" />
+            <MdOutlineKeyboardArrowDown className="relative top-[3px] left-[1px]" />
           ) : (
-            <MdOutlineKeyboardArrowLeft className="relative top-[3px] left-[3px]" />
+            <MdOutlineKeyboardArrowLeft className="relative top-[3px] left-[1px]" />
           )}
         </div>
         <div
@@ -138,16 +150,16 @@ export function TvSelector({
       </div>
 
       {/* Episodes */}
-      <div className="flex flex-col">
+      <div className="flex flex-col gap-0">
         <div
           className="flex cursor-pointer"
           onClick={() => setIsEpisodesExpanded(!isEpisodesExpanded)}
         >
           <span className="font-semibold">Episodes</span>
           {isEpisodesExpanded ? (
-            <MdOutlineKeyboardArrowDown className="relative top-[3px] left-[3px]" />
+            <MdOutlineKeyboardArrowDown className="relative top-[3px] left-[1px]" />
           ) : (
-            <MdOutlineKeyboardArrowLeft className="relative top-[3px] left-[3px]" />
+            <MdOutlineKeyboardArrowLeft className="relative top-[3px] left-[1px]" />
           )}
         </div>
         <div

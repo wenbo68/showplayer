@@ -97,22 +97,22 @@ export default function TrendingList() {
                   {media.title}
                 </h3>
                 {!isReleased ? (
-                  <MediaBadge className="bg-yellow-900 text-yellow-200">
+                  <MediaBadge className="bg-yellow-900 text-yellow-300">
                     Not Released
                   </MediaBadge>
                 ) : media.availabilityCount > 0 ? (
                   media.type === 'movie' ? (
-                    <MediaBadge className="bg-green-900 text-green-200">
+                    <MediaBadge className="bg-green-900 text-green-300">
                       Available
                     </MediaBadge>
                   ) : (
-                    <MediaBadge className="bg-blue-900 text-blue-200">
+                    <MediaBadge className="bg-blue-900 text-blue-300">
                       {media.availabilityCount} Episodes
                     </MediaBadge>
                   )
                 ) : (
-                  <MediaBadge className="bg-gray-700 text-gray-300">
-                    No Source
+                  <MediaBadge className="bg-gray-700 text-gray-400">
+                    Not Available
                   </MediaBadge>
                 )}
               </div>

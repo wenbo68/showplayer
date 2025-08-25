@@ -83,7 +83,11 @@ export default async function Page({ params }: PageProps) {
       <MvOverview selectedMedia={mediaData} />
 
       {/* Video Player Component */}
-      <VideoPlayer src={proxiedSrcUrl} subtitles={subtitles} />
+      <VideoPlayer
+        movie={mediaData}
+        src={proxiedSrcUrl}
+        subtitles={subtitles}
+      />
 
       {/* Source Selector Component */}
       <SourceSelector

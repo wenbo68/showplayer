@@ -28,9 +28,11 @@ export default function RootLayout({
   );
 }
 
+// add region field for media and use as tag in media popup
+// add popular and top-rated media list
+// add recommendations (how to implement?)
 // add search function
 // add login: add admin, add favorite button, add watch later button
-// add recommendations (how to implement?)
 // add comment function
 
 // player page: add report function (if theres no src) so that i can manually get m3u8 and insert to db

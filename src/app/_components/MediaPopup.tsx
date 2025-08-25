@@ -73,6 +73,9 @@ export function MediaPopup({
                   })}
                 </MediaBadge>
               )}
+              <MediaBadge className="bg-gray-700">
+                {media.type === 'movie' ? `Movie` : `TV`}
+              </MediaBadge>
               {media.genres.map((genre) => (
                 <MediaBadge key={genre} className="bg-gray-700">
                   {genre}
@@ -96,14 +99,14 @@ export function MediaPopup({
               }`}
               className={`${
                 !isReleased || media.availabilityCount <= 0
-                  ? `cursor-not-allowed pointer-events-none`
-                  : ``
-              } inline-block w-full text-center px-6 py-3 text-gray-100 font-semibold rounded-lg bg-blue-600 hover:bg-blue-500 transition-colors`}
+                  ? `cursor-not-allowed pointer-events-none bg-gray-700`
+                  : `bg-blue-600 hover:bg-blue-500 text-gray-100`
+              } inline-block w-full text-center px-6 py-3 font-semibold rounded-lg  transition-colors`}
             >
               {!isReleased
                 ? `Not Released`
                 : media.availabilityCount <= 0
-                ? `No Source`
+                ? `Not Available`
                 : media.type === 'movie'
                 ? `Watch Now`
                 : `${media.availabilityCount} Episodes`}

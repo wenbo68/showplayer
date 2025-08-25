@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
+import type { Episode, Media } from '~/type';
 
 interface Subtitle {
   lang: string;
@@ -11,6 +12,8 @@ interface Subtitle {
 }
 
 interface VideoPlayerProps {
+  movie?: Media;
+  episode?: Episode;
   src?: string;
   subtitles?: Subtitle[];
 }
@@ -22,7 +25,12 @@ interface TrackData {
   default: boolean;
 }
 
-export function VideoPlayer({ src, subtitles }: VideoPlayerProps) {
+export function VideoPlayer({
+  movie,
+  episode,
+  src,
+  subtitles,
+}: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [tracks, setTracks] = useState<TrackData[]>([]);
 
@@ -64,10 +72,18 @@ export function VideoPlayer({ src, subtitles }: VideoPlayerProps) {
     };
   }, [subtitles]); // Rerun this effect if the subtitles prop changes
 
+  const isReleased = movie
+    ? movie.releaseDate
+      ? new Date(movie.releaseDate) <= new Date()
+      : false
+    : episode?.airDate
+    ? new Date(episode?.airDate) <= new Date()
+    : false;
+
   if (!src) {
     return (
       <div className="aspect-video flex items-center justify-center">
-        Not yet available.
+        {isReleased ? `Not Yet Available.` : `Not Yet Released.`}
       </div>
     );
   }

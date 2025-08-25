@@ -116,7 +116,11 @@ export default async function Page({ params }: PageProps) {
       />
 
       {/* Video Player */}
-      <VideoPlayer src={proxiedSrcUrl} subtitles={subtitles} />
+      <VideoPlayer
+        episode={selectedEpisode}
+        src={proxiedSrcUrl}
+        subtitles={subtitles}
+      />
 
       {/* Source/season/episode selector */}
       <TvSelector

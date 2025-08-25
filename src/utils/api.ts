@@ -11,7 +11,7 @@ export function withCors(headers: Record<string, string> = {}) {
 // two ways to create url with params:
 // 1. encode params and append them to to url as strings (encode the urls so that they can be included in another url otherwise the special characters in the embeded urls can cause confusions)
 // 2. use URL obj and attach params (without encoding) as key/value
-export function getProxiedSrcUrl(selectedSrc: {
+export function getProxiedSrcUrl(selectedSrc?: {
   url: string;
   headers: unknown;
   id: string;
@@ -26,6 +26,7 @@ export function getProxiedSrcUrl(selectedSrc: {
     content: string;
   }[];
 }) {
+  if (!selectedSrc) return undefined;
   const urlObject = new URL(`${process.env.VPS_URL}/api/proxy`);
   urlObject.searchParams.set('url', selectedSrc.url);
 

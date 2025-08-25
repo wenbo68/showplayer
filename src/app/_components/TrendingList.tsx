@@ -69,7 +69,7 @@ export default function TrendingList() {
         </div>
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] justify-center gap-6">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] lg:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] justify-center gap-4 lg:gap-6">
         {filteredTmdb.map((media) => {
           // Create a flag to check if the media has been released
           const isReleased = media.releaseDate

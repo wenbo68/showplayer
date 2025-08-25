@@ -11,7 +11,7 @@ export default async function Home() {
 
   return (
     <HydrateClient>
-      <main className="p-8 flex flex-col items-center justify-center">
+      <main className="flex flex-col items-center justify-center max-w-7xl mx-auto p-4">
         <TmdbAdmin />
         <TrendingList />
       </main>

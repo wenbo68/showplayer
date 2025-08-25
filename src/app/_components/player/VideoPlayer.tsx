@@ -66,8 +66,8 @@ export function VideoPlayer({ src, subtitles }: VideoPlayerProps) {
 
   if (!src) {
     return (
-      <div className="aspect-video bg-black flex items-center justify-center text-white">
-        Source URL not found.
+      <div className="aspect-video flex items-center justify-center">
+        Not yet available.
       </div>
     );
   }

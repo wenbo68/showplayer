@@ -78,7 +78,7 @@ export default async function Page({ params }: PageProps) {
   );
 
   return (
-    <div className="mx-auto p-4">
+    <div className="mx-auto p-4 max-w-7xl">
       <h1 className="text-3xl font-bold mb-4">{mediaData.title}</h1>
 
       <div className="w-full">

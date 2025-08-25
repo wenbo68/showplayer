@@ -4,12 +4,14 @@ import type {
   tmdbMedia,
   tmdbSeason,
   tmdbSource,
+  tmdbSubtitle,
 } from './server/db/schema';
 
 export type Media = InferSelectModel<typeof tmdbMedia>;
 export type Season = InferSelectModel<typeof tmdbSeason>;
 export type Episode = InferSelectModel<typeof tmdbEpisode>;
 export type Source = InferSelectModel<typeof tmdbSource>;
+export type Subtitle = InferSelectModel<typeof tmdbSubtitle>;
 
 export type M3U8Result = {
   type: 'master' | 'media';

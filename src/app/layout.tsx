@@ -28,8 +28,7 @@ export default function RootLayout({
   );
 }
 
-// popup and player page: add genres
-// add dark mode button
-// remove watch now button from mv/tv with no src/episode
-// season/episode section: add season posters/descriptions, create dropdown for episodes, add no src marker and make srcless episodes unclickable
-// player page: add episode description, add media poster/backdrop (need to add backdrop of all media to db), add recommendations (how to implement?)
+// episode selector: add no src marker (can click in and read descriptions and also report so that i can manually get m3u8 and insert to db)
+// player page: add overview section where i can select show/season/episode to view their poster/description
+// fix the player to the top while i scroll down
+// add recommendations (how to implement?)

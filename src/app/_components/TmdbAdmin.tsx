@@ -5,19 +5,31 @@ import { api } from '~/trpc/react';
 
 export default function TmdbAdmin() {
   const [trendingLimit, setTrendingLimit] = useState(50);
+  const [topLimit, setTopLimit] = useState(100);
   const [mvTmdbId, setMvTmdbId] = useState('');
   const [tvTmdbId, setTvTmdbId] = useState('');
   const [season, setSeason] = useState('');
   const [episode, setEpisode] = useState('');
 
+  const fetchOriginsMutation = api.media.fetchOrigins.useMutation();
   const fetchGenresMutation = api.media.fetchGenres.useMutation();
+
   const fetchTmdbTrendingMutation = api.media.fetchTmdbTrending.useMutation();
+  const fetchTmdbTopMutation = api.media.fetchTmdbTopRated.useMutation();
+
   const populateDetailsMutation = api.media.populateMediaDetails.useMutation();
   const dailySrcFetchMutation = api.media.mediaSrcFetch.useMutation();
+
   const fetchMvSrcMutation = api.media.fetchAndInsertMvSrc.useMutation();
   const insertEpisodeMutation = api.media.insertSeasonAndEpisode.useMutation();
   const fetchTvSrcMutation = api.media.fetchAndInsertTvSrc.useMutation();
 
+  const handleFetchOrigins = () => {
+    fetchOriginsMutation.mutate(undefined, {
+      onSuccess: (data) => console.log('Fetch origins:', data),
+      onError: (err) => console.log('Error:', err),
+    });
+  };
   const handleFetchGenres = () => {
     fetchGenresMutation.mutate(undefined, {
       onSuccess: (data) => console.log('Fetch genres:', data),
@@ -27,6 +39,15 @@ export default function TmdbAdmin() {
   const handleFetchTmdbTrending = () => {
     fetchTmdbTrendingMutation.mutate(
       { limit: trendingLimit },
+      {
+        onSuccess: (data) => console.log('Fetched:', data),
+        onError: (err) => console.error('Error:', err),
+      }
+    );
+  };
+  const handleFetchTmdbTop = () => {
+    fetchTmdbTopMutation.mutate(
+      { limit: topLimit },
       {
         onSuccess: (data) => console.log('Fetched:', data),
         onError: (err) => console.error('Error:', err),
@@ -84,13 +105,20 @@ export default function TmdbAdmin() {
   return (
     <section className="flex flex-col items-center justify-center">
       <div className="flex flex-col items-center gap-2">
-        <input
-          type="number"
-          placeholder="Trending Limit"
-          value={trendingLimit}
-          onChange={(e) => setTrendingLimit(Number(e.target.value))}
-          className="px-3 py-2 rounded w-60 text-gray-900 dark:text-gray-300 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
-        />
+        <button
+          onClick={handleFetchOrigins}
+          disabled={fetchOriginsMutation.isPending}
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 dark:hover:bg-red-500"
+        >
+          {fetchOriginsMutation.isPending
+            ? 'Fetching origins...'
+            : 'Fetch origins'}
+        </button>
+        {fetchOriginsMutation.error && (
+          <p className="text-red-600 dark:text-red-400 mt-2">
+            Error: {fetchOriginsMutation.error.message}
+          </p>
+        )}
         <button
           onClick={handleFetchGenres}
           disabled={fetchGenresMutation.isPending}
@@ -105,6 +133,16 @@ export default function TmdbAdmin() {
             Error: {fetchGenresMutation.error.message}
           </p>
         )}
+
+        <hr className="w-full my-4 border-gray-300 dark:border-gray-700" />
+
+        <input
+          type="number"
+          placeholder="Trending Limit"
+          value={trendingLimit}
+          onChange={(e) => setTrendingLimit(Number(e.target.value))}
+          className="px-3 py-2 rounded w-60 text-gray-900 dark:text-gray-300 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
+        />
         <button
           onClick={handleFetchTmdbTrending}
           disabled={fetchTmdbTrendingMutation.isPending}
@@ -112,13 +150,35 @@ export default function TmdbAdmin() {
         >
           {fetchTmdbTrendingMutation.isPending
             ? 'Fetching...'
-            : 'Fetch TMDB Trending'}
+            : 'Fetch Trending'}
         </button>
         {fetchTmdbTrendingMutation.error && (
           <p className="text-red-600 dark:text-red-400">
             Error: {fetchTmdbTrendingMutation.error.message}
           </p>
         )}
+        <input
+          type="number"
+          placeholder="Top Rated Limit"
+          value={topLimit}
+          onChange={(e) => setTopLimit(Number(e.target.value))}
+          className="px-3 py-2 rounded w-60 text-gray-900 dark:text-gray-300 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
+        />
+        <button
+          onClick={handleFetchTmdbTop}
+          disabled={fetchTmdbTopMutation.isPending}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-500"
+        >
+          {fetchTmdbTopMutation.isPending ? 'Fetching...' : 'Fetch Top Rated'}
+        </button>
+        {fetchTmdbTopMutation.error && (
+          <p className="text-red-600 dark:text-red-400">
+            Error: {fetchTmdbTopMutation.error.message}
+          </p>
+        )}
+
+        <hr className="w-full my-4 border-gray-300 dark:border-gray-700" />
+
         <button
           onClick={handlePopulateDetails}
           disabled={populateDetailsMutation.isPending}

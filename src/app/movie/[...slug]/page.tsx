@@ -30,9 +30,7 @@ export default async function Page({ params }: PageProps) {
       sources: {
         orderBy: asc(tmdbSource.provider),
         with: {
-          subtitles: {
-            orderBy: [asc(tmdbSource.provider)],
-          },
+          subtitles: true,
         },
       },
     },

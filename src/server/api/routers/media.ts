@@ -1,5 +1,15 @@
 import { z } from 'zod';
-import { and, asc, eq, isNotNull, lte, notExists, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  eq,
+  isNotNull,
+  isNull,
+  lte,
+  notExists,
+  or,
+  sql,
+} from 'drizzle-orm';
 
 import { createTRPCRouter, publicProcedure } from '~/server/api/trpc';
 import {
@@ -7,8 +17,11 @@ import {
   tmdbGenre,
   tmdbMedia,
   tmdbMediaToTmdbGenre,
+  tmdbMediaToTmdbOrigin,
+  tmdbOrigin,
   tmdbSeason,
   tmdbSource,
+  tmdbTopRated,
   tmdbTrending,
 } from '~/server/db/schema';
 import {
@@ -16,9 +29,12 @@ import {
   fetchAndUpsertMvSrc,
   fetchAndUpsertTvSrc,
   fetchTmdbDetailViaApi,
-  fetchTmdbMvGenreViaApi,
+  fetchTmdbMvGenresViaApi,
+  fetchTmdbOriginsViaApi,
+  fetchTmdbTopRatedViaApi,
   fetchTmdbTrendingViaApi,
-  fetchTmdbTvGenreViaApi,
+  fetchTmdbTvGenresViaApi,
+  upsertNewMedia,
   upsertSeasonsAndEpisodes,
 } from '~/server/utils';
 
@@ -86,9 +102,35 @@ export const mediaRouter = createTRPCRouter({
     return trending;
   }),
 
+  fetchOrigins: publicProcedure.mutation(async ({ ctx }) => {
+    // 1. Fetch the origins from the TMDB API
+    const origins = await fetchTmdbOriginsViaApi();
+
+    // 2. Transform the data to match your 'tmdbOrigin' schema
+    const originInput = origins.map((origin: any) => ({
+      id: origin.iso_3166_1,
+      name: origin.english_name,
+    }));
+
+    // 3. Insert the transformed data into the database
+    const originOutput = await ctx.db
+      .insert(tmdbOrigin)
+      .values(originInput)
+      .onConflictDoUpdate({
+        target: tmdbOrigin.id, // The column to check for conflicts
+        set: {
+          name: sql`excluded.name`, // Update the name if the ID already exists
+        },
+      })
+      .returning();
+
+    console.log(`Upserted ${originOutput.length} unique origins.`);
+    return { count: originOutput.length };
+  }),
+
   fetchGenres: publicProcedure.mutation(async ({ ctx }) => {
-    const { genres: mvGenres } = await fetchTmdbMvGenreViaApi();
-    const { genres: tvGenres } = await fetchTmdbTvGenreViaApi();
+    const { genres: mvGenres } = await fetchTmdbMvGenresViaApi();
+    const { genres: tvGenres } = await fetchTmdbTvGenresViaApi();
 
     // 1. Combine both lists
     const genres = [...mvGenres, ...tvGenres];
@@ -114,103 +156,127 @@ export const mediaRouter = createTRPCRouter({
     return { count: genreOutput.length };
   }),
 
+  fetchTmdbTopRated: publicProcedure
+    .input(z.object({ limit: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      // 1. Delete the old top-rated list first
+      await ctx.db.delete(tmdbTopRated).execute();
+
+      // 2. Fetch top-rated mv and tv via API (need to add type manually)
+      const fetchedMv = (
+        await fetchTmdbTopRatedViaApi(input.limit, 'movie')
+      ).map((mv) => {
+        return { ...mv, media_type: 'movie' };
+      });
+      const fetchedTv = (await fetchTmdbTopRatedViaApi(input.limit, 'tv')).map(
+        (tv) => {
+          return { ...tv, media_type: 'tv' };
+        }
+      );
+      const fetchOutput = [...fetchedMv, ...fetchedTv];
+      console.log(`fetchedOutput: `, fetchOutput.length);
+
+      // 3. save rating info
+      const ratingsMap = new Map();
+      fetchedMv.forEach((item, index) => {
+        ratingsMap.set(item.id, {
+          rank: index,
+          voteAverage: item.vote_average,
+          voteCount: item.vote_count,
+        });
+      });
+      fetchedTv.forEach((item, index) => {
+        ratingsMap.set(item.id, {
+          rank: index,
+          voteAverage: item.vote_average,
+          voteCount: item.vote_count,
+        });
+      });
+
+      // 4. Upsert fetched result to media/genre tables
+      const mediaOutput = await upsertNewMedia(fetchOutput);
+      console.log(`mediaOutput: `, mediaOutput.length);
+
+      // 5. upsert ratings info to top rated table
+      const topRatedInput = mediaOutput.map((item) => {
+        const ratingInfo = ratingsMap.get(item.tmdbId);
+        return {
+          mediaId: item.mediaId,
+          rank: ratingInfo.rank,
+          voteAverage: ratingInfo.voteAverage,
+          voteCount: ratingInfo.voteCount,
+        };
+      });
+      console.log(`topRatedInput: `, topRatedInput.length);
+      await ctx.db.insert(tmdbTopRated).values(topRatedInput).execute();
+
+      return { count: mediaOutput.length };
+    }),
+
   fetchTmdbTrending: publicProcedure
     .input(z.object({ limit: z.number() }))
     .mutation(async ({ input, ctx }) => {
-      // delete trending list first
+      // 1. delete trending list first
       await ctx.db.delete(tmdbTrending).execute();
 
-      // 1. fetch output from api
+      // 2. fetch trending from api
       const fetchOutput = await fetchTmdbTrendingViaApi(input.limit);
 
-      // 2. Prepare db input from api fetch ouput (removes duplicates)
-      const mediaInput = Array.from(
-        new Map(
-          fetchOutput
-            .filter(
-              (item: any) =>
-                item.media_type === 'movie' || item.media_type === 'tv'
-            )
-            .map((item: any) => [
-              item.id,
-              {
-                tmdbId: item.id,
-                type: item.media_type,
-                title: item.name || item.title,
-                description: item.overview,
-                imageUrl: item.poster_path ? item.poster_path : null,
-                releaseDate: item.release_date
-                  ? new Date(item.release_date)
-                  : item.first_air_date
-                  ? new Date(item.first_air_date)
-                  : null,
-                genreIds: item.genre_ids || [],
-              },
-            ])
-        ).values()
-      );
+      // 3. insert fetched result to media/genre/origin tables
+      const mediaOutput = await upsertNewMedia(fetchOutput);
 
-      // 3. Insert or update media table
-      const mediaOutput = await ctx.db
-        .insert(tmdbMedia)
-        .values(mediaInput.map(({ genreIds, ...rest }) => rest))
-        .onConflictDoUpdate({
-          target: tmdbMedia.tmdbId,
-          set: {
-            type: sql`excluded.type`,
-            title: sql`excluded.title`,
-            description: sql`excluded.description`,
-            imageUrl: sql`excluded.image_url`,
-            releaseDate: sql`excluded.release_date`,
-          },
-        })
-        .returning({
-          mediaId: tmdbMedia.id,
-          tmdbId: tmdbMedia.tmdbId,
-        })
-        .execute();
-
-      // 4. Create a lookup map for easy access: { tmdbId => mediaId }
-      const tmdbIdToMediaIdMap = new Map(
-        mediaOutput.map((item) => [item.tmdbId, item.mediaId])
-      );
-
-      // 5. Prepare the data for the mediaToGenres join table
-      const genreInput = mediaInput.flatMap((media) => {
-        const mediaId = tmdbIdToMediaIdMap.get(media.tmdbId);
-        if (!mediaId || !media.genreIds) {
-          return []; // Skip if media wasn't inserted or has no genres
-        }
-        return media.genreIds.map((genreId: number) => ({
-          mediaId: mediaId,
-          genreId: genreId,
-        }));
-      });
-
-      // 6. Insert all genre relationships in a single batch
-      await ctx.db
-        .insert(tmdbMediaToTmdbGenre)
-        .values(genreInput)
-        .onConflictDoNothing();
-
-      // 7. insert new items in trending table
+      // 4. insert new media to trending table
       const trendingInput = mediaOutput.map((item: any, index: number) => {
         return {
           mediaId: item.mediaId,
           rank: index,
         };
       });
-      console.log(trendingInput);
       await ctx.db.insert(tmdbTrending).values(trendingInput).execute();
 
-      return { count: mediaInput.length };
+      return { count: mediaOutput.length };
     }),
 
   populateMediaDetails: publicProcedure.mutation(async ({ ctx }) => {
+    // 1. find all movie without origin
+    const moviesWithoutOrigin = await ctx.db
+      .select()
+      .from(tmdbMedia)
+      .where(
+        and(
+          eq(tmdbMedia.type, 'movie'),
+          notExists(
+            ctx.db
+              .select()
+              .from(tmdbMediaToTmdbOrigin)
+              .where(eq(tmdbMediaToTmdbOrigin.mediaId, tmdbMedia.id))
+          )
+        )
+      );
+
+    let movieCount = 0;
+    await batchProcess(moviesWithoutOrigin, 10, async (movie) => {
+      movieCount++;
+      console.log(
+        `[populateMediaDetails] mv progress: ${movieCount}/${moviesWithoutOrigin.length} (${movie.tmdbId}:${movie.title})`
+      );
+      // 2. for mv, fetch detail via api
+      const details = await fetchTmdbDetailViaApi('movie', movie.tmdbId);
+      // 3. for mv, upsert origin
+      const originInput = details.origin_country.map((originId: string) => ({
+        mediaId: movie.id,
+        originId: originId,
+      }));
+      await ctx.db
+        .insert(tmdbMediaToTmdbOrigin)
+        .values(originInput)
+        .onConflictDoNothing();
+    });
+
     // 1. find all tv
     const allTv = await ctx.db.query.tmdbMedia.findMany({
       where: eq(tmdbMedia.type, 'tv'),
-      with: { seasons: true },
+      with: { seasons: true, origins: true },
     });
 
     let count = 0;
@@ -220,23 +286,30 @@ export const mediaRouter = createTRPCRouter({
         `[populateMediaDetails] tv progress: ${count}/${allTv.length} (${tv.tmdbId}:${tv.title})`
       );
 
-      // 2. for tv, check if db has the right number of seasons (need to exclude s0 from details)
+      // 2. for tv...
       const details = await fetchTmdbDetailViaApi('tv', tv.tmdbId);
-      if (!details.seasons) {
-        console.log(
-          `[populateMediaDetails] tv ${tv.tmdbId}: no seasons from api`
-        );
-        return;
+
+      // 3. if tv has no origin, upsert origin
+      if (tv.origins.length === 0) {
+        const originInput = details.origin_country.map((originId: string) => ({
+          mediaId: tv.id,
+          originId: originId,
+        }));
+        await ctx.db
+          .insert(tmdbMediaToTmdbOrigin)
+          .values(originInput)
+          .onConflictDoNothing();
       }
+
+      // 4. if tv is missing seasons, upsert seasons/episodes
       const seasonNum = details.seasons.some(
         (season: { season_number: number }) => season.season_number === 0
       )
         ? details.seasons.length - 1
         : details.seasons.length;
       console.log(
-        `[populateMediaDetails] tv ${tv.tmdbId}: ${tv.seasons.length} vs ${seasonNum}`
+        `[populateMediaDetails] tv ${tv.title}: ${tv.seasons.length} vs ${seasonNum}`
       );
-      // 3. if yes, skip (if not, upsert seasons/episodes)
       if (tv.seasons.length === seasonNum) return;
       await upsertSeasonsAndEpisodes(details, tv.id);
     });

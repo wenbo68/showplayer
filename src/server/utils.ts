@@ -2,6 +2,8 @@ import { db } from './db';
 import {
   tmdbEpisode,
   tmdbMedia,
+  tmdbMediaToTmdbGenre,
+  tmdbMediaToTmdbOrigin,
   tmdbSeason,
   tmdbSource,
   tmdbSubtitle,
@@ -9,13 +11,17 @@ import {
 import { and, eq, sql } from 'drizzle-orm';
 import type { PuppeteerResult } from '~/type';
 
-export async function fetchTmdbTrendingViaApi(limit: number) {
+export async function fetchTmdbTopRatedViaApi(
+  limit: number,
+  type: 'movie' | 'tv'
+) {
   const collected = [];
+  const seenIds = new Set(); // Use a Set to track seen IDs
   let page = 1;
 
   while (collected.length < limit) {
     const resp = await fetch(
-      `https://api.themoviedb.org/3/trending/all/week?language=en-US&page=${page}`,
+      `https://api.themoviedb.org/3/${type}/top_rated?language=en-US&page=${page}`,
       {
         headers: {
           accept: 'application/json',
@@ -25,11 +31,69 @@ export async function fetchTmdbTrendingViaApi(limit: number) {
     );
     const { results } = await resp.json();
 
-    collected.push(...results.slice(0, limit - collected.length));
+    // Break the loop if the API has no more results to prevent an infinite loop
+    if (!results || results.length === 0) {
+      break;
+    }
+
+    // Iterate through the fetched results
+    for (const item of results) {
+      // Check if the item's ID has not been seen yet
+      if (!seenIds.has(item.id)) {
+        seenIds.add(item.id); // Add the new ID to the set
+        collected.push(item); // Add the unique item to our collection
+      }
+      // Stop once we have collected enough items
+      if (collected.length >= limit) {
+        break;
+      }
+    }
     page += 1;
   }
 
-  return collected;
+  // Ensure the final array is exactly the length of the limit
+  return collected.slice(0, limit);
+}
+
+export async function fetchTmdbTrendingViaApi(limit: number) {
+  const collected = [];
+  const seenIds = new Set(); // Use a Set to track seen IDs
+  let page = 1;
+
+  while (collected.length < limit) {
+    const resp = await fetch(
+      `https://api.themoviedb.org/3/trending/all/day?language=en-US&page=${page}`,
+      {
+        headers: {
+          accept: 'application/json',
+          Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
+        },
+      }
+    );
+    const { results } = await resp.json();
+
+    // Break the loop if the API has no more results
+    if (!results || results.length === 0) {
+      break;
+    }
+
+    // Iterate through the fetched results
+    for (const item of results) {
+      // Check if the item's ID has not been seen yet
+      if (!seenIds.has(item.id)) {
+        seenIds.add(item.id); // Add the new ID to the set
+        collected.push(item); // Add the unique item to our collection
+      }
+      // Stop once we have collected enough items
+      if (collected.length >= limit) {
+        break;
+      }
+    }
+    page += 1;
+  }
+
+  // Ensure the final array is exactly the length of the limit
+  return collected.slice(0, limit);
 }
 
 export async function fetchTmdbDetailViaApi(type: string, id: number) {
@@ -46,7 +110,21 @@ export async function fetchTmdbDetailViaApi(type: string, id: number) {
   return data;
 }
 
-export async function fetchTmdbMvGenreViaApi() {
+export async function fetchTmdbOriginsViaApi() {
+  const resp = await fetch(
+    `https://api.themoviedb.org/3/configuration/countries?language=en-US`,
+    {
+      headers: {
+        accept: 'application/json',
+        Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
+      },
+    }
+  );
+  const data = await resp.json();
+  return data;
+}
+
+export async function fetchTmdbMvGenresViaApi() {
   const resp = await fetch(
     `https://api.themoviedb.org/3/genre/movie/list?language=en`,
     {
@@ -60,7 +138,7 @@ export async function fetchTmdbMvGenreViaApi() {
   return data;
 }
 
-export async function fetchTmdbTvGenreViaApi() {
+export async function fetchTmdbTvGenresViaApi() {
   const resp = await fetch(
     `https://api.themoviedb.org/3/genre/tv/list?language=en`,
     {
@@ -89,6 +167,105 @@ export async function fetchTmdbSeasonDetailViaApi(
   );
   const data = await resp.json();
   return data;
+}
+
+export async function upsertNewMedia(fetchOutput: any[]) {
+  // 2. Prepare db input from api fetch ouput (removes duplicates)
+  const mediaInput = Array.from(
+    new Map(
+      fetchOutput
+        .filter(
+          (item: any) => item.media_type === 'movie' || item.media_type === 'tv'
+        )
+        .map((item: any) => [
+          item.id,
+          {
+            tmdbId: item.id,
+            type: item.media_type,
+            title: item.name || item.title,
+            description: item.overview,
+            imageUrl: item.poster_path ? item.poster_path : null,
+            backdropUrl: item.backdrop_path ? item.backdrop_path : null,
+            releaseDate: item.release_date
+              ? new Date(item.release_date)
+              : item.first_air_date
+              ? new Date(item.first_air_date)
+              : null,
+            genreIds: item.genre_ids || [],
+            originIds: item.origin_country || [],
+          },
+        ])
+    ).values()
+  );
+
+  // 3. Insert or update media table
+  const mediaOutput = await db
+    .insert(tmdbMedia)
+    // MODIFIED: Exclude both genreIds and originIds from this insert
+    .values(mediaInput.map(({ genreIds, originIds, ...rest }) => rest))
+    .onConflictDoUpdate({
+      target: tmdbMedia.tmdbId,
+      set: {
+        type: sql`excluded.type`,
+        title: sql`excluded.title`,
+        description: sql`excluded.description`,
+        imageUrl: sql`excluded.image_url`,
+        backdropUrl: sql`excluded.backdrop_url`,
+        releaseDate: sql`excluded.release_date`,
+      },
+    })
+    .returning({
+      mediaId: tmdbMedia.id,
+      tmdbId: tmdbMedia.tmdbId,
+    })
+    .execute();
+
+  // 4. Create a lookup map for easy access: { tmdbId => mediaId }
+  const tmdbIdToMediaIdMap = new Map(
+    mediaOutput.map((item) => [item.tmdbId, item.mediaId])
+  );
+
+  // 5. Prepare the data for the mediaToGenres join table
+  const genreInput = mediaInput.flatMap((media) => {
+    const mediaId = tmdbIdToMediaIdMap.get(media.tmdbId);
+    if (!mediaId || !media.genreIds || media.genreIds.length === 0) {
+      return [];
+    }
+    return media.genreIds.map((genreId: number) => ({
+      mediaId: mediaId,
+      genreId: genreId,
+    }));
+  });
+
+  // 6. Insert all genre relationships in a single batch
+  if (genreInput.length > 0) {
+    await db
+      .insert(tmdbMediaToTmdbGenre)
+      .values(genreInput)
+      .onConflictDoNothing();
+  }
+
+  // 7. Prepare the data for the mediaToOrigins join table
+  const originInput = mediaInput.flatMap((media) => {
+    const mediaId = tmdbIdToMediaIdMap.get(media.tmdbId);
+    if (!mediaId || !media.originIds || media.originIds.length === 0) {
+      return []; // Skip if media wasn't inserted or has no origins
+    }
+    return media.originIds.map((originId: string) => ({
+      mediaId: mediaId,
+      originId: originId, // The country code, e.g., "US"
+    }));
+  });
+
+  // 8. Insert all origin relationships in a single batch
+  if (originInput.length > 0) {
+    await db
+      .insert(tmdbMediaToTmdbOrigin)
+      .values(originInput)
+      .onConflictDoNothing();
+  }
+
+  return mediaOutput;
 }
 
 // Helper function to process arrays in batches

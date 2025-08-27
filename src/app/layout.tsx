@@ -28,12 +28,19 @@ export default function RootLayout({
   );
 }
 
-// add region field for media and use as tag in media popup
-// add popular and top-rated media list
-// add recommendations (how to implement?)
+// for overview, add "show/hide backdrop" arrow.
+// allow 3 modes for season/episode selector: horizontal scrolling, grid, detailed vertical scrolling (show poster, title, description)
+
+// add top-rated media list
+// add recommendations (just implement your own, tmdb recommendations are too random)
+// if a movie belongs to a collection, fetch all others in the collection
 // add search function
+// add filter function
 // add login: add admin, add favorite button, add watch later button
 // add comment function
+// add voting function: vip can name show/mv, then users can vote. top 10 will be added.
+// allow commenting on the votes
+// add rating for each mv/tv (make it influence the top rated lists)
 
 // player page: add report function (if theres no src) so that i can manually get m3u8 and insert to db
 // fix the player to the top while i scroll down

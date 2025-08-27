@@ -80,7 +80,7 @@ export default function TrendingList() {
             <button
               key={media.mediaId}
               onClick={() => setSelectedMedia(media)}
-              className="overflow-hidden flex flex-col group items-center transition gap-3"
+              className="text-sm overflow-hidden flex flex-col group items-center transition gap-2"
             >
               <div className="relative">
                 <img
@@ -93,9 +93,9 @@ export default function TrendingList() {
                 />
               </div>
               <div className="flex flex-col items-center gap-1">
-                <h3 className="text-base font-semibold group-hover:text-blue-400 transition-colors">
+                <span className="font-semibold group-hover:text-blue-400 transition-colors">
                   {media.title}
-                </h3>
+                </span>
                 {!isReleased ? (
                   <MediaBadge className="bg-yellow-900 text-yellow-300">
                     Not Released

@@ -99,9 +99,9 @@ export function MediaPopup({
               }`}
               className={`${
                 !isReleased || media.availabilityCount <= 0
-                  ? `cursor-not-allowed pointer-events-none bg-gray-700`
+                  ? `bg-gray-700 hover:bg-gray-600`
                   : `bg-blue-600 hover:bg-blue-500 text-gray-100`
-              } inline-block w-full text-center px-6 py-3 font-semibold rounded-lg  transition-colors`}
+              } inline-block w-full text-center px-6 py-3 font-semibold rounded-lg`}
             >
               {!isReleased
                 ? `Not Released`

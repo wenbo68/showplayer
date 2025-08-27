@@ -6,6 +6,7 @@ import {
   pgEnum,
   pgTable,
   primaryKey,
+  real,
   text,
   timestamp,
   uniqueIndex,
@@ -23,6 +24,43 @@ import { type AdapterAccount } from 'next-auth/adapters';
 
 export const tmdbTypeEnum = pgEnum('tmdb_type', ['movie', 'tv']);
 export const m3u8TypeEnum = pgEnum('m3u8_type', ['master', 'media']);
+
+export const tmdbOrigin = pgTable('tmdb_origin', {
+  id: varchar('id', { length: 2 }).primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+});
+
+export const tmdbOriginRelations = relations(tmdbOrigin, ({ many }) => ({
+  mediaToOrigins: many(tmdbMediaToTmdbOrigin),
+}));
+
+export const tmdbMediaToTmdbOrigin = pgTable(
+  'tmdb_media_to_tmdb_origin',
+  {
+    mediaId: varchar('media_id', { length: 255 })
+      .notNull()
+      .references(() => tmdbMedia.id, { onDelete: 'cascade' }),
+    originId: varchar('origin_id', { length: 2 })
+      .notNull()
+      .references(() => tmdbOrigin.id, { onDelete: 'cascade' }),
+  },
+  (t) => [primaryKey({ columns: [t.mediaId, t.originId] })]
+);
+
+// Define how the join table connects back to the other two tables
+export const tmdbMediaToTmdbOriginRelations = relations(
+  tmdbMediaToTmdbOrigin,
+  ({ one }) => ({
+    media: one(tmdbMedia, {
+      fields: [tmdbMediaToTmdbOrigin.mediaId],
+      references: [tmdbMedia.id],
+    }),
+    origin: one(tmdbOrigin, {
+      fields: [tmdbMediaToTmdbOrigin.originId],
+      references: [tmdbOrigin.id],
+    }),
+  })
+);
 
 export const tmdbGenre = pgTable('tmdb_genre', {
   id: integer('id').primaryKey(),
@@ -60,6 +98,47 @@ export const mediaToGenresRelations = relations(
   })
 );
 
+export const tmdbRecommendation = pgTable(
+  'tmdb_recommendation',
+  {
+    // The ID of the media item the user is currently viewing
+    sourceMediaId: varchar('source_media_id', { length: 255 })
+      .notNull()
+      .references(() => tmdbMedia.id, { onDelete: 'cascade' }),
+
+    // The ID of a media item that is recommended for the source
+    recommendedMediaId: varchar('recommended_media_id', { length: 255 })
+      .notNull()
+      .references(() => tmdbMedia.id, { onDelete: 'cascade' }),
+
+    // The crucial new column for caching!
+    createdAt: timestamp('created_at', {
+      mode: 'date',
+      withTimezone: true,
+    }).default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [primaryKey({ columns: [t.sourceMediaId, t.recommendedMediaId] })]
+);
+
+export const tmdbRecommendationRelations = relations(
+  tmdbRecommendation,
+  ({ one }) => ({
+    // This relation links `sourceMediaId` to the original media item.
+    sourceMedia: one(tmdbMedia, {
+      fields: [tmdbRecommendation.sourceMediaId],
+      references: [tmdbMedia.id],
+      relationName: 'recommendations', // Unique name for this link
+    }),
+
+    // This relation links `recommendedMediaId` to the recommended media item.
+    recommendedMedia: one(tmdbMedia, {
+      fields: [tmdbRecommendation.recommendedMediaId],
+      references: [tmdbMedia.id],
+      relationName: 'recommended', // Unique name for this link
+    }),
+  })
+);
+
 // trending api doesn't return seasons, so we dont store them in media
 export const tmdbMedia = pgTable('tmdb_media', {
   id: varchar({ length: 255 })
@@ -71,6 +150,7 @@ export const tmdbMedia = pgTable('tmdb_media', {
   title: text('title').notNull(),
   description: text('description'),
   imageUrl: text('image_url'),
+  backdropUrl: text('backdrop_url'),
   releaseDate: timestamp('release_date', {
     mode: 'date',
     withTimezone: true,
@@ -92,9 +172,20 @@ export const tmdbMediaRelations = relations(tmdbMedia, ({ one, many }) => ({
     fields: [tmdbMedia.id],
     references: [tmdbTrending.mediaId],
   }),
+  topRated: one(tmdbTopRated, {
+    fields: [tmdbMedia.id],
+    references: [tmdbTopRated.mediaId],
+  }),
   sources: many(tmdbSource),
   seasons: many(tmdbSeason),
   genres: many(tmdbMediaToTmdbGenre),
+  origins: many(tmdbMediaToTmdbOrigin),
+  recommendations: many(tmdbRecommendation, {
+    relationName: 'recommendations',
+  }),
+  recommended: many(tmdbRecommendation, {
+    relationName: 'recommended',
+  }),
 }));
 
 export const tmdbTrending = pgTable('tmdb_trending', {
@@ -112,6 +203,29 @@ export const tmdbTrending = pgTable('tmdb_trending', {
 export const tmdbTrendingRelations = relations(tmdbTrending, ({ one }) => ({
   media: one(tmdbMedia, {
     fields: [tmdbTrending.mediaId],
+    references: [tmdbMedia.id],
+  }),
+}));
+
+// NEW: Add this table for the top-rated list
+export const tmdbTopRated = pgTable('tmdb_top_rated', {
+  id: varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  mediaId: varchar({ length: 255 })
+    .notNull()
+    .references(() => tmdbMedia.id, { onDelete: 'cascade' })
+    .unique(),
+  rank: integer('rank').notNull(),
+  voteAverage: real('vote_average').notNull(),
+  voteCount: integer('vote_count').notNull(),
+});
+
+export const tmdbTopRatedRelations = relations(tmdbTopRated, ({ one }) => ({
+  // Creates a link to get the full media details
+  media: one(tmdbMedia, {
+    fields: [tmdbTopRated.mediaId],
     references: [tmdbMedia.id],
   }),
 }));

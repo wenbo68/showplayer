@@ -1,0 +1,1 @@
+ALTER TABLE "tmdb_origin" DROP CONSTRAINT "tmdb_origin_name_unique";

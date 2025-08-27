@@ -442,10 +442,14 @@ async function upsertSrcAndSubtitle(
   }
 }
 
-export async function fetchAndUpsertMvSrc(fast: boolean, tmdbId: number) {
-  const results = fast
-    ? await fetchSrcFromProvidersFast('mv', `${tmdbId}`)
-    : await fetchSrcFromProvidersSlow('mv', `${tmdbId}`);
+export async function fetchAndUpsertMvSrc(
+  spd: 'fast' | 'slow',
+  tmdbId: number
+) {
+  const results =
+    spd === 'fast'
+      ? await fetchSrcFromProvidersFast('mv', `${tmdbId}`)
+      : await fetchSrcFromProvidersSlow('mv', `${tmdbId}`);
   console.log(
     `[fetchAndUpsertMvSrc] Fetched ${results.length} sources: ${results.map(
       (result) => result.provider
@@ -472,15 +476,16 @@ export async function fetchAndUpsertMvSrc(fast: boolean, tmdbId: number) {
 }
 
 export async function fetchAndUpsertTvSrc(
-  fast: boolean,
+  spd: 'fast' | 'slow',
   tmdbId: number,
   season: number,
   episode: number,
   episodeIndex: number
 ) {
-  let results = fast
-    ? await fetchSrcFromProvidersFast('tv', `${tmdbId}/${season}/${episode}`)
-    : await fetchSrcFromProvidersSlow('tv', `${tmdbId}/${season}/${episode}`);
+  let results =
+    spd === 'fast'
+      ? await fetchSrcFromProvidersFast('tv', `${tmdbId}/${season}/${episode}`)
+      : await fetchSrcFromProvidersSlow('tv', `${tmdbId}/${season}/${episode}`);
   console.log(
     `[fetchAndUpsertTvSrc] Fetched ${results.length} sources: ${results.map(
       (result) => result.provider
@@ -491,7 +496,7 @@ export async function fetchAndUpsertTvSrc(
     console.log(
       `[fetchAndUpsertMvSrc] Trying episode index: ${tmdbId}/${season}/${episodeIndex}`
     );
-    results = fast
+    results = spd
       ? await fetchSrcFromProvidersFast('tv', `${tmdbId}/${season}/${episode}`)
       : await fetchSrcFromProvidersSlow('tv', `${tmdbId}/${season}/${episode}`);
     if (results.length === 0) return;

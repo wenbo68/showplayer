@@ -37,6 +37,7 @@ import {
   upsertNewMedia,
   upsertSeasonsAndEpisodes,
 } from '~/server/utils';
+import type { ListMedia } from '~/type';
 
 export const mediaRouter = createTRPCRouter({
   //fetch from tmdbMedia by uuid
@@ -56,18 +57,17 @@ export const mediaRouter = createTRPCRouter({
       return media[0];
     }),
 
-  tmdbTrendingWithDetails: publicProcedure.query(async ({ ctx }) => {
-    const trending = await ctx.db
+  tmdbTrending: publicProcedure.query(async ({ ctx }) => {
+    const trending: ListMedia[] = await ctx.db
       .select({
         rank: tmdbTrending.rank,
-        mediaId: tmdbTrending.mediaId,
-        tmdbId: tmdbMedia.tmdbId,
-        type: tmdbMedia.type,
-        title: tmdbMedia.title,
-        description: tmdbMedia.description,
-        imageUrl: tmdbMedia.imageUrl,
-        releaseDate: tmdbMedia.releaseDate,
-        // Add this field to aggregate genre names
+        media: tmdbMedia,
+        origins: sql<string[]>`(
+          SELECT array_agg(${tmdbOrigin.name})
+          FROM ${tmdbMediaToTmdbOrigin}
+          INNER JOIN ${tmdbOrigin} ON ${tmdbMediaToTmdbOrigin.originId} = ${tmdbOrigin.id}
+          WHERE ${tmdbMediaToTmdbOrigin.mediaId} = ${tmdbMedia.id}
+        )`,
         genres: sql<string[]>`(
           SELECT array_agg(${tmdbGenre.name})
           FROM ${tmdbMediaToTmdbGenre}
@@ -93,6 +93,19 @@ export const mediaRouter = createTRPCRouter({
             ELSE 0
           END
         `.mapWith(Number),
+        totalEpisodeCount: sql<number>`
+          CASE
+            WHEN ${tmdbMedia.type} = 'tv'
+            THEN (
+              SELECT COUNT(*)
+              FROM ${tmdbEpisode}
+              INNER JOIN ${tmdbSeason} ON ${tmdbEpisode.seasonId} = ${tmdbSeason.id}
+              WHERE ${tmdbSeason.mediaId} = ${tmdbMedia.id}
+                AND ${tmdbEpisode.airDate} <= (CURRENT_DATE - INTERVAL '1 day')
+            )
+            ELSE 0
+          END
+        `.mapWith(Number),
       })
       .from(tmdbTrending)
       .innerJoin(tmdbMedia, eq(tmdbTrending.mediaId, tmdbMedia.id))
@@ -100,6 +113,114 @@ export const mediaRouter = createTRPCRouter({
       .execute();
 
     return trending;
+  }),
+
+  tmdbTopRatedMv: publicProcedure.query(async ({ ctx }) => {
+    const topRatedMovies: ListMedia[] = await ctx.db
+      .select({
+        rank: tmdbTopRated.rank,
+        avergeRating: tmdbTopRated.voteAverage,
+        voteCount: tmdbTopRated.voteCount,
+        media: tmdbMedia,
+        genres: sql<string[]>`(
+          SELECT array_agg(${tmdbGenre.name})
+          FROM ${tmdbMediaToTmdbGenre}
+          INNER JOIN ${tmdbGenre} ON ${tmdbMediaToTmdbGenre.genreId} = ${tmdbGenre.id}
+          WHERE ${tmdbMediaToTmdbGenre.mediaId} = ${tmdbMedia.id}
+        )`,
+        origins: sql<string[]>`(
+          SELECT array_agg(${tmdbOrigin.name})
+          FROM ${tmdbMediaToTmdbOrigin}
+          INNER JOIN ${tmdbOrigin} ON ${tmdbMediaToTmdbOrigin.originId} = ${tmdbOrigin.id}
+          WHERE ${tmdbMediaToTmdbOrigin.mediaId} = ${tmdbMedia.id}
+        )`,
+        availabilityCount: sql<number>`
+          CASE
+            WHEN ${tmdbMedia.type} = 'movie'
+            THEN (
+              SELECT COUNT(*)
+              FROM ${tmdbSource}
+              WHERE ${tmdbSource.mediaId} = ${tmdbMedia.id}
+            )
+            ELSE 0
+          END
+        `.mapWith(Number),
+        totalEpisodeCount: sql<number>`
+          CASE
+            WHEN ${tmdbMedia.type} = 'tv'
+            THEN (
+              SELECT COUNT(*)
+              FROM ${tmdbEpisode}
+              INNER JOIN ${tmdbSeason} ON ${tmdbEpisode.seasonId} = ${tmdbSeason.id}
+              WHERE ${tmdbSeason.mediaId} = ${tmdbMedia.id}
+                AND ${tmdbEpisode.airDate} <= (CURRENT_DATE - INTERVAL '1 day')
+            )
+            ELSE 0
+          END
+        `.mapWith(Number),
+      })
+      .from(tmdbTopRated) // 👈 Start from the top-rated table
+      .innerJoin(tmdbMedia, eq(tmdbTopRated.mediaId, tmdbMedia.id))
+      .where(eq(tmdbMedia.type, 'movie')) // 👈 Filter for movies
+      .orderBy(tmdbTopRated.rank) // 👈 Order by top-rated rank
+      .execute();
+
+    return topRatedMovies;
+  }),
+
+  tmdbTopRatedTv: publicProcedure.query(async ({ ctx }) => {
+    const topRatedTv: ListMedia[] = await ctx.db
+      .select({
+        rank: tmdbTopRated.rank,
+        avergeRating: tmdbTopRated.voteAverage,
+        voteCount: tmdbTopRated.voteCount,
+        media: tmdbMedia,
+        genres: sql<string[]>`(
+          SELECT array_agg(${tmdbGenre.name})
+          FROM ${tmdbMediaToTmdbGenre}
+          INNER JOIN ${tmdbGenre} ON ${tmdbMediaToTmdbGenre.genreId} = ${tmdbGenre.id}
+          WHERE ${tmdbMediaToTmdbGenre.mediaId} = ${tmdbMedia.id}
+        )`,
+        origins: sql<string[]>`(
+          SELECT array_agg(${tmdbOrigin.name})
+          FROM ${tmdbMediaToTmdbOrigin}
+          INNER JOIN ${tmdbOrigin} ON ${tmdbMediaToTmdbOrigin.originId} = ${tmdbOrigin.id}
+          WHERE ${tmdbMediaToTmdbOrigin.mediaId} = ${tmdbMedia.id}
+        )`,
+        availabilityCount: sql<number>`
+          CASE
+            WHEN ${tmdbMedia.type} = 'tv'
+            THEN (
+              SELECT COUNT(DISTINCT ${tmdbEpisode}.id)
+              FROM ${tmdbSource}
+              JOIN ${tmdbEpisode} ON ${tmdbSource.episodeId} = ${tmdbEpisode.id}
+              JOIN ${tmdbSeason} ON ${tmdbEpisode.seasonId} = ${tmdbSeason.id}
+              WHERE ${tmdbSeason.mediaId} = ${tmdbMedia.id}
+            )
+            ELSE 0
+          END
+        `.mapWith(Number),
+        totalEpisodeCount: sql<number>`
+          CASE
+            WHEN ${tmdbMedia.type} = 'tv'
+            THEN (
+              SELECT COUNT(*)
+              FROM ${tmdbEpisode}
+              INNER JOIN ${tmdbSeason} ON ${tmdbEpisode.seasonId} = ${tmdbSeason.id}
+              WHERE ${tmdbSeason.mediaId} = ${tmdbMedia.id}
+                AND ${tmdbEpisode.airDate} <= (CURRENT_DATE - INTERVAL '1 day')
+            )
+            ELSE 0
+          END
+        `.mapWith(Number),
+      })
+      .from(tmdbTopRated) // 👈 Start from the top-rated table
+      .innerJoin(tmdbMedia, eq(tmdbTopRated.mediaId, tmdbMedia.id))
+      .where(eq(tmdbMedia.type, 'tv')) // 👈 Filter for TV shows
+      .orderBy(tmdbTopRated.rank) // 👈 Order by top-rated rank
+      .execute();
+
+    return topRatedTv;
   }),
 
   fetchOrigins: publicProcedure.mutation(async ({ ctx }) => {

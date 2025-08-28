@@ -1,15 +1,16 @@
 // components/MediaModal.tsx
 import Link from 'next/link';
-import type { TrendingMedia } from '~/type';
+import type { ListMedia } from '~/type';
 import { MediaBadge } from './MediaBadge';
 
 export function MediaPopup({
-  media,
+  mediaParam,
   onClose,
 }: {
-  media: TrendingMedia;
+  mediaParam: ListMedia;
   onClose: () => void;
 }) {
+  const media = mediaParam.media;
   const isReleased = media.releaseDate
     ? new Date(media.releaseDate) <= new Date()
     : false;
@@ -76,7 +77,14 @@ export function MediaPopup({
               <MediaBadge className="bg-gray-700">
                 {media.type === 'movie' ? `Movie` : `TV`}
               </MediaBadge>
-              {media.genres.map((genre) => (
+              {/* Origins */}
+              {mediaParam.origins.map((origins) => (
+                <MediaBadge key={origins} className="bg-gray-700">
+                  {origins}
+                </MediaBadge>
+              ))}
+              {/* Genres */}
+              {mediaParam.genres.map((genre) => (
                 <MediaBadge key={genre} className="bg-gray-700">
                   {genre}
                 </MediaBadge>
@@ -98,18 +106,18 @@ export function MediaPopup({
                 media.type === 'movie' ? '' : '/1/1'
               }`}
               className={`${
-                !isReleased || media.availabilityCount <= 0
+                !isReleased || mediaParam.availabilityCount <= 0
                   ? `bg-gray-700 hover:bg-gray-600`
                   : `bg-blue-600 hover:bg-blue-500 text-gray-100`
               } inline-block w-full text-center px-6 py-3 font-semibold rounded-lg`}
             >
               {!isReleased
                 ? `Not Released`
-                : media.availabilityCount <= 0
+                : mediaParam.availabilityCount <= 0
                 ? `Not Available`
                 : media.type === 'movie'
                 ? `Watch Now`
-                : `${media.availabilityCount} Episodes`}
+                : `${mediaParam.availabilityCount}/${mediaParam.totalEpisodeCount} Episodes`}
             </Link>
           </div>
         </div>

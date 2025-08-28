@@ -31,9 +31,9 @@ export default function RootLayout({
 // for overview, add "show/hide backdrop" arrow.
 // allow 3 modes for season/episode selector: horizontal scrolling, grid, detailed vertical scrolling (show poster, title, description)
 
-// make the trending/top list into a horizontally scrollable single row. then add filter button that leads to a designated page.
+// search and filters should be together and present in all pages
 
-// add top-rated media list
+// add filters to full list pages (and also home page)
 // add recommendations (just implement your own, tmdb recommendations are too random)
 // if a movie belongs to a collection, fetch all others in the collection
 // add search function

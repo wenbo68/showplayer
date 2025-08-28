@@ -24,15 +24,13 @@ export type PuppeteerResult = {
   subtitle?: string;
 };
 
-export type TrendingMedia = {
-  rank: number;
-  mediaId: string;
-  tmdbId: number;
-  type: 'movie' | 'tv';
-  title: string;
-  description: string | null;
-  imageUrl: string | null;
-  releaseDate: Date | null;
+export type ListMedia = {
+  media: Media;
+  origins: string[];
   genres: string[];
   availabilityCount: number;
+  totalEpisodeCount: number;
+  rank: number;
+  averageRating?: number;
+  voteCount?: number;
 };

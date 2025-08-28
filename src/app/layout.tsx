@@ -33,16 +33,14 @@ export default function RootLayout({
 
 // search and filters should be together and present in all pages
 
-// add filters to full list pages (and also home page)
+// if a movie belongs to a collection, fetch all others in the collection (and display them as related?)
 // add recommendations (just implement your own, tmdb recommendations are too random)
-// if a movie belongs to a collection, fetch all others in the collection
-// add search function
-// add filter function
 // add login: add admin, add favorite button, add watch later button
 // add comment function
+// add rating for each mv/tv (make it influence the top rated lists)
+
 // add voting function: vip can name show/mv, then users can vote. top 10 will be added.
 // allow commenting on the votes
-// add rating for each mv/tv (make it influence the top rated lists)
 
 // player page: add report function (if theres no src) so that i can manually get m3u8 and insert to db
 // fix the player to the top while i scroll down

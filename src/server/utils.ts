@@ -284,13 +284,13 @@ async function fetchSrcFromProvidersFast(
   type: 'mv' | 'tv',
   path: string
 ): Promise<PuppeteerResult[]> {
-  const providers = ['joy', 'easy', 'fast', 'link'];
+  const providers = ['joy', 'easy', 'link'];
   // Create a promise for each provider's fetch request.
-  const resultPromises = providers.map((provider) =>
+  const resultPromises = providers.map((provider, index) =>
     fetch(`${process.env.VPS_URL}/api/puppeteer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type, path, provider }),
+      body: JSON.stringify({ type, path, index }),
     }).then((res) => {
       // This will cause the promise to reject, which is what we want.
       if (!res.ok) {
@@ -328,20 +328,28 @@ async function fetchSrcFromProvidersFast(
   return successfulResults;
 }
 
+const providerIndexMap: Record<string, string> = {
+  easy: '1',
+  joy: '2',
+  link: '3',
+  fast: '4',
+};
+
 //works better than fast
 async function fetchSrcFromProvidersSlow(
   type: 'mv' | 'tv',
   path: string
 ): Promise<PuppeteerResult[]> {
-  const providers = ['joy', 'easy', 'fast', 'link'];
+  const providers = ['joy', 'easy', 'link'];
   const results: PuppeteerResult[] = [];
 
   for (const provider of providers) {
+    console.log('=======');
     try {
       const res = await fetch(`${process.env.VPS_URL}/api/puppeteer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, path, provider }),
+        body: JSON.stringify({ type, path, index: providerIndexMap[provider] }),
       });
       if (!res.ok) {
         console.error(`[${provider}] failed with status ${res.status}`);
@@ -450,6 +458,7 @@ export async function fetchAndUpsertMvSrc(
     spd === 'fast'
       ? await fetchSrcFromProvidersFast('mv', `${tmdbId}`)
       : await fetchSrcFromProvidersSlow('mv', `${tmdbId}`);
+  console.log('=======');
   console.log(
     `[fetchAndUpsertMvSrc] Fetched ${results.length} sources: ${results.map(
       (result) => result.provider
@@ -486,6 +495,7 @@ export async function fetchAndUpsertTvSrc(
     spd === 'fast'
       ? await fetchSrcFromProvidersFast('tv', `${tmdbId}/${season}/${episode}`)
       : await fetchSrcFromProvidersSlow('tv', `${tmdbId}/${season}/${episode}`);
+  console.log('=======');
   console.log(
     `[fetchAndUpsertTvSrc] Fetched ${results.length} sources: ${results.map(
       (result) => result.provider

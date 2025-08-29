@@ -1,7 +1,7 @@
 services:
   #container name
   app:
-    image: showplayer:2.2
+    image: showplayer:2.4
     build:
       context: .
       # only needed if you have env vars that are needed at build time
@@ -16,8 +16,10 @@ services:
         - LONG_CLICK=${LONG_CLICK}
         - MID_CLICK=${MID_CLICK}
         - SHORT_CLICK=${SHORT_CLICK}
-        - M3U8_WAIT=${M3U8_WAIT}
+        - M3U8_WAIT_JOY=${M3U8_WAIT_JOY}
         - M3U8_WAIT_EASY=${M3U8_WAIT_EASY}
+        - M3U8_WAIT_LINK=${M3U8_WAIT_LINK}
+        - M3U8_WAIT_FAST=${M3U8_WAIT_FAST}
     # maps the vps port 8080 to the container's port 3000
     ports:
       - '8080:3000'
@@ -34,6 +36,8 @@ services:
       - LONG_CLICK=${LONG_CLICK}
       - MID_CLICK=${MID_CLICK}
       - SHORT_CLICK=${SHORT_CLICK}
-      - M3U8_WAIT=${M3U8_WAIT}
+      - M3U8_WAIT_JOY=${M3U8_WAIT_JOY}
       - M3U8_WAIT_EASY=${M3U8_WAIT_EASY}
+      - M3U8_WAIT_LINK=${M3U8_WAIT_LINK}
+      - M3U8_WAIT_FAST=${M3U8_WAIT_FAST}
     restart: unless-stopped

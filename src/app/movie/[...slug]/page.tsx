@@ -21,6 +21,7 @@ export default async function Page({ params }: PageProps) {
 
   // Parse params from the URL
   const tmdbId = parseInt(tmdbIdParam, 10);
+  const provider = providerParam ? parseInt(providerParam, 10) : undefined;
 
   // Step 1. Fetch the movie data, including all its sources and their subtitles in one query
   const mediaData = await db.query.tmdbMedia.findFirst({
@@ -48,14 +49,12 @@ export default async function Page({ params }: PageProps) {
   // }
 
   // Step 2. If no provider is in the URL, redirect to the 1st available one (if there is a provider)
-  if (!providerParam && sourcesWithSubtitles[0]) {
+  if (!provider && sourcesWithSubtitles[0]) {
     return redirect(`/movie/${tmdbId}/${sourcesWithSubtitles[0].provider}`);
   }
 
   // Step 3. Find the selected source based on the provider in the URL
-  const selectedSrc = sourcesWithSubtitles.find(
-    (s) => s.provider === providerParam
-  );
+  const selectedSrc = sourcesWithSubtitles.find((s) => s.provider === provider);
 
   // If a provider is in the URL (but doesn't exist for this media) then redirect to 1st available one (if there is a provider)
   if (!selectedSrc && sourcesWithSubtitles[0]) {
@@ -90,7 +89,7 @@ export default async function Page({ params }: PageProps) {
       {/* Source Selector Component */}
       <SourceSelector
         sources={sourcesWithSubtitles}
-        selectedProvider={providerParam ?? sourcesWithSubtitles[0]?.provider}
+        selectedProvider={provider ?? sourcesWithSubtitles[0]?.provider}
       />
     </div>
   );

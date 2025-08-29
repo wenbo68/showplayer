@@ -20,7 +20,7 @@ interface TvSelector {
     })[];
   };
   episodeSources: Source[];
-  selectedProvider?: string;
+  selectedProvider?: number;
   selectedSeasonId: string;
   selectedEpisodeId: string;
 }

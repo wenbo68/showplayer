@@ -300,14 +300,20 @@ export const tmdbSource = pgTable(
     episodeId: varchar({ length: 255 }).references(() => tmdbEpisode.id, {
       onDelete: 'cascade',
     }),
-    provider: varchar({ length: 255 }).notNull(),
+
+    // --- THIS IS THE CHANGE ---
+    // Change the column type from varchar to integer.
+    provider: integer('provider').notNull(),
+
     type: m3u8TypeEnum('type').notNull(),
     url: text().notNull(),
     headers: jsonb('headers'),
   },
-  (table) => [
-    uniqueIndex('unq_episode_provider').on(table.episodeId, table.provider),
-    uniqueIndex('unq_movie_provider').on(table.mediaId, table.provider),
+  (t) => [
+    // These definitions do not need to change. Drizzle will understand
+    // they now apply to the new integer 'provider' column.
+    uniqueIndex('unq_episode_provider').on(t.episodeId, t.provider),
+    uniqueIndex('unq_movie_provider').on(t.mediaId, t.provider),
   ]
 );
 

@@ -18,7 +18,7 @@ export function getProxiedSrcUrl(selectedSrc?: {
   type: 'master' | 'media';
   mediaId: string | null;
   episodeId: string | null;
-  provider: string;
+  provider: number;
   subtitles: {
     id: string;
     sourceId: string;

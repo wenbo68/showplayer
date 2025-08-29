@@ -19,7 +19,7 @@ export type M3U8Result = {
   headers: Record<string, string>;
 };
 export type PuppeteerResult = {
-  provider: string;
+  provider: number;
   m3u8: M3U8Result;
   subtitle?: string;
 };

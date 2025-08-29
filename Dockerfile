@@ -13,8 +13,10 @@ ARG FIRST_CLICK
 ARG LONG_CLICK
 ARG MID_CLICK
 ARG SHORT_CLICK
-ARG M3U8_WAIT
+ARG M3U8_WAIT_JOY
 ARG M3U8_WAIT_EASY
+ARG M3U8_WAIT_LINK
+ARG M3U8_WAIT_FAST
 
 # Install Chromium dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \

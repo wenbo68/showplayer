@@ -29,6 +29,7 @@ export default async function Page({ params }: PageProps) {
   const tmdbId = parseInt(tmdbIdParam, 10);
   const seasonNumber = parseInt(seasonNumberParam, 10);
   const episodeNumber = parseInt(episodeNumberParam, 10);
+  const provider = providerParam ? parseInt(providerParam, 10) : undefined;
 
   // Step 1. Fetch the main media data, including all seasons and episodes for the sidebar
   const mediaData = await db.query.tmdbMedia.findFirst({
@@ -76,16 +77,14 @@ export default async function Page({ params }: PageProps) {
   // if (!sources[0]) notFound();
 
   // If no provider is in the URL (and if there are providers), redirect to 1st provider
-  if (!providerParam && sourcesWithSubtitles[0]) {
+  if (!provider && sourcesWithSubtitles[0]) {
     return redirect(
       `/tv/${tmdbId}/${seasonNumber}/${episodeNumber}/${sourcesWithSubtitles[0].provider}`
     );
   }
 
   // Step 4. Find the selected source URL for the video player
-  const selectedSrc = sourcesWithSubtitles.find(
-    (s) => s.provider === providerParam
-  );
+  const selectedSrc = sourcesWithSubtitles.find((s) => s.provider === provider);
   // If a provider is in the URL (but doesn't exist for this media) then redirect to 1st provider (if providers exists)
   if (!selectedSrc && sourcesWithSubtitles[0]) {
     return redirect(
@@ -127,7 +126,7 @@ export default async function Page({ params }: PageProps) {
         tmdbId={tmdbId}
         mediaData={mediaData}
         episodeSources={sourcesWithSubtitles}
-        selectedProvider={providerParam ?? sourcesWithSubtitles[0]?.provider}
+        selectedProvider={provider ?? sourcesWithSubtitles[0]?.provider}
         selectedSeasonId={selectedSeason.id}
         selectedEpisodeId={selectedEpisode.id}
       />

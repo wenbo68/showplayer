@@ -9,11 +9,18 @@ import { withCors } from '~/utils/api';
 // vidlink: auto plays
 // vidsrc: have to click play (if another play button shows up, just fail it)
 
-const firstClickMap: Record<string, string> = {
-  vidjoy: 'settings',
-  videasy: 'play button',
-  vidfast: 'subtitle button',
-  vidlink: 'subtitle button',
+const indexProviderMap: Record<string, string> = {
+  1: 'videasy',
+  2: 'vidjoy',
+  3: 'vidlink',
+  4: 'vidfast',
+};
+
+const providerIndexMap: Record<string, number> = {
+  videasy: 1,
+  vidjoy: 2,
+  vidlink: 3,
+  vidfast: 4,
 };
 
 const mvProvidersMap: Record<string, string> = {
@@ -32,6 +39,12 @@ const tvProvidersMap: Record<string, string> = {
   vidsrc: 'https://vidsrc.net/embed/tv',
 };
 
+const firstClickMap: Record<string, string> = {
+  vidjoy: 'settings',
+  videasy: 'play button',
+  vidfast: 'subtitle button',
+  vidlink: 'subtitle button',
+};
 // ====== selectors
 
 const videoSelectorsMap: Record<string, string> = {
@@ -182,7 +195,7 @@ async function findAndClick(
 let browser: Browser | null = null;
 let isLaunching = false; // Our "lock" to prevent race conditions
 let requestCount = 0;
-const MAX_REQUESTS_PER_BROWSER = 20; // Increased limit
+const MAX_REQUESTS_PER_BROWSER = 4;
 
 async function getBrowser(): Promise<Browser> {
   // If the browser is launching, wait for it to be ready
@@ -210,9 +223,6 @@ async function getBrowser(): Promise<Browser> {
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--no-zygote',
-          '--single-process',
         ],
       });
       console.log('New browser instance launched.');
@@ -339,13 +349,19 @@ async function fetchSrcFromUrl(
 
     // 3. use the flags and arrays to compose the return value
     await timeoutPromise(
-      provider === 'videasy'
+      provider === 'vidjoy'
+        ? Number(process.env.M3U8_WAIT_JOY)
+        : provider === 'videasy'
         ? Number(process.env.M3U8_WAIT_EASY)
-        : Number(process.env.M3U8_WAIT)
+        : provider === 'vidlink'
+        ? Number(process.env.M3U8_WAIT_LINK)
+        : provider === 'vidfast'
+        ? Number(process.env.M3U8_WAIT_FAST)
+        : 1000
     );
     if (m3u8List.length === 0) throw new Error(`m3u8 timeout`);
     return {
-      provider: provider.substring(3),
+      provider: providerIndexMap[provider]!,
       m3u8: m3u8List.at(-1)!,
       subtitle: subtitleList.at(-1),
     };
@@ -363,9 +379,9 @@ async function fetchSrcFromUrl(
 async function fetchSrcFromProvider(
   type: 'mv' | 'tv',
   path: string,
-  provider: string
+  index: string
 ) {
-  const fullProvider = provider.startsWith('vid') ? provider : `vid${provider}`;
+  const fullProvider = indexProviderMap[index]!;
   const embedUrl = `${
     type === 'mv' ? mvProvidersMap[fullProvider] : tvProvidersMap[fullProvider]
   }/${path}`;
@@ -374,9 +390,9 @@ async function fetchSrcFromProvider(
 
 export async function POST(req: Request) {
   try {
-    const { type, path, provider } = await req.json();
+    const { type, path, index } = await req.json();
 
-    if (!type || !path || !provider) {
+    if (!type || !path || !index) {
       return new NextResponse(
         JSON.stringify({ error: 'Missing required parameters' }),
         {
@@ -385,9 +401,7 @@ export async function POST(req: Request) {
         }
       );
     }
-    console.log('=======');
-    const data = await fetchSrcFromProvider(type, path, provider);
-    console.log('=======');
+    const data = await fetchSrcFromProvider(type, path, index);
     return new NextResponse(JSON.stringify(data), {
       headers: withCors({ 'Content-Type': 'application/json' }),
     });

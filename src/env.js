@@ -22,8 +22,10 @@ export const env = createEnv({
     LONG_CLICK: z.string(),
     MID_CLICK: z.string(),
     SHORT_CLICK: z.string(),
-    M3U8_WAIT: z.string(),
+    M3U8_WAIT_JOY: z.string(),
     M3U8_WAIT_EASY: z.string(),
+    M3U8_WAIT_LINK: z.string(),
+    M3U8_WAIT_FAST: z.string(),
     NODE_ENV: z
       .enum(['development', 'test', 'production'])
       .default('development'),
@@ -56,8 +58,10 @@ export const env = createEnv({
     LONG_CLICK: process.env.LONG_CLICK,
     MID_CLICK: process.env.MID_CLICK,
     SHORT_CLICK: process.env.SHORT_CLICK,
-    M3U8_WAIT: process.env.M3U8_WAIT,
+    M3U8_WAIT_JOY: process.env.M3U8_WAIT_JOY,
     M3U8_WAIT_EASY: process.env.M3U8_WAIT_EASY,
+    M3U8_WAIT_LINK: process.env.M3U8_WAIT_LINK,
+    M3U8_WAIT_FAST: process.env.M3U8_WAIT_FAST,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

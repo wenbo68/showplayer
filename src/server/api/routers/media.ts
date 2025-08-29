@@ -477,17 +477,42 @@ export const mediaRouter = createTRPCRouter({
     });
 
     // 3. find episodes whose airDate is older than yesterday but have no src
+
+    // 1. Create a subquery to count aired episodes for each media.
+    // This subquery calculates the total number of episodes for each `mediaId`
+    // where the airDate is valid and in the past.
+    const episodeCounts = ctx.db
+      .select({
+        mediaId: tmdbSeason.mediaId,
+        // We use sql`count(...)` to perform the aggregation and cast it to a number.
+        // The .as('episode_count') is crucial for referencing this column later.
+        episodeCount: sql<number>`count(${tmdbEpisode.id})`.as('episode_count'),
+      })
+      .from(tmdbEpisode)
+      .innerJoin(tmdbSeason, eq(tmdbEpisode.seasonId, tmdbSeason.id))
+      .where(
+        and(isNotNull(tmdbEpisode.airDate), lte(tmdbEpisode.airDate, yesterday))
+      )
+      .groupBy(tmdbSeason.mediaId)
+      .as('episode_counts'); // We must alias the subquery to use it in a join.
+
+    // 2. Use the subquery in your main query to order the results.
     const srclessEpisodes = await ctx.db
       .select({
         episode: tmdbEpisode,
         season: tmdbSeason,
         media: tmdbMedia,
+        // You can optionally select the count to see it in the results
+        episodeCount: episodeCounts.episodeCount,
       })
       .from(tmdbEpisode)
       .innerJoin(tmdbSeason, eq(tmdbEpisode.seasonId, tmdbSeason.id))
       .innerJoin(tmdbMedia, eq(tmdbSeason.mediaId, tmdbMedia.id))
+      // Join our episode count subquery on the media ID.
+      .innerJoin(episodeCounts, eq(tmdbMedia.id, episodeCounts.mediaId))
       .where(
         and(
+          // The conditions from your original query remain the same.
           isNotNull(tmdbEpisode.airDate),
           lte(tmdbEpisode.airDate, yesterday),
           notExists(
@@ -498,7 +523,11 @@ export const mediaRouter = createTRPCRouter({
           )
         )
       )
+      // 3. Update the orderBy clause.
+      // We now order by our calculated episodeCount first (ascending).
+      // The original ordering is kept as a secondary sort criterion.
       .orderBy(
+        asc(episodeCounts.episodeCount),
         asc(tmdbMedia.tmdbId),
         asc(tmdbSeason.seasonNumber),
         asc(tmdbEpisode.episodeNumber)
@@ -510,7 +539,7 @@ export const mediaRouter = createTRPCRouter({
       episodeCount++;
       console.log(`=======`);
       console.log(
-        `[mediaSrcFetch] tv progress: ${episodeCount}/${srclessEpisodes.length} (${item.media.tmdbId}/${item.season.seasonNumber}/${item.episode.episodeNumber}: ${item.media.title})`
+        `[mediaSrcFetch] tv progress: ${episodeCount}/${srclessEpisodes.length} (${item.media.tmdbId}/${item.season.seasonNumber}/${item.episode.episodeNumber}: ${item.media.title}) (${item.episodeCount})`
       );
 
       // 4. for episode, fetch src

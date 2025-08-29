@@ -11,7 +11,7 @@ import type { Source } from '~/type';
 
 interface SourceSelectorProps {
   sources: Source[];
-  selectedProvider?: string;
+  selectedProvider?: number;
 }
 
 export function SourceSelector({
@@ -75,7 +75,7 @@ export function SourceSelector({
           <Link
             key={source.id}
             href={`${basePath}/${source.provider}`}
-            className={`block py-2 rounded shrink-0 w-12 text-center text-sm ${
+            className={`block py-2 rounded shrink-0 w-10 text-center text-sm ${
               source.provider === selectedProvider
                 ? 'bg-gray-800'
                 : 'hover:bg-gray-800'

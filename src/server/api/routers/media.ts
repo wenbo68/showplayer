@@ -2,7 +2,11 @@ import { z } from 'zod';
 import {
   and,
   asc,
+  desc,
   eq,
+  exists,
+  ilike,
+  inArray,
   isNotNull,
   isNull,
   lte,
@@ -40,22 +44,87 @@ import {
 import type { ListMedia } from '~/type';
 
 export const mediaRouter = createTRPCRouter({
-  //fetch from tmdbMedia by uuid
-  tmdbMediaById: publicProcedure
-    .input(z.object({ id: z.string().min(1) }))
-    .query(async ({ input, ctx }) => {
-      const media = await ctx.db
-        .select()
-        .from(tmdbMedia)
-        .where(eq(tmdbMedia.id, input.id))
-        .execute();
+  search: publicProcedure
+    .input(
+      z.object({
+        query: z.string().optional(),
+        type: z.enum(['movie', 'tv']).optional(),
+        genres: z.array(z.number()).optional(), // Array of genre IDs
+        origins: z.array(z.string()).optional(), // Array of origin country codes
+        // Add pagination if you need it
+        limit: z.number().min(1).max(50).default(20),
+        offset: z.number().min(0).default(0),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const { query, type, genres, origins, limit, offset } = input;
 
-      if (media.length === 0) {
-        throw new Error(`Media with ID ${input.id} not found`);
+      // Build a dynamic list of conditions for the where clause
+      const conditions = [];
+
+      if (query) {
+        // Case-insensitive search on the title
+        conditions.push(ilike(tmdbMedia.title, `%${query}%`));
       }
 
-      return media[0];
+      if (type) {
+        conditions.push(eq(tmdbMedia.type, type));
+      }
+
+      // Filter by genres using a subquery
+      if (genres && genres.length > 0) {
+        conditions.push(
+          exists(
+            ctx.db
+              .select({ n: sql`1` })
+              .from(tmdbMediaToTmdbGenre)
+              .where(
+                and(
+                  eq(tmdbMediaToTmdbGenre.mediaId, tmdbMedia.id),
+                  inArray(tmdbMediaToTmdbGenre.genreId, genres)
+                )
+              )
+          )
+        );
+      }
+
+      // Filter by origin countries using a subquery
+      if (origins && origins.length > 0) {
+        conditions.push(
+          exists(
+            ctx.db
+              .select({ n: sql`1` })
+              .from(tmdbMediaToTmdbOrigin)
+              .where(
+                and(
+                  eq(tmdbMediaToTmdbOrigin.mediaId, tmdbMedia.id),
+                  inArray(tmdbMediaToTmdbOrigin.originId, origins)
+                )
+              )
+          )
+        );
+      }
+
+      // Execute the query with all conditions
+      const results = await ctx.db
+        .select()
+        .from(tmdbMedia)
+        .where(and(...conditions))
+        .limit(limit)
+        .offset(offset)
+        .orderBy(desc(tmdbMedia.releaseDate)); // Or any other order you prefer
+
+      return results;
     }),
+
+  // You'll also need procedures to fetch all available genres and origins for your filter dropdowns
+  getAllGenres: publicProcedure.query(({ ctx }) => {
+    return ctx.db.select().from(tmdbGenre).orderBy(tmdbGenre.name);
+  }),
+
+  getAllOrigins: publicProcedure.query(({ ctx }) => {
+    return ctx.db.select().from(tmdbOrigin).orderBy(tmdbOrigin.name);
+  }),
 
   tmdbTrending: publicProcedure.query(async ({ ctx }) => {
     const trending: ListMedia[] = await ctx.db

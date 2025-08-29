@@ -7,7 +7,7 @@ export const MediaBadge = ({
   className?: string;
 }) => (
   <span
-    className={`inline-block text-xs font-semibold px-[9px] py-[1px] rounded-full ${className}`}
+    className={`inline-block text-xs font-semibold px-[8px] py rounded-full ${className}`}
   >
     {children}
   </span>

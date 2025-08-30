@@ -1,3 +1,4 @@
+import { indexProviderMap } from '~/app/api/puppeteer/route';
 import { db } from './db';
 import {
   tmdbEpisode,
@@ -284,103 +285,74 @@ async function fetchSrcFromProvidersFast(
   type: 'mv' | 'tv',
   path: string
 ): Promise<PuppeteerResult[]> {
-  const providers = ['joy', 'easy', 'link'];
-  // Create a promise for each provider's fetch request.
-  const resultPromises = providers.map((provider, index) =>
-    fetch(`${process.env.VPS_URL}/api/puppeteer`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type, path, index }),
-    }).then((res) => {
-      // This will cause the promise to reject, which is what we want.
-      if (!res.ok) {
-        throw new Error(`[${provider}] failed with status ${res.status}`);
-      }
-      return res.json() as Promise<PuppeteerResult>;
-    })
-  );
-  const settledResults = await Promise.allSettled(resultPromises);
-  // You can add more detailed logging to see which providers failed.
-  settledResults.forEach((result, index) => {
-    if (result.status === 'rejected') {
-      console.error(
-        `[${providers[index]}] failure reason:`,
-        result.reason.message
-      );
-    }
+  const response = await fetch(`${process.env.VPS_URL}/api/puppeteer`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type, path }), // Send the batch job
   });
-  const successfulResults = settledResults
-    .filter((result) => result.status === 'fulfilled' && result.value)
-    .map((result) => {
-      // Process the successful value directly here
-      const { provider, m3u8, subtitle } = (
-        result as PromiseFulfilledResult<PuppeteerResult>
-      ).value;
-      console.log(
-        `[${provider}] success: ${m3u8.type} ${subtitle ? '+ subtitle' : ''}`
-      );
-      return {
-        provider,
-        m3u8,
-        subtitle: subtitle === undefined ? undefined : convertToVtt(subtitle),
-      };
-    });
-  return successfulResults;
-}
-
-const providerIndexMap: Record<string, string> = {
-  easy: '1',
-  joy: '2',
-  link: '3',
-  fast: '4',
-};
-
-//works better than fast
-async function fetchSrcFromProvidersSlow(
-  type: 'mv' | 'tv',
-  path: string
-): Promise<PuppeteerResult[]> {
-  const providers = ['joy', 'easy', 'link'];
-  const results: PuppeteerResult[] = [];
-
-  for (const provider of providers) {
-    console.log('=======');
-    try {
-      const res = await fetch(`${process.env.VPS_URL}/api/puppeteer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, path, index: providerIndexMap[provider] }),
-      });
-      if (!res.ok) {
-        console.error(`[${provider}] failed with status ${res.status}`);
-        continue;
-      }
-
-      const result = await res.json();
-      if (result) {
-        results.push({
-          provider: result.provider,
-          m3u8: result.m3u8,
-          subtitle:
-            result.subtitle === undefined
-              ? undefined
-              : convertToVtt(result.subtitle),
-        });
-        console.log(
-          `[${provider}] success: ${result.m3u8.type} ${
-            result.subtitle ? '+ subtitle' : ''
-          }`
-        );
-      } else {
-        console.error(`[${provider}] failed`);
-      }
-    } catch (error) {
-      console.error(`[${provider}] error:`, error);
-      continue;
-    }
+  if (!response.ok) {
+    console.error(`Batch request failed with status ${response.status}`);
   }
-  return results;
+
+  const results = (await response.json()) as PuppeteerResult[];
+  return results.map((result) => {
+    console.log(
+      `[${indexProviderMap[result.provider]}] success: ${result.m3u8.type} ${
+        result.subtitle ? '+ subtitle' : ''
+      }`
+    );
+    return {
+      ...result,
+      subtitle: result.subtitle ? convertToVtt(result.subtitle) : undefined,
+    };
+  });
 }
+
+// async function fetchSrcFromProvidersSlow(
+//   type: 'mv' | 'tv',
+//   path: string
+// ): Promise<PuppeteerResult[]> {
+//   const providers = ['joy', 'easy', 'link'];
+//   const results: PuppeteerResult[] = [];
+
+//   for (const provider of providers) {
+//     console.log('=======');
+//     try {
+//       const res = await fetch(`${process.env.VPS_URL}/api/puppeteer`, {
+//         method: 'POST',
+//         headers: { 'Content-Type': 'application/json' },
+//         body: JSON.stringify({ type, path, index: providerIndexMap[provider] }),
+//       });
+//       if (!res.ok) {
+//         console.error(`[${provider}] failed with status ${res.status}`);
+//         continue;
+//       }
+
+//       const result = await res.json();
+//       if (result) {
+//         results.push({
+//           provider: result.provider,
+//           m3u8: result.m3u8,
+//           subtitle:
+//             result.subtitle === undefined
+//               ? undefined
+//               : convertToVtt(result.subtitle),
+//         });
+//         console.log(
+//           `[${provider}] success: ${result.m3u8.type} ${
+//             result.subtitle ? '+ subtitle' : ''
+//           }`
+//         );
+//       } else {
+//         console.error(`[${provider}] failed`);
+//       }
+//     } catch (error) {
+//       console.error(`[${provider}] error:`, error);
+//       continue;
+//     }
+//   }
+//   return results;
+// }
 
 function convertToVtt(subtitle: string): string {
   if (subtitle.trim().startsWith('WEBVTT')) return subtitle;
@@ -451,17 +423,18 @@ async function upsertSrcAndSubtitle(
 }
 
 export async function fetchAndUpsertMvSrc(
-  spd: 'fast' | 'slow',
+  // spd: 'fast' | 'slow',
   tmdbId: number
 ) {
-  const results =
-    spd === 'fast'
-      ? await fetchSrcFromProvidersFast('mv', `${tmdbId}`)
-      : await fetchSrcFromProvidersSlow('mv', `${tmdbId}`);
+  // const results =
+  //   spd === 'fast'
+  //     ? await fetchSrcFromProvidersFast('mv', `${tmdbId}`)
+  //     : await fetchSrcFromProvidersSlow('mv', `${tmdbId}`);
+  const results = await fetchSrcFromProvidersFast('mv', `${tmdbId}`);
   console.log('=======');
   console.log(
     `[fetchAndUpsertMvSrc] Fetched ${results.length} sources: ${results.map(
-      (result) => result.provider
+      (result) => indexProviderMap[result.provider]
     )}`
   );
   if (results.length === 0) {
@@ -485,20 +458,24 @@ export async function fetchAndUpsertMvSrc(
 }
 
 export async function fetchAndUpsertTvSrc(
-  spd: 'fast' | 'slow',
+  // spd: 'fast' | 'slow',
   tmdbId: number,
   season: number,
   episode: number,
   episodeIndex: number
 ) {
-  let results =
-    spd === 'fast'
-      ? await fetchSrcFromProvidersFast('tv', `${tmdbId}/${season}/${episode}`)
-      : await fetchSrcFromProvidersSlow('tv', `${tmdbId}/${season}/${episode}`);
+  // let results =
+  //   spd === 'fast'
+  //     ? await fetchSrcFromProvidersFast('tv', `${tmdbId}/${season}/${episode}`)
+  //     : await fetchSrcFromProvidersSlow('tv', `${tmdbId}/${season}/${episode}`);
+  let results = await fetchSrcFromProvidersFast(
+    'tv',
+    `${tmdbId}/${season}/${episode}`
+  );
   console.log('=======');
   console.log(
     `[fetchAndUpsertTvSrc] Fetched ${results.length} sources: ${results.map(
-      (result) => result.provider
+      (result) => indexProviderMap[result.provider]
     )}`
   );
   if (results.length === 0) {
@@ -506,9 +483,13 @@ export async function fetchAndUpsertTvSrc(
     console.log(
       `[fetchAndUpsertMvSrc] Trying episode index: ${tmdbId}/${season}/${episodeIndex}`
     );
-    results = spd
-      ? await fetchSrcFromProvidersFast('tv', `${tmdbId}/${season}/${episode}`)
-      : await fetchSrcFromProvidersSlow('tv', `${tmdbId}/${season}/${episode}`);
+    // results = spd
+    //   ? await fetchSrcFromProvidersFast('tv', `${tmdbId}/${season}/${episode}`)
+    //   : await fetchSrcFromProvidersSlow('tv', `${tmdbId}/${season}/${episode}`);
+    results = await fetchSrcFromProvidersFast(
+      'tv',
+      `${tmdbId}/${season}/${episodeIndex}`
+    );
     if (results.length === 0) return;
   }
   // insert sources into tmdbSource table
@@ -622,201 +603,3 @@ export async function upsertSeasonsAndEpisodes(details: any, mediaId: string) {
     console.log(`[upsertSeasonsAndEpisodes] ${details.id}: Done.`);
   });
 }
-
-// export async function upsertSeasonsAndEpisodes(details: any, mediaId: string) {
-//   // 1. get seasons of the tv
-//   const seasons = details.seasons;
-//   if (!seasons) return;
-
-//   // 2. for each season...
-//   for (const season of seasons) {
-//     await db.transaction(async (tx) => {
-//       if (season.season_number === 0) return;
-//       // 3. upsert the season
-//       const [seasonOutput] = await tx
-//         .insert(tmdbSeason)
-//         .values({
-//           id: crypto.randomUUID(),
-//           mediaId: mediaId,
-//           seasonNumber: season.season_number,
-//           title: season.name,
-//           description: season.overview,
-//           imageUrl: season.poster_path,
-//         })
-//         .onConflictDoUpdate({
-//           target: [tmdbSeason.mediaId, tmdbSeason.seasonNumber],
-//           set: {
-//             title: season.name,
-//             description: season.overview,
-//             imageUrl: season.poster_path,
-//           },
-//         })
-//         .returning();
-//       if (!seasonOutput) {
-//         console.error(
-//           `[upsertNewTvInfo] failed to upsert ${details.id} s${season.season_number}`
-//         );
-//         return;
-//       }
-
-//       // 4. get episodes of that season
-//       const seasonDetails = await fetchTmdbSeasonDetailViaApi(
-//         details.id,
-//         season.season_number
-//       );
-//       const episodes = seasonDetails.episodes;
-//       if (!episodes) return;
-
-//       // 5. for each episode...
-//       for (const episode of episodes) {
-//         // 6. insert that episode
-//         const [episodeOutput] = await tx
-//           .insert(tmdbEpisode)
-//           .values({
-//             id: crypto.randomUUID(),
-//             seasonId: seasonOutput.id,
-//             episodeNumber: episode.episode_number,
-//             title: episode.name,
-//             description: episode.overview,
-//             airDate: !!episode.air_date ? new Date(episode.air_date) : null,
-//           })
-//           .onConflictDoUpdate({
-//             target: [tmdbEpisode.seasonId, tmdbEpisode.episodeNumber],
-//             set: {
-//               title: episode.name,
-//               description: episode.overview,
-//               airDate: !!episode.air_date ? new Date(episode.air_date) : null,
-//             },
-//           })
-//           .returning();
-//         if (!episodeOutput) {
-//           console.error(
-//             `[upsertNewTvInfo] failed to upsert ${details.id} s${season.season_number}e${episode.episode_number}`
-//           );
-//           continue;
-//         }
-//       }
-//       console.log(
-//         `[upsertNewTvInfo] ${details.id} s${season.season_number}: ${episodes.length} episodes`
-//       );
-//     });
-//   }
-// }
-
-// export async function upsertLatestSeasonAndEpisodes(
-//   details: any,
-//   mediaId: string
-// ) {
-//   await db.transaction(async (tx) => {});
-// }
-
-// export async function upsertExistingTvInfo(details: any, mediaId: string) {
-//   // Only proceed if there is information about the last aired episode
-//   const lastAired = details.last_episode_to_air;
-//   if (!lastAired) {
-//     return; // Nothing to update
-//   }
-
-//   await db.transaction(async (tx) => {
-//     const releaseDate = details.next_episode_to_air?.air_date;
-//     // 1. Update the next episode date on the main media entry
-//     await tx
-//       .update(tmdbMedia)
-//       .set({
-//         releaseDate: !!releaseDate ? new Date(releaseDate) : null,
-//       })
-//       .where(eq(tmdbMedia.id, mediaId))
-//       .execute();
-
-//     // 2. Find or create the current airing season
-//     let existingSeason = await tx.query.tmdbSeason.findFirst({
-//       where: and(
-//         eq(tmdbSeason.mediaId, mediaId),
-//         eq(tmdbSeason.seasonNumber, lastAired.season_number)
-//       ),
-//     });
-
-//     if (!existingSeason) {
-//       const newSeasonResult = await tx
-//         .insert(tmdbSeason)
-//         .values({
-//           id: crypto.randomUUID(),
-//           mediaId: mediaId,
-//           seasonNumber: lastAired.season_number,
-//         })
-//         .returning();
-//       existingSeason = newSeasonResult[0];
-//     }
-
-//     if (!existingSeason) return;
-
-//     // 3. Prepare episode inputs ONLY for the current season up to the last aired episode
-//     const episodeInputs = Array.from(
-//       { length: lastAired.episode_number },
-//       (_, i) => ({
-//         id: crypto.randomUUID(),
-//         seasonId: existingSeason.id,
-//         episodeNumber: i + 1,
-//       })
-//     );
-
-//     // 4. Bulk upsert episodes for the current season
-//     if (episodeInputs.length > 0) {
-//       await tx
-//         .insert(tmdbEpisode)
-//         .values(episodeInputs)
-//         .onConflictDoNothing()
-//         .execute();
-//     }
-//   });
-// }
-
-// // find episodes whose airDate is older than given date and have no src
-// // then fetch src for those episodes
-// export async function findSrclessEpisodesAndFetchSrc(
-//   mediaId: string,
-//   tmdbId: number,
-//   targetDate: Date
-// ) {
-//   const results = await db
-//     .select({
-//       episode: tmdbEpisode,
-//       season: tmdbSeason,
-//       episodeIndex:
-//         sql<number>`row_number() over (partition by ${tmdbSeason.id} order by ${tmdbEpisode.episodeNumber} asc)`.as(
-//           'episodeIndex'
-//         ),
-//     })
-//     .from(tmdbEpisode)
-//     .innerJoin(tmdbSeason, eq(tmdbEpisode.seasonId, tmdbSeason.id))
-//     .where(
-//       and(
-//         isNotNull(tmdbEpisode.airDate),
-//         lte(tmdbEpisode.airDate, targetDate),
-//         eq(tmdbSeason.mediaId, mediaId),
-//         notExists(
-//           db
-//             .select({ one: sql`1` })
-//             .from(tmdbSource)
-//             .where(eq(tmdbSource.episodeId, tmdbEpisode.id))
-//         )
-//       )
-//     )
-//     .orderBy(asc(tmdbSeason.seasonNumber), asc(tmdbEpisode.episodeNumber));
-
-//   let count = 0;
-//   const total = results.length;
-
-//   for (const { season, episode, episodeIndex } of results) {
-//     count = count + 1;
-//     console.log(
-//       `[findSrclessEpisodesAndFetchSrc] Progress: ${count}/${total} ${tmdbId}/${season.seasonNumber}/${episode.episodeNumber}(${episodeIndex})`
-//     );
-//     await fetchAndUpsertTvSrc(
-//       tmdbId,
-//       season.seasonNumber,
-//       episode.episodeNumber,
-//       episodeIndex
-//     );
-//   }
-// }

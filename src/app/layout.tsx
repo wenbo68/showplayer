@@ -31,7 +31,9 @@ export default function RootLayout({
 // for overview, add "show/hide backdrop" arrow.
 // allow 3 modes for season/episode selector: horizontal scrolling, grid, detailed vertical scrolling (show poster, title, description)
 
-// search and filters should be together and present in all pages
+// search bar, release year, mv/tv, origin, genre,
+// airing status (finished: all episodes are older than yesterday, airing: at least 1 episode is in future, not released: 0 episodes),
+// availability (full: all episodes have source, partial: at least 1 episode have no src, none: 0 episodes or no episode have src)
 
 // if a movie belongs to a collection, fetch all others in the collection (and display them as related?)
 // add recommendations (just implement your own, tmdb recommendations are too random)

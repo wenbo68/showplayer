@@ -78,9 +78,9 @@ export function MediaPopup({
                 {media.type === 'movie' ? `Movie` : `TV`}
               </MediaBadge>
               {/* Origins */}
-              {mediaParam.origins.map((origins) => (
-                <MediaBadge key={origins} className="bg-gray-700">
-                  {origins}
+              {mediaParam.origins.map((origin) => (
+                <MediaBadge key={origin} className="bg-gray-700">
+                  {origin}
                 </MediaBadge>
               ))}
               {/* Genres */}

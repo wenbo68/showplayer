@@ -19,6 +19,7 @@ export default function FullList({
       {mediaList.map((mediaDetail) => {
         return (
           <MediaButton
+            key={mediaDetail.media.id}
             mediaDetail={mediaDetail}
             setSelectedMedia={setSelectedMedia}
           />

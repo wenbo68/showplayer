@@ -253,6 +253,13 @@
       "when": 1756300719445,
       "tag": "0035_boring_korg",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1756477886986,
+      "tag": "0036_equal_zodiak",
+      "breakpoints": true
     }
   ]
 }

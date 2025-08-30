@@ -30,7 +30,7 @@ export type ListMedia = {
   genres: string[];
   availabilityCount: number;
   totalEpisodeCount: number;
-  rank: number;
+  // rank?: number;
   averageRating?: number;
   voteCount?: number;
 };

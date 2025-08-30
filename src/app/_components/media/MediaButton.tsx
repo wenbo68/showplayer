@@ -18,7 +18,6 @@ export default function MediaButton({
 
   return (
     <button
-      key={media.id}
       onClick={() => setSelectedMedia(mediaDetail)}
       className="flex w-full flex-col items-center gap-2 overflow-hidden text-sm transition group"
     >

@@ -195,7 +195,7 @@ async function findAndClick(
 let browser: Browser | null = null;
 let isLaunching = false; // Our "lock" to prevent race conditions
 let requestCount = 0;
-const MAX_REQUESTS_PER_BROWSER = 4;
+const MAX_REQUESTS_PER_BROWSER = 3;
 
 async function getBrowser(): Promise<Browser> {
   // If the browser is launching, wait for it to be ready

@@ -50,6 +50,9 @@ importers:
       puppeteer:
         specifier: ^24.14.0
         version: 24.15.0(typescript@5.8.3)
+      puppeteer-cluster:
+        specifier: ^0.24.0
+        version: 0.24.0(puppeteer@24.15.0(typescript@5.8.3))
       react:
         specifier: ^19.0.0
         version: 19.1.0
@@ -1635,6 +1638,11 @@ packages:
   pump@3.0.3:
     resolution: {integrity: sha512-todwxLMY7/heScKmntwQG8CXVkWUOdYxIvY2s0VWAAMh/nd8SoYiRaKjlr7+iCs984f2P8zvrfWcDDYVb73NfA==}
 
+  puppeteer-cluster@0.24.0:
+    resolution: {integrity: sha512-zHPoNsrwkFLKFtgJJv2aC13EbMASQsE048uZd7CyikEXcl+sc1Nf6PMFb9kMoZI7/zMYxvuP658o2mw079ZZyQ==}
+    peerDependencies:
+      puppeteer: '>=22.0.0'
+
   puppeteer-core@24.15.0:
     resolution: {integrity: sha512-2iy0iBeWbNyhgiCGd/wvGrDSo73emNFjSxYOcyAqYiagkYt5q4cPfVXaVDKBsukgc2fIIfLAalBZlaxldxdDYg==}
     engines: {node: '>=18'}
@@ -3009,6 +3017,13 @@ snapshots:
     dependencies:
       end-of-stream: 1.4.5
       once: 1.4.0
+
+  puppeteer-cluster@0.24.0(puppeteer@24.15.0(typescript@5.8.3)):
+    dependencies:
+      debug: 4.4.1
+      puppeteer: 24.15.0(typescript@5.8.3)
+    transitivePeerDependencies:
+      - supports-color
 
   puppeteer-core@24.15.0:
     dependencies:

@@ -473,7 +473,7 @@ export const mediaRouter = createTRPCRouter({
       );
 
       // 2. for mv, fetch src
-      await fetchAndUpsertMvSrc('slow', media.tmdbId);
+      await fetchAndUpsertMvSrc('fast', media.tmdbId);
     });
 
     // 3. find episodes whose airDate is older than yesterday but have no src
@@ -545,7 +545,7 @@ export const mediaRouter = createTRPCRouter({
       // 4. for episode, fetch src
       const { episode, season, media } = item;
       await fetchAndUpsertTvSrc(
-        'slow',
+        'fast',
         media.tmdbId,
         season.seasonNumber,
         episode.episodeNumber,

@@ -284,13 +284,13 @@ async function fetchSrcFromProvidersFast(
   type: 'mv' | 'tv',
   path: string
 ): Promise<PuppeteerResult[]> {
-  const providers = ['joy', 'easy', 'link'];
+  const providers = ['easy', 'joy', 'link'];
   // Create a promise for each provider's fetch request.
   const resultPromises = providers.map((provider, index) =>
     fetch(`${process.env.VPS_URL}/api/puppeteer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type, path, index }),
+      body: JSON.stringify({ type, path, index: index + 1 }),
     }).then((res) => {
       // This will cause the promise to reject, which is what we want.
       if (!res.ok) {

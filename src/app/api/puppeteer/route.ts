@@ -10,14 +10,14 @@ import { Cluster } from 'puppeteer-cluster';
 // vidlink: auto plays
 // vidsrc: have to click play (if another play button shows up, just fail it)
 
-const indexProviderMap: Record<string, string> = {
+export const indexProviderMap: Record<string, string> = {
   1: 'videasy',
   2: 'vidjoy',
   3: 'vidlink',
   4: 'vidfast',
 };
 
-const providerIndexMap: Record<string, number> = {
+export const providerIndexMap: Record<string, number> = {
   videasy: 1,
   vidjoy: 2,
   vidlink: 3,
@@ -189,15 +189,26 @@ async function findAndClick(
   }
 }
 
-// Store the promise, not the cluster instance itself.
-let clusterPromise: Promise<Cluster<any, any>> | null = null;
+// ====== exported
 
-export function getCluster() {
-  // No longer needs to be async
-  if (!clusterPromise) {
-    console.log('Initializing Puppeteer Cluster...');
-    // This code will now only ever run ONCE.
-    clusterPromise = Cluster.launch({
+// Handle OPTIONS (CORS preflight)
+export async function OPTIONS() {
+  return new NextResponse(null, { headers: withCors() });
+}
+
+export async function POST(req: Request) {
+  let cluster: Cluster | null = null;
+  try {
+    const { type, path } = await req.json(); // It only needs type and path
+
+    if (!type || !path) {
+      return new Response(JSON.stringify({ error: 'Missing parameters' }), {
+        status: 400,
+      });
+    }
+
+    // 1. Launch the cluster for this specific batch job
+    cluster = await Cluster.launch({
       concurrency: Cluster.CONCURRENCY_CONTEXT,
       maxConcurrency: 3,
       puppeteer,
@@ -210,193 +221,169 @@ export function getCluster() {
           '--disable-dev-shm-usage',
         ],
       },
-    }).then(async (cluster) => {
-      await cluster.task(async ({ page, data }) => {
-        const { provider, embedUrl } = data;
+    });
+    console.log(`Cluster launched.`);
 
-        await page.setUserAgent(
-          'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36'
-        );
-        await page.evaluateOnNewDocument(() => {
-          Object.defineProperty(navigator, 'webdriver', { get: () => false });
-        });
-        await page.setCacheEnabled(false);
-        await page.setRequestInterception(true);
-        page.on('request', (req: HTTPRequest) => {
-          try {
-            req.continue();
-          } catch (err) {
-            console.error('request.continue() failed', err);
-            req.abort();
-          }
-        });
-        await page.evaluateOnNewDocument(() => {
-          window.open = () => null;
-        });
+    // 2. Define the task for this cluster instance
+    await cluster.task(async ({ page, data }) => {
+      const { provider, embedUrl } = data;
 
-        const m3u8List: M3U8Result[] = [];
-        const subtitleList: string[] = [];
-        page.on('response', async (res) => {
-          if (!res.ok()) return;
-          const url = res.url();
-          const ct = res.headers()['content-type'] ?? '';
-          const isSubtitle =
-            url.includes('format=srt&encoding=UTF-8') || url.includes('.vtt');
-          const isM3U8 =
-            ct.includes('mpegurl') ||
-            ct.includes('x-mpegURL') ||
-            ct.includes('text/plain');
-          if (!isSubtitle && !isM3U8) return;
-
-          try {
-            const text = await res.text();
-            if (isSubtitle) {
-              console.log(`[${provider}] >>> Subtitle captured`);
-              subtitleList.push(text);
-              return;
-            }
-            if (text.includes('#EXTM3U')) {
-              const headers = res.request().headers();
-              if (text.includes('#EXT-X-STREAM-INF')) {
-                console.log(`[${provider}] >>> Master captured`);
-                m3u8List.push({ type: 'master', url: res.url(), headers });
-              } else if (text.includes('#EXTINF')) {
-                if (!m3u8List.some((item) => item.type === 'master')) {
-                  console.log(`[${provider}] >>> Media captured`);
-                  m3u8List.push({ type: 'media', url: res.url(), headers });
-                }
-              }
-            }
-          } catch (error) {}
-        });
-
-        async function click(name: string, selector: string | undefined) {
-          if (!selector) return;
-          await findAndClick(provider, name, selector, page);
-        }
-        const t0 = performance.now();
+      await page.setUserAgent(
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36'
+      );
+      await page.evaluateOnNewDocument(() => {
+        Object.defineProperty(navigator, 'webdriver', { get: () => false });
+      });
+      await page.setCacheEnabled(false);
+      await page.setRequestInterception(true);
+      page.on('request', (req: HTTPRequest) => {
         try {
-          //1. go to url
-          const t1 = performance.now();
-          await page.goto(embedUrl, {
-            waitUntil: 'domcontentloaded',
-            timeout: 15000,
-          });
-          // console.log(`[${provider}] entered page: ${getTime(t1)} ms`);
-
-          // 2. click play/quality/subtitle
-          try {
-            if (provider === 'videasy') {
-              await click('play button', playButtonSelectorsMap[provider]);
-              await click('video', videoSelectorsMap[provider]);
-            } else if (provider === 'vidsrc') {
-              await clickPlayInFrame(provider, page);
-            }
-            if (provider === 'vidjoy') {
-              await click('settings', settingsButtonSelectorsMap[provider]);
-              await click(
-                'highest resolution',
-                highestResolutionSelectorsMap[provider]
-              );
-            }
-            await click(
-              'subtitle button',
-              subtitleButtonSelectorsMap[provider]
-            );
-            if (provider === 'videasy') {
-              await click('subtitle tab', subtitleTabSelectorsMap[provider]);
-            }
-            await click('en subtitle', enSubtitleSelectorsMap[provider]);
-            // console.log(`[${provider}] DONE: ${getTime(t0)} ms`);
-          } catch (error: any) {
-            console.warn(
-              `[${provider}] ${error.message} ${
-                error.message.includes(firstClickMap[provider])
-                  ? `(1st click)`
-                  : ``
-              }`
-            );
-          }
-
-          // 3. use the flags and arrays to compose the return value
-          await timeoutPromise(
-            provider === 'vidjoy'
-              ? Number(process.env.M3U8_WAIT_JOY)
-              : provider === 'videasy'
-              ? Number(process.env.M3U8_WAIT_EASY)
-              : provider === 'vidlink'
-              ? Number(process.env.M3U8_WAIT_LINK)
-              : provider === 'vidfast'
-              ? Number(process.env.M3U8_WAIT_FAST)
-              : 1000
-          );
-          if (m3u8List.length === 0) throw new Error(`m3u8 timeout`);
-          return {
-            provider: providerIndexMap[provider]!,
-            m3u8: m3u8List.at(-1)!,
-            subtitle: subtitleList.at(-1),
-          };
-        } catch (error: any) {
-          console.error(`[${provider}] failed: ${error.message}`);
-          return null;
-        } finally {
-          await page.close();
-          console.log(`[${provider}] total: ${getTime(t0)} ms`);
+          req.continue();
+        } catch (err) {
+          console.error('request.continue() failed', err);
+          req.abort();
         }
       });
-      console.log('Puppeteer Cluster initialized and task defined.');
-      return cluster;
-    });
-  }
-  // Return the promise. The `await` will handle waiting for it to resolve.
-  return clusterPromise;
-}
+      await page.evaluateOnNewDocument(() => {
+        window.open = () => null;
+      });
 
-async function fetchSrcFromUrl(provider: string, embedUrl: string) {
-  const cluster = await getCluster();
-  return cluster.execute({ provider, embedUrl });
-}
+      const m3u8List: M3U8Result[] = [];
+      const subtitleList: string[] = [];
+      page.on('response', async (res) => {
+        if (!res.ok()) return;
+        const url = res.url();
+        const ct = res.headers()['content-type'] ?? '';
+        const isSubtitle =
+          url.includes('format=srt&encoding=UTF-8') || url.includes('.vtt');
+        const isM3U8 =
+          ct.includes('mpegurl') ||
+          ct.includes('x-mpegURL') ||
+          ct.includes('text/plain');
+        if (!isSubtitle && !isM3U8) return;
 
-// ====== exported
+        try {
+          const text = await res.text();
+          if (isSubtitle) {
+            console.log(`[${provider}] >>> Subtitle captured`);
+            subtitleList.push(text);
+            return;
+          }
+          if (text.includes('#EXTM3U')) {
+            const headers = res.request().headers();
+            if (text.includes('#EXT-X-STREAM-INF')) {
+              console.log(`[${provider}] >>> Master captured`);
+              m3u8List.push({ type: 'master', url: res.url(), headers });
+            } else if (text.includes('#EXTINF')) {
+              if (!m3u8List.some((item) => item.type === 'master')) {
+                console.log(`[${provider}] >>> Media captured`);
+                m3u8List.push({ type: 'media', url: res.url(), headers });
+              }
+            }
+          }
+        } catch (error) {}
+      });
 
-async function fetchSrcFromProvider(
-  type: 'mv' | 'tv',
-  path: string,
-  index: string
-) {
-  const fullProvider = indexProviderMap[index]!;
-  const embedUrl = `${
-    type === 'mv' ? mvProvidersMap[fullProvider] : tvProvidersMap[fullProvider]
-  }/${path}`;
-  return fetchSrcFromUrl(fullProvider, embedUrl);
-}
+      async function click(name: string, selector: string | undefined) {
+        if (!selector) return;
+        await findAndClick(provider, name, selector, page);
+      }
+      const t0 = performance.now();
+      try {
+        //1. go to url
+        const t1 = performance.now();
+        await page.goto(embedUrl, {
+          waitUntil: 'domcontentloaded',
+          timeout: 15000,
+        });
+        // console.log(`[${provider}] entered page: ${getTime(t1)} ms`);
 
-export async function POST(req: Request) {
-  try {
-    const { type, path, index } = await req.json();
-
-    if (!type || !path || !index) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Missing required parameters' }),
-        {
-          status: 400,
-          headers: withCors({ 'Content-Type': 'application/json' }),
+        // 2. click play/quality/subtitle
+        try {
+          if (provider === 'videasy') {
+            await click('play button', playButtonSelectorsMap[provider]);
+            await click('video', videoSelectorsMap[provider]);
+          } else if (provider === 'vidsrc') {
+            await clickPlayInFrame(provider, page);
+          }
+          if (provider === 'vidjoy') {
+            await click('settings', settingsButtonSelectorsMap[provider]);
+            await click(
+              'highest resolution',
+              highestResolutionSelectorsMap[provider]
+            );
+          }
+          await click('subtitle button', subtitleButtonSelectorsMap[provider]);
+          if (provider === 'videasy') {
+            await click('subtitle tab', subtitleTabSelectorsMap[provider]);
+          }
+          await click('en subtitle', enSubtitleSelectorsMap[provider]);
+          // console.log(`[${provider}] DONE: ${getTime(t0)} ms`);
+        } catch (error: any) {
+          console.warn(
+            `[${provider}] ${error.message} ${
+              error.message.includes(firstClickMap[provider])
+                ? `(1st click)`
+                : ``
+            }`
+          );
         }
-      );
-    }
-    const data = await fetchSrcFromProvider(type, path, index);
-    return new NextResponse(JSON.stringify(data), {
+
+        // 3. use the flags and arrays to compose the return value
+        await timeoutPromise(
+          provider === 'vidjoy'
+            ? Number(process.env.M3U8_WAIT_JOY)
+            : provider === 'videasy'
+            ? Number(process.env.M3U8_WAIT_EASY)
+            : provider === 'vidlink'
+            ? Number(process.env.M3U8_WAIT_LINK)
+            : provider === 'vidfast'
+            ? Number(process.env.M3U8_WAIT_FAST)
+            : 1000
+        );
+        if (m3u8List.length === 0) throw new Error(`m3u8 timeout`);
+        return {
+          provider: providerIndexMap[provider]!,
+          m3u8: m3u8List.at(-1)!,
+          subtitle: subtitleList.at(-1),
+        };
+      } catch (error: any) {
+        console.error(`[${provider}] failed: ${error.message}`);
+        return null;
+      } finally {
+        await page.close();
+        console.log(`[${provider}] total: ${getTime(t0)} ms`);
+      }
+    });
+
+    // 3. Queue all provider tasks to run in parallel
+    const providers = ['videasy', 'vidjoy', 'vidlink'];
+    const promises = providers.map((provider) => {
+      const embedUrl = `${
+        type === 'mv' ? mvProvidersMap[provider] : tvProvidersMap[provider]
+      }/${path}`;
+      return cluster?.execute({ provider, embedUrl });
+    });
+
+    // 4. Wait for all tasks to complete
+    const results = await Promise.all(promises);
+
+    // Filter out null results from failed scrapes
+    const successfulResults = results.filter((result) => result !== null);
+
+    return new Response(JSON.stringify(successfulResults), {
       headers: withCors({ 'Content-Type': 'application/json' }),
     });
   } catch (err: any) {
-    return new NextResponse(
-      JSON.stringify({ error: err.message || 'Server error' }),
-      { status: 500, headers: withCors({ 'Content-Type': 'application/json' }) }
-    );
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+    });
+  } finally {
+    // 5. CRITICAL: Ensure the cluster is closed no matter what
+    if (cluster) {
+      await cluster.idle(); // Wait for any remaining queue items
+      await cluster.close(); // Close all browsers
+      console.log('Cluster closed.');
+    }
   }
-}
-
-// Handle OPTIONS (CORS preflight)
-export async function OPTIONS() {
-  return new NextResponse(null, { headers: withCors() });
 }

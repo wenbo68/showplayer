@@ -3,26 +3,13 @@ import type { M3U8Result, PuppeteerResult } from '~/type';
 import { NextResponse } from 'next/server';
 import { withCors } from '~/utils/api';
 import { Cluster } from 'puppeteer-cluster';
+import { providerIndexMap } from '~/server/utils';
 
 // vidjoy: m3u8 before play (has antibot measures: wont load m3u8 if youre bot)
 // videasy: have to click play
 // vidfast: m3u8 before play
 // vidlink: auto plays
 // vidsrc: have to click play (if another play button shows up, just fail it)
-
-export const indexProviderMap: Record<string, string> = {
-  1: 'videasy',
-  2: 'vidjoy',
-  3: 'vidlink',
-  4: 'vidfast',
-};
-
-export const providerIndexMap: Record<string, number> = {
-  videasy: 1,
-  vidjoy: 2,
-  vidlink: 3,
-  vidfast: 4,
-};
 
 const mvProvidersMap: Record<string, string> = {
   vidjoy: 'https://vidjoy.pro/embed/movie',

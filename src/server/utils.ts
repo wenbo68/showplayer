@@ -1,4 +1,3 @@
-import { indexProviderMap } from '~/app/api/puppeteer/route';
 import { db } from './db';
 import {
   tmdbEpisode,
@@ -280,6 +279,20 @@ export async function batchProcess<T>(
     await Promise.all(batch.map(processFn));
   }
 }
+
+export const indexProviderMap: Record<string, string> = {
+  1: 'videasy',
+  2: 'vidjoy',
+  3: 'vidlink',
+  4: 'vidfast',
+};
+
+export const providerIndexMap: Record<string, number> = {
+  videasy: 1,
+  vidjoy: 2,
+  vidlink: 3,
+  vidfast: 4,
+};
 
 async function fetchSrcFromProvidersFast(
   type: 'mv' | 'tv',

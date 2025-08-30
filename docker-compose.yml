@@ -1,7 +1,7 @@
 services:
   #container name
   app:
-    image: showplayer:2.5
+    image: showplayer:2.6
     build:
       context: .
       # only needed if you have env vars that are needed at build time

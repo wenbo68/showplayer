@@ -20,7 +20,7 @@ export default function PreviewList({
         return (
           <div
             key={mediaDetail.media.id}
-            className="flex-shrink-0 w-[150px] lg:w-[170px]"
+            className="flex-shrink-0 w-[160px] lg:w-[200px]"
           >
             <MediaButton
               mediaDetail={mediaDetail}

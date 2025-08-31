@@ -3,9 +3,9 @@ import MediaList from '~/app/_components/media/MediaList';
 
 export default async function TrendingPage() {
   try {
-    await api.media.tmdbTrending.prefetch();
-    await api.media.tmdbTrending.prefetch();
-    await api.media.tmdbTrending.prefetch();
+    await api.media.getTmdbTrending.prefetch();
+    await api.media.getTmdbTrending.prefetch();
+    await api.media.getTmdbTrending.prefetch();
   } catch (error) {
     console.log(`Prefetch failed: `, error);
   }

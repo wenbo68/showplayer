@@ -45,216 +45,170 @@ import {
 import type { ListMedia } from '~/type';
 
 export const mediaRouter = createTRPCRouter({
-  // NEW: Procedure to fetch genres and origins for filter dropdowns
   getFilterOptions: publicProcedure.query(async ({ ctx }) => {
     const genres = await ctx.db
-      .select()
-      .from(tmdbGenre)
-      .orderBy(desc(tmdbGenre.name));
-    const origins = await ctx.db
-      .select()
-      .from(tmdbOrigin)
-      .orderBy(desc(tmdbOrigin.name));
-    return { genres, origins };
-  }),
-
-  // NEW: The main search and filter procedure
-  search: publicProcedure
-    .input(
-      z.object({
-        // query: z.string().optional(),
-        type: z.enum(['movie', 'tv']).optional(),
-        // year: z.number().optional(),
-        // genres: z.array(z.number()).optional(),
-        // origins: z.array(z.string()).optional(),
-        // status: z.enum(['airing', 'finished', 'not_released']).optional(),
-        // availability: z.enum(['full', 'partial', 'none']).optional(),
+      .selectDistinct({
+        id: tmdbGenre.id,
+        name: tmdbGenre.name,
       })
-    )
-    .query(async ({ ctx, input }) => {
-      const { db } = ctx;
-      const { type } = input;
+      .from(tmdbGenre)
+      .innerJoin(
+        tmdbMediaToTmdbGenre,
+        eq(tmdbGenre.id, tmdbMediaToTmdbGenre.genreId)
+      )
+      .orderBy(asc(tmdbGenre.name));
 
-      const conditions = [];
+    const origins = await ctx.db
+      .selectDistinct({
+        id: tmdbOrigin.id,
+        name: tmdbOrigin.name,
+      })
+      .from(tmdbOrigin)
+      .innerJoin(
+        tmdbMediaToTmdbOrigin,
+        eq(tmdbOrigin.id, tmdbMediaToTmdbOrigin.originId)
+      )
+      .orderBy(asc(tmdbOrigin.name));
 
-      // Basic filters
-      // if (query) conditions.push(ilike(tmdbMedia.title, `%${query}%`));
-      if (type) conditions.push(eq(tmdbMedia.type, type));
-      // if (year)
-      //   conditions.push(
-      //     eq(sql`extract(year from ${tmdbMedia.releaseDate})`, year)
-      //   );
+    // --- NEW: Query for distinct release years ---
+    const yearColumn =
+      sql<number>`EXTRACT(YEAR FROM ${tmdbMedia.releaseDate})`.as('year');
+    const yearResults = await ctx.db
+      .selectDistinct({
+        year: yearColumn,
+      })
+      .from(tmdbMedia)
+      .where(isNotNull(tmdbMedia.releaseDate)) // Ensure we don't process null dates
+      .orderBy(desc(yearColumn)); // Order from newest to oldest
 
-      // // Airing Status Filter (uses subqueries)
-      // if (status) {
-      //   const yesterday = new Date();
-      //   yesterday.setDate(yesterday.getDate() - 1);
+    // Transform [{year: 2025}, {year: 2024}] into [2025, 2024]
+    const years = yearResults.map((result) => result.year);
 
-      //   const subqueryEpisodes = db
-      //     .select({ mediaId: tmdbSeason.mediaId, airDate: tmdbEpisode.airDate })
-      //     .from(tmdbEpisode)
-      //     .leftJoin(tmdbSeason, eq(tmdbEpisode.seasonId, tmdbSeason.id));
-
-      //   if (status === 'not_released') {
-      //     conditions.push(
-      //       sql`${tmdbMedia.id} NOT IN (SELECT "media_id" FROM ${tmdbSeason})`
-      //     );
-      //   } else if (status === 'airing') {
-      //     conditions.push(
-      //       sql`EXISTS (SELECT 1 FROM ${tmdbEpisode} e JOIN ${tmdbSeason} s ON e."season_id" = s.id WHERE s."media_id" = ${tmdbMedia.id} AND e."air_date" > NOW())`
-      //     );
-      //   } else if (status === 'finished') {
-      //     conditions.push(
-      //       sql`EXISTS (SELECT 1 FROM ${tmdbSeason} s WHERE s."media_id" = ${tmdbMedia.id}) AND NOT EXISTS (SELECT 1 FROM ${tmdbEpisode} e JOIN ${tmdbSeason} s ON e."season_id" = s.id WHERE s."media_id" = ${tmdbMedia.id} AND e."air_date" > NOW())`
-      //     );
-      //   }
-      // }
-
-      // // Availability Filter (uses subqueries) - This is for TV shows only
-      // if (availability && type === 'tv') {
-      //   if (availability === 'none') {
-      //     conditions.push(
-      //       sql`NOT EXISTS (SELECT 1 FROM ${tmdbSource} src JOIN ${tmdbEpisode} e ON src."episode_id" = e.id JOIN ${tmdbSeason} s ON e."season_id" = s.id WHERE s."media_id" = ${tmdbMedia.id})`
-      //     );
-      //   } else if (availability === 'full') {
-      //     // All episodes must have at least one source
-      //     conditions.push(
-      //       sql`NOT EXISTS (SELECT 1 FROM ${tmdbEpisode} e JOIN ${tmdbSeason} s ON e."season_id" = s.id WHERE s."media_id" = ${tmdbMedia.id} AND NOT EXISTS (SELECT 1 FROM ${tmdbSource} src WHERE src."episode_id" = e.id))`
-      //     );
-      //   } else if (availability === 'partial') {
-      //     // At least one episode has a source AND at least one doesn't
-      //     conditions.push(sql`EXISTS (SELECT 1 FROM ${tmdbEpisode} e JOIN ${tmdbSeason} s ON e."season_id" = s.id WHERE s."media_id" = ${tmdbMedia.id} AND EXISTS (SELECT 1 FROM ${tmdbSource} src WHERE src."episode_id" = e.id))
-      //     AND EXISTS (SELECT 1 FROM ${tmdbEpisode} e JOIN ${tmdbSeason} s ON e."season_id" = s.id WHERE s."media_id" = ${tmdbMedia.id} AND NOT EXISTS (SELECT 1 FROM ${tmdbSource} src WHERE src."episode_id" = e.id))`);
-      //   }
-      // } else if (availability && type === 'movie') {
-      //   // Simpler availability for movies
-      //   if (availability === 'full' || availability === 'partial') {
-      //     // Treat full and partial as 'available' for movies
-      //     conditions.push(
-      //       sql`EXISTS (SELECT 1 FROM ${tmdbSource} WHERE ${tmdbSource.mediaId} = ${tmdbMedia.id})`
-      //     );
-      //   } else if (availability === 'none') {
-      //     conditions.push(
-      //       sql`NOT EXISTS (SELECT 1 FROM ${tmdbSource} WHERE ${tmdbSource.mediaId} = ${tmdbMedia.id})`
-      //     );
-      //   }
-      // }
-
-      // Build the main query
-      let qb = db
-        .select({
-          media: tmdbMedia,
-          genres: sql<string[]>`(
-            SELECT array_agg(${tmdbGenre.name})
-            FROM ${tmdbMediaToTmdbGenre}
-            INNER JOIN ${tmdbGenre} ON ${tmdbMediaToTmdbGenre.genreId} = ${tmdbGenre.id}
-            WHERE ${tmdbMediaToTmdbGenre.mediaId} = ${tmdbMedia.id}
-          )`,
-          origins: sql<string[]>`(
-            SELECT array_agg(${tmdbOrigin.name})
-            FROM ${tmdbMediaToTmdbOrigin}
-            INNER JOIN ${tmdbOrigin} ON ${tmdbMediaToTmdbOrigin.originId} = ${tmdbOrigin.id}
-            WHERE ${tmdbMediaToTmdbOrigin.mediaId} = ${tmdbMedia.id}
-          )`,
-          availabilityCount: sql<number>`
-            CASE
-              WHEN ${tmdbMedia.type} = 'movie'
-              THEN (
-                SELECT COUNT(*)
-                FROM ${tmdbSource}
-                WHERE ${tmdbSource.mediaId} = ${tmdbMedia.id}
-              )
-              ELSE 0
-            END
-          `.mapWith(Number),
-          totalEpisodeCount: sql<number>`
-            CASE
-              WHEN ${tmdbMedia.type} = 'tv'
-              THEN (
-                SELECT COUNT(*)
-                FROM ${tmdbEpisode}
-                INNER JOIN ${tmdbSeason} ON ${tmdbEpisode.seasonId} = ${tmdbSeason.id}
-                WHERE ${tmdbSeason.mediaId} = ${tmdbMedia.id}
-                  AND ${tmdbEpisode.airDate} <= (CURRENT_DATE - INTERVAL '1 day')
-              )
-              ELSE 0
-            END
-          `.mapWith(Number),
-        })
-        .from(tmdbMedia);
-
-      // // Join for Genre filter
-      // if (genres && genres.length > 0) {
-      //   qb.leftJoin(
-      //     tmdbMediaToTmdbGenre,
-      //     eq(tmdbMedia.id, tmdbMediaToTmdbGenre.mediaId)
-      //   ).where(inArray(tmdbMediaToTmdbGenre.genreId, genres));
-      // }
-
-      // // Join for Origin filter
-      // if (origins && origins.length > 0) {
-      //   qb.leftJoin(
-      //     tmdbMediaToTmdbOrigin,
-      //     eq(tmdbMedia.id, tmdbMediaToTmdbOrigin.mediaId)
-      //   ).where(inArray(tmdbMediaToTmdbOrigin.originId, origins));
-      // }
-
-      const finalQuery = qb.where(and(...conditions));
-
-      const results: ListMedia[] = await finalQuery;
-
-      return results;
-    }),
+    return { genres, origins, years }; // Add years to the return object
+  }),
 
   searchAndFilter: publicProcedure
     .input(
       z.object({
         query: z.string().optional(),
+        type: z.array(z.enum(['movie', 'tv'])).optional(),
+        genres: z.array(z.number()).optional(),
+        origins: z.array(z.string()).optional(),
+        years: z.array(z.number()).optional(),
       })
     )
     .query(async ({ ctx, input }) => {
-      const { query } = input;
+      // 1. define columns in order to select them in the query
+      // aggregate means to combine all values from 1 column to 1 cell array (so that media won't be duplicated)
+      const aggregatedOrigins = sql<
+        string[]
+      >`array_agg(DISTINCT ${tmdbOrigin.name})`.as('origins');
+      const aggregatedGenres = sql<
+        string[]
+      >`array_agg(DISTINCT ${tmdbGenre.name})`.as('genres');
+      // mv: how many sources
+      // tv: how many episodes have source
+      const availabilityCount = sql<number>`
+        CASE
+          WHEN ${tmdbMedia.type} = 'movie'
+          THEN (
+            SELECT COUNT(*) FROM ${tmdbSource}
+            WHERE ${tmdbSource.mediaId} = ${tmdbMedia.id}
+          )
+          WHEN ${tmdbMedia.type} = 'tv'
+          THEN (
+            SELECT COUNT(DISTINCT ${tmdbSource.episodeId})
+            FROM ${tmdbSource}
+            JOIN ${tmdbEpisode} ON ${tmdbSource.episodeId} = ${tmdbEpisode.id}
+            JOIN ${tmdbSeason} ON ${tmdbEpisode.seasonId} = ${tmdbSeason.id}
+            WHERE ${tmdbSeason.mediaId} = ${tmdbMedia.id}
+          )
+          ELSE 0
+        END`
+        .mapWith(Number)
+        .as('availabilityCount');
+      // mv: 0
+      // tv: how many episodes with airDate before today
+      const totalEpisodeCount = sql<number>`
+        CASE
+          WHEN ${tmdbMedia.type} = 'tv'
+          THEN (
+            SELECT COUNT(*)
+            FROM ${tmdbEpisode}
+            INNER JOIN ${tmdbSeason} ON ${tmdbEpisode.seasonId} = ${tmdbSeason.id}
+            WHERE ${tmdbSeason.mediaId} = ${tmdbMedia.id}
+              AND ${tmdbEpisode.airDate} < CURRENT_DATE
+          )
+          ELSE 0
+        END`
+        .mapWith(Number)
+        .as('totalEpisodeCount');
 
-      let conditions = [];
+      // 2. join media with origins and genres
+      let qb = ctx.db
+        .select({
+          media: tmdbMedia,
+          origins: aggregatedOrigins,
+          genres: aggregatedGenres,
+          availabilityCount: availabilityCount,
+          totalEpisodeCount: totalEpisodeCount,
+        })
+        .from(tmdbMedia)
+        .leftJoin(
+          tmdbMediaToTmdbOrigin,
+          eq(tmdbMedia.id, tmdbMediaToTmdbOrigin.mediaId)
+        )
+        .leftJoin(tmdbOrigin, eq(tmdbMediaToTmdbOrigin.originId, tmdbOrigin.id))
+        .leftJoin(
+          tmdbMediaToTmdbGenre,
+          eq(tmdbMedia.id, tmdbMediaToTmdbGenre.mediaId)
+        )
+        .leftJoin(tmdbGenre, eq(tmdbMediaToTmdbGenre.genreId, tmdbGenre.id))
+        // We must group by media to deduplicate media and aggregate origins/genres
+        .groupBy(tmdbMedia.id);
 
+      // 3. gather all conditions from input
+      const conditions = [];
+      const { query, type, genres, origins, years } = input;
       if (query) {
         conditions.push(ilike(tmdbMedia.title, `%${query}%`));
       }
+      if (type) {
+        conditions.push(inArray(tmdbMedia.type, type));
+      }
+      if (years && years.length > 0) {
+        // Use a SQL function to extract the year from the release_date column
+        conditions.push(
+          inArray(sql`extract(year from ${tmdbMedia.releaseDate})`, years)
+        );
+      }
+      // Handle genres filter (acts on the joined tmdbMediaToTmdbGenre table)
+      if (genres && genres.length > 0) {
+        conditions.push(inArray(tmdbMediaToTmdbGenre.genreId, genres));
+      }
+      // Handle origins filter (acts on the joined tmdbMediaToTmdbOrigin table)
+      if (origins && origins.length > 0) {
+        conditions.push(inArray(tmdbMediaToTmdbOrigin.originId, origins));
+      }
 
-      const results = await ctx.db
-        .select({
-          media: tmdbMedia,
-          origins: sql<string[]>`(
-            SELECT array_agg(${tmdbOrigin.name})
-            FROM ${tmdbMediaToTmdbOrigin}
-            INNER JOIN ${tmdbOrigin} ON ${tmdbMediaToTmdbOrigin.originId} = ${tmdbOrigin.id}
-            WHERE ${tmdbMediaToTmdbOrigin.mediaId} = ${tmdbMedia.id}
-          )`,
-          genres: sql<string[]>`(
-            SELECT array_agg(${tmdbGenre.name})
-            FROM ${tmdbMediaToTmdbGenre}
-            INNER JOIN ${tmdbGenre} ON ${tmdbMediaToTmdbGenre.genreId} = ${tmdbGenre.id}
-            WHERE ${tmdbMediaToTmdbGenre.mediaId} = ${tmdbMedia.id}
-          )`,
-        })
-        // .from(tmdbTrending)
-        // .innerJoin(tmdbMedia, eq(tmdbTrending.mediaId, tmdbMedia.id)); // why this works?
+      // 4. add all conditions to the query
+      if (conditions.length > 0) {
+        qb.where(and(...conditions));
+      }
 
-        .from(tmdbMedia); // why this doesn't work??
-
-      // .where(and(...conditions));
-
+      const results = await qb.orderBy(desc(tmdbMedia.releaseDate));
       return results.map((result) => {
         return {
           ...result,
+          // origins: [],
           // genres: [],
-          availabilityCount: 0,
-          totalEpisodeCount: 0,
+          // availabilityCount: 0,
+          // totalEpisodeCount: 0,
         };
       });
     }),
 
-  tmdbTrending: publicProcedure.query(async ({ ctx }) => {
+  getTmdbTrending: publicProcedure.query(async ({ ctx }) => {
     const trending: ListMedia[] = await ctx.db
       .select({
         // rank: tmdbTrending.rank,
@@ -312,7 +266,7 @@ export const mediaRouter = createTRPCRouter({
     return trending;
   }),
 
-  tmdbTopRatedMv: publicProcedure.query(async ({ ctx }) => {
+  getTmdbTopRatedMv: publicProcedure.query(async ({ ctx }) => {
     const topRatedMovies: ListMedia[] = await ctx.db
       .select({
         // rank: tmdbTopRated.rank,
@@ -365,7 +319,7 @@ export const mediaRouter = createTRPCRouter({
     return topRatedMovies;
   }),
 
-  tmdbTopRatedTv: publicProcedure.query(async ({ ctx }) => {
+  getTmdbTopRatedTv: publicProcedure.query(async ({ ctx }) => {
     const topRatedTv: ListMedia[] = await ctx.db
       .select({
         // rank: tmdbTopRated.rank,
@@ -633,7 +587,7 @@ export const mediaRouter = createTRPCRouter({
     });
   }),
 
-  mediaSrcFetch: publicProcedure.mutation(async ({ ctx }) => {
+  fetchMediaSrc: publicProcedure.mutation(async ({ ctx }) => {
     const yesterday = new Date();
     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
 

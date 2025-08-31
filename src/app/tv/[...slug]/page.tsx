@@ -107,7 +107,7 @@ export default async function Page({ params }: PageProps) {
   );
 
   return (
-    <div className="mx-auto p-4 max-w-6xl flex flex-col gap-2">
+    <div className="mx-auto p-4 max-w-7xl flex flex-col gap-2">
       {/* Title, Season, Episode */}
       <TvOverview
         selectedMedia={mediaData}

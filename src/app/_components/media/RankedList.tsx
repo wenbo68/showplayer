@@ -22,10 +22,10 @@ export default function RankedList({ viewMode, mediaType }: MediaListProps) {
     status: tmdbStatus,
     error: tmdbError,
   } = mediaType === 'top mv'
-    ? api.media.tmdbTopRatedMv.useQuery()
+    ? api.media.getTmdbTopRatedMv.useQuery()
     : mediaType === 'top tv'
-    ? api.media.tmdbTopRatedTv.useQuery()
-    : api.media.tmdbTrending.useQuery();
+    ? api.media.getTmdbTopRatedTv.useQuery()
+    : api.media.getTmdbTrending.useQuery();
 
   // when loading cache
   if (tmdbStatus === 'pending') {

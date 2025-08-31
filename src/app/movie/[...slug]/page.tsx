@@ -41,25 +41,25 @@ export default async function Page({ params }: PageProps) {
     notFound();
   }
 
-  const sourcesWithSubtitles = mediaData.sources;
+  const sourcesAndSubtitles = mediaData.sources;
 
   // if (!sourcesWithSubtitles[0]) {
   //   notFound();
   // }
 
   // Step 2. If no provider is in the URL, redirect to the 1st available one (if there is a provider)
-  if (!providerParam && sourcesWithSubtitles[0]) {
-    return redirect(`/movie/${tmdbId}/${sourcesWithSubtitles[0].provider}`);
+  if (!providerParam && sourcesAndSubtitles[0]) {
+    return redirect(`/movie/${tmdbId}/${sourcesAndSubtitles[0].provider}`);
   }
 
   // Step 3. Find the selected source based on the provider in the URL
-  const selectedSrc = sourcesWithSubtitles.find(
+  const selectedSrc = sourcesAndSubtitles.find(
     (s) => s.provider === providerParam
   );
 
   // If a provider is in the URL (but doesn't exist for this media) then redirect to 1st available one (if there is a provider)
-  if (!selectedSrc && sourcesWithSubtitles[0]) {
-    return redirect(`/movie/${tmdbId}/${sourcesWithSubtitles[0].provider}`);
+  if (!selectedSrc && sourcesAndSubtitles[0]) {
+    return redirect(`/movie/${tmdbId}/${sourcesAndSubtitles[0].provider}`);
   }
 
   // Step 4. Construct the proxy URL for the video player
@@ -67,7 +67,7 @@ export default async function Page({ params }: PageProps) {
   const proxiedSrcUrl = getProxiedSrcUrl(selectedSrc);
 
   // Step 5. Aggregate all subtitles from all available sources
-  const subtitles = sourcesWithSubtitles.flatMap((source, index) =>
+  const subtitles = sourcesAndSubtitles.flatMap((source, index) =>
     source.subtitles.map((subtitle) => ({
       content: subtitle.content,
       lang: subtitle.language.slice(0, 2).toLowerCase(),
@@ -77,7 +77,7 @@ export default async function Page({ params }: PageProps) {
   );
 
   return (
-    <div className="mx-auto p-4 max-w-6xl flex flex-col gap-2">
+    <div className="mx-auto p-4 max-w-7xl flex flex-col gap-2">
       <MvOverview selectedMedia={mediaData} />
 
       {/* Video Player Component */}
@@ -89,8 +89,8 @@ export default async function Page({ params }: PageProps) {
 
       {/* Source Selector Component */}
       <SourceSelector
-        sources={sourcesWithSubtitles}
-        selectedProvider={providerParam ?? sourcesWithSubtitles[0]?.provider}
+        sources={sourcesAndSubtitles}
+        selectedProvider={providerParam ?? sourcesAndSubtitles[0]?.provider}
       />
     </div>
   );

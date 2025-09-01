@@ -4,6 +4,7 @@ import { type Metadata } from 'next';
 import { Geist } from 'next/font/google';
 
 import { TRPCReactProvider } from '~/trpc/react';
+import { api } from '~/trpc/server';
 
 export const metadata: Metadata = {
   title: 'Create T3 App',
@@ -16,12 +17,20 @@ const geist = Geist({
   variable: '--font-geist-sans',
 });
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  try {
+    await api.media.getTmdbTrending.prefetch();
+    await api.media.getTmdbTopRatedMv.prefetch();
+    await api.media.getTmdbTopRatedTv.prefetch();
+    await api.media.getFilterOptions.prefetch();
+  } catch (error) {
+    console.log(`Prefetch failed: `, error);
+  }
   return (
     <html lang="en" className={`${geist.variable}`}>
-      <body className="bg-gray-900 text-gray-400">
+      <body className="bg-gray-900 text-gray-400 max-w-7xl mx-auto">
         <TRPCReactProvider>{children}</TRPCReactProvider>
       </body>
     </html>
@@ -31,7 +40,17 @@ export default function RootLayout({
 // for overview, add "show/hide backdrop" arrow.
 // allow 3 modes for season/episode selector: horizontal scrolling, grid, detailed vertical scrolling (show poster, title, description)
 
-// search and filters should be together and present in all pages
+// search bar, mv/tv, genre, origin, release year,
+// airing status (finished: all episodes are older than yesterday, airing: at least 1 episode is in future, not released: releaseDate in the future),
+// availability (full: all episodes have source, partial: at least 1 episode have no src, none: 0 episodes or no episode have src)
+
+// add sorting to the search page (based on title, release date, etc.)
+// sorting based on popularity and vote might require adding popularity/voteAverage/voteCount columns to media table
+// and require fetching details for all media daily to update those new columns
+
+// login
+// media request
+// way to stop an trpc procedure (eg src fetch) without shutting down the server
 
 // if a movie belongs to a collection, fetch all others in the collection (and display them as related?)
 // add recommendations (just implement your own, tmdb recommendations are too random)

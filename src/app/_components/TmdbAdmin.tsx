@@ -18,7 +18,7 @@ export default function TmdbAdmin() {
   const fetchTmdbTopMutation = api.media.fetchTmdbTopRated.useMutation();
 
   const populateDetailsMutation = api.media.populateMediaDetails.useMutation();
-  const dailySrcFetchMutation = api.media.mediaSrcFetch.useMutation();
+  const dailySrcFetchMutation = api.media.fetchMediaSrc.useMutation();
 
   const fetchMvSrcMutation = api.media.fetchAndInsertMvSrc.useMutation();
   const insertEpisodeMutation = api.media.insertSeasonAndEpisode.useMutation();

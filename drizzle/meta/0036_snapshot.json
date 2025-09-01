@@ -1,5 +1,9 @@
 {
+<<<<<<< HEAD
   "id": "27fd062f-2478-4a9b-acc3-d8c81bb87c7e",
+=======
+  "id": "a45a81be-1a43-4d3f-b7bf-d3e502f718a8",
+>>>>>>> search-and-filters
   "prevId": "376b1820-d17f-4fab-bc6d-56045f6106ad",
   "version": "7",
   "dialect": "postgresql",
@@ -293,7 +297,19 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
+<<<<<<< HEAD
       "uniqueConstraints": {},
+=======
+      "uniqueConstraints": {
+        "tmdb_genre_name_unique": {
+          "name": "tmdb_genre_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "name"
+          ]
+        }
+      },
+>>>>>>> search-and-filters
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -522,7 +538,19 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
+<<<<<<< HEAD
       "uniqueConstraints": {},
+=======
+      "uniqueConstraints": {
+        "tmdb_origin_name_unique": {
+          "name": "tmdb_origin_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "name"
+          ]
+        }
+      },
+>>>>>>> search-and-filters
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -703,7 +731,11 @@
         },
         "provider": {
           "name": "provider",
+<<<<<<< HEAD
           "type": "integer",
+=======
+          "type": "varchar(255)",
+>>>>>>> search-and-filters
           "primaryKey": false,
           "notNull": true
         },

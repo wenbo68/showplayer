@@ -27,7 +27,7 @@ export const m3u8TypeEnum = pgEnum('m3u8_type', ['master', 'media']);
 
 export const tmdbOrigin = pgTable('tmdb_origin', {
   id: varchar('id', { length: 2 }).primaryKey(),
-  name: varchar('name', { length: 255 }).notNull(),
+  name: varchar('name', { length: 255 }).notNull().unique(),
 });
 
 export const tmdbOriginRelations = relations(tmdbOrigin, ({ many }) => ({
@@ -64,7 +64,7 @@ export const tmdbMediaToTmdbOriginRelations = relations(
 
 export const tmdbGenre = pgTable('tmdb_genre', {
   id: integer('id').primaryKey(),
-  name: varchar('name', { length: 255 }).notNull(),
+  name: varchar('name', { length: 255 }).notNull().unique(),
 });
 
 export const tmdbGenreRelations = relations(tmdbGenre, ({ many }) => ({

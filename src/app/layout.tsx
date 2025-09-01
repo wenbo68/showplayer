@@ -49,8 +49,10 @@ export default async function RootLayout({
 // and require fetching details for all media daily to update those new columns
 
 // login
-// media request
+// media request function for users
 // way to stop an trpc procedure (eg src fetch) without shutting down the server
+
+// add vidfast
 
 // if a movie belongs to a collection, fetch all others in the collection (and display them as related?)
 // add recommendations (just implement your own, tmdb recommendations are too random)

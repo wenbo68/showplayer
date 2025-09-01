@@ -305,7 +305,7 @@ async function fetchSrcFromProvidersFast(
   });
   if (!response.ok) {
     console.error(
-      `Batch request failed with status ${response.status}. Response obj: `,
+      `[fetchSrcFromProvidersFast] Batch request failed with status ${response.status}. Response obj: `,
       response
     );
   }

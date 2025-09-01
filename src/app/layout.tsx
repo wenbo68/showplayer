@@ -20,14 +20,14 @@ const geist = Geist({
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  try {
-    await api.media.getTmdbTrending.prefetch();
-    await api.media.getTmdbTopRatedMv.prefetch();
-    await api.media.getTmdbTopRatedTv.prefetch();
-    await api.media.getFilterOptions.prefetch();
-  } catch (error) {
-    console.log(`Prefetch failed: `, error);
-  }
+  // try {
+  //   await api.media.getTmdbTrending.prefetch();
+  //   await api.media.getTmdbTopRatedMv.prefetch();
+  //   await api.media.getTmdbTopRatedTv.prefetch();
+  //   await api.media.getFilterOptions.prefetch();
+  // } catch (error) {
+  //   console.log(`Prefetch failed: `, error);
+  // }
   return (
     <html lang="en" className={`${geist.variable}`}>
       <body className="bg-gray-900 text-gray-400 max-w-7xl mx-auto">

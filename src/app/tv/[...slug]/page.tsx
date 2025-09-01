@@ -67,7 +67,7 @@ export default async function Page({ params }: PageProps) {
   if (!selectedEpisode) notFound();
 
   // Step 3. Fetch all available sources for the selected episode
-  const sourcesWithSubtitles = await db.query.tmdbSource.findMany({
+  const sourcesAndSubtitles = await db.query.tmdbSource.findMany({
     where: eq(tmdbSource.episodeId, selectedEpisode.id),
     orderBy: [asc(tmdbSource.provider)],
     with: {
@@ -77,18 +77,18 @@ export default async function Page({ params }: PageProps) {
   // if (!sources[0]) notFound();
 
   // If no provider is in the URL (and if there are providers), redirect to 1st provider
-  if (!provider && sourcesWithSubtitles[0]) {
+  if (!provider && sourcesAndSubtitles[0]) {
     return redirect(
-      `/tv/${tmdbId}/${seasonNumber}/${episodeNumber}/${sourcesWithSubtitles[0].provider}`
+      `/tv/${tmdbId}/${seasonNumber}/${episodeNumber}/${sourcesAndSubtitles[0].provider}`
     );
   }
 
   // Step 4. Find the selected source URL for the video player
-  const selectedSrc = sourcesWithSubtitles.find((s) => s.provider === provider);
+  const selectedSrc = sourcesAndSubtitles.find((s) => s.provider === provider);
   // If a provider is in the URL (but doesn't exist for this media) then redirect to 1st provider (if providers exists)
-  if (!selectedSrc && sourcesWithSubtitles[0]) {
+  if (!selectedSrc && sourcesAndSubtitles[0]) {
     return redirect(
-      `/tv/${tmdbId}/${seasonNumber}/${episodeNumber}/${sourcesWithSubtitles[0].provider}`
+      `/tv/${tmdbId}/${seasonNumber}/${episodeNumber}/${sourcesAndSubtitles[0].provider}`
     );
   }
 
@@ -96,7 +96,7 @@ export default async function Page({ params }: PageProps) {
   const proxiedSrcUrl = getProxiedSrcUrl(selectedSrc);
 
   // 6. find all subtitles
-  const subtitles = sourcesWithSubtitles.flatMap((source, index) =>
+  const subtitles = sourcesAndSubtitles.flatMap((source, index) =>
     source.subtitles.map((subtitle) => ({
       content: subtitle.content,
       lang: subtitle.language.slice(0, 2).toLowerCase(), // e.g., "English" -> "en"
@@ -125,8 +125,8 @@ export default async function Page({ params }: PageProps) {
       <TvSelector
         tmdbId={tmdbId}
         mediaData={mediaData}
-        episodeSources={sourcesWithSubtitles}
-        selectedProvider={provider ?? sourcesWithSubtitles[0]?.provider}
+        episodeSources={sourcesAndSubtitles}
+        selectedProvider={provider ?? sourcesAndSubtitles[0]?.provider}
         selectedSeasonId={selectedSeason.id}
         selectedEpisodeId={selectedEpisode.id}
       />

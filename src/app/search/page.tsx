@@ -28,11 +28,12 @@ export default async function SearchPage({
 
   // 2. Fetch the search results from your tRPC procedure on the server
   const searchResults = await api.media.searchAndFilter(searchInput);
+  const filterOptions = await api.media.getFilterOptions();
 
   return (
     <main className="flex flex-col gap-8 p-4">
       {/* Include the SearchBar so users can refine their search */}
-      <SearchBar />
+      <SearchBar filterOptions={filterOptions} />
 
       {/* 3. Conditionally render the results or a 'not found' message */}
       {searchResults && searchResults.length > 0 ? (

@@ -1,21 +1,12 @@
 import { api, HydrateClient } from '~/trpc/server';
 import MediaList from '~/app/_components/media/MediaList';
-import RankedList from '~/app/_components/media/RankedList';
 
 export default async function TopTvPage() {
-  try {
-    await api.media.getTmdbTrending.prefetch();
-    await api.media.getTmdbTrending.prefetch();
-    await api.media.getTmdbTrending.prefetch();
-  } catch (error) {
-    console.log(`Prefetch failed: `, error);
-  }
-
+  const topTvList = await api.media.getTmdbTopRatedTv();
   return (
     <HydrateClient>
       <main className="flex flex-col items-center justify-center p-4 gap-8">
-        {/* full top tv list */}
-        <RankedList viewMode="full" mediaType="top tv" />
+        <MediaList mediaList={topTvList} viewMode="full" label="TOP SHOWS" />
       </main>
     </HydrateClient>
   );

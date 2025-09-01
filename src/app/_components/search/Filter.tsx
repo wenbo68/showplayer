@@ -104,9 +104,9 @@ export default function Filter(props: FilterProps) {
   const selectedOptions = getSelectedOptions();
 
   return (
-    <div className="relative flex flex-col w-full gap-3" ref={containerRef}>
+    <div className="relative flex flex-col flex-grow min-w-[200px] gap-3">
       {/** above search bar */}
-      <div className="flex w-full gap-3 items-center">
+      <div className="flex w-full gap-3 items-baseline">
         {/** filter title */}
         <label className="font-semibold">{label}</label>
 
@@ -117,66 +117,68 @@ export default function Filter(props: FilterProps) {
               <button
                 onClick={() => handleRemoveOption(option.trpcInput)}
                 key={option.trpcInput}
-                className="flex gap-0 bg-gray-900 text-blue-400 text-xs cursor-pointer"
+                className="flex gap-0 bg-gray-800 hover:text-blue-400 rounded px-2 text-xs font-semibold cursor-pointer"
               >
                 {option.label}
-                <X size={14} className="relative top-[1px]" />
+                {/* <X size={14} className="relative top-[1px]" /> */}
               </button>
             ))}
           </div>
         )}
       </div>
 
-      {/** search/filter */}
-      <div className="w-full relative">
-        <input
-          type="text"
-          value={writtenText}
-          onFocus={() => setIsDropdownOpen(true)}
-          onChange={(e) => {
-            setWrittenText(e.target.value);
-            setIsDropdownOpen(true);
-          }}
-          placeholder={placeholder ?? `Filter ${label.toLowerCase()}...`}
-          className="w-full py-2 px-3 bg-gray-800 rounded outline-none"
-        />
-        <button
-          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer"
-        >
-          <IoIosArrowDown size={20} />
-        </button>
-      </div>
+      <div ref={containerRef}>
+        {/** search/filter */}
+        <div className="w-full relative">
+          <input
+            type="text"
+            value={writtenText}
+            onFocus={() => setIsDropdownOpen(true)}
+            onChange={(e) => {
+              setWrittenText(e.target.value);
+              setIsDropdownOpen(true);
+            }}
+            placeholder={placeholder ?? `Filter ${label.toLowerCase()}...`}
+            className="w-full py-2 px-3 bg-gray-800 rounded outline-none"
+          />
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer"
+          >
+            <IoIosArrowDown size={20} />
+          </button>
+        </div>
 
-      {/** filter dropdown */}
-      {isDropdownOpen && (
-        <div className="absolute z-10 top-full mt-2 w-full flex flex-col bg-gray-800 rounded p-2 max-h-60 overflow-y-auto scrollbar-thin">
-          {filteredOptions.map((option) => (
-            <button
-              key={option.trpcInput}
-              onClick={() => handleSelectOption(option)}
-              className={`w-full text-start p-2 rounded flex items-center gap-3 cursor-pointer hover:text-blue-400
+        {/** filter dropdown */}
+        {isDropdownOpen && (
+          <div className="absolute z-10 top-full mt-2 w-full flex flex-col bg-gray-800 rounded p-2 max-h-60 overflow-y-auto scrollbar-thin">
+            {filteredOptions.map((option) => (
+              <button
+                key={option.trpcInput}
+                onClick={() => handleSelectOption(option)}
+                className={`w-full text-start p-2 rounded flex items-center gap-3 cursor-pointer hover:text-blue-400 hover:bg-gray-900
               ${
                 // --- FIX FOR MULTI-SELECT ---
                 // Use .some() to check for inclusion with string comparison
                 mode === 'multi' &&
                 state.some((item) => String(item) === String(option.trpcInput))
-                  ? 'bg-gray-900 text-blue-400'
+                  ? 'text-blue-400'
                   : ''
               }
               ${
                 // --- FIX FOR SINGLE-SELECT ---
                 // Compare as strings
                 mode === 'single' && String(state) === String(option.trpcInput)
-                  ? 'bg-gray-900 text-blue-400'
+                  ? 'text-blue-400'
                   : ''
               }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

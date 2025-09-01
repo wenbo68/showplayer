@@ -9,15 +9,20 @@ import { useDebounce } from 'use-debounce';
 import { api } from '~/trpc/react';
 import { IoSearchSharp } from 'react-icons/io5';
 import Filter from './Filter';
+import type { FilterOptions } from '~/type';
 
-export default function SearchBar() {
+export default function SearchBar({
+  filterOptions,
+}: {
+  filterOptions: FilterOptions;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   // const initialPathRef = useRef(pathname);
 
-  const { data: filterOptions, isLoading } =
-    api.media.getFilterOptions.useQuery();
+  // const { data: filterOptions, isLoading } =
+  //   api.media.getFilterOptions.useQuery();
 
   // get the initial states from the url
   const [query, setQuery] = useState(searchParams.get('query') ?? '');
@@ -54,28 +59,28 @@ export default function SearchBar() {
 
   // dropdown options from db
   const typeOptions = [
-    { trpcInput: 'movie', label: 'movie' },
-    { trpcInput: 'tv', label: 'tv' },
+    { label: 'Movies', trpcInput: 'movie' },
+    { label: 'Shows', trpcInput: 'tv' },
   ];
   const yearOptions =
-    filterOptions?.years.map((year) => ({
+    filterOptions.years.map((year) => ({
       trpcInput: year,
       label: String(year),
     })) ?? [];
   const genreOptions =
-    filterOptions?.genres.map((genre) => ({
+    filterOptions.genres.map((genre) => ({
       trpcInput: genre.id,
       label: genre.name,
     })) ?? [];
   const originOptions =
-    filterOptions?.origins.map((origin) => ({
+    filterOptions.origins.map((origin) => ({
       trpcInput: origin.id,
       label: origin.name,
     })) ?? [];
 
   return (
-    <div className="w-full flex gap-4 flex-auto text-sm text-gray-400">
-      <div className="w-full flex flex-col gap-3">
+    <div className="w-full flex gap-3 text-sm flex-wrap text-gray-400">
+      <div className="min-w-[200px] flex-grow flex flex-col gap-3">
         <span className="font-semibold">Search</span>
         <div className="w-full relative">
           <IoSearchSharp
@@ -91,7 +96,7 @@ export default function SearchBar() {
           {query && (
             <button
               onClick={() => setQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2"
+              className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer"
             >
               <X size={20} />
             </button>
@@ -100,20 +105,20 @@ export default function SearchBar() {
       </div>
 
       <Filter
-        label="Years"
-        options={yearOptions}
-        state={years}
-        setState={(v) => setYears(v as number[])}
-        mode="multi"
-        // placeholder="Filter by year..."
-      />
-
-      <Filter
         label="Types"
         options={typeOptions}
         state={types}
         setState={(v) => setTypes(v as string[])}
         mode="multi"
+      />
+
+      <Filter
+        label="Genres"
+        options={genreOptions}
+        state={genres}
+        setState={(v) => setGenres(v as number[])}
+        mode="multi"
+        // placeholder="Filter by genre..."
       />
 
       <Filter
@@ -126,12 +131,12 @@ export default function SearchBar() {
       />
 
       <Filter
-        label="Genres"
-        options={genreOptions}
-        state={genres}
-        setState={(v) => setGenres(v as number[])}
+        label="Years"
+        options={yearOptions}
+        state={years}
+        setState={(v) => setYears(v as number[])}
         mode="multi"
-        // placeholder="Filter by genre..."
+        // placeholder="Filter by year..."
       />
     </div>
   );

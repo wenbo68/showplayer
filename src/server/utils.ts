@@ -304,7 +304,10 @@ async function fetchSrcFromProvidersFast(
     body: JSON.stringify({ type, path }), // Send the batch job
   });
   if (!response.ok) {
-    console.error(`Batch request failed with status ${response.status}`);
+    console.error(
+      `Batch request failed with status ${response.status}. Response obj: `,
+      response
+    );
   }
 
   const results = (await response.json()) as PuppeteerResult[];

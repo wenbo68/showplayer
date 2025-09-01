@@ -1,21 +1,13 @@
 import { api, HydrateClient } from '~/trpc/server';
 import MediaList from '~/app/_components/media/MediaList';
-import RankedList from '~/app/_components/media/RankedList';
 
 export default async function TopMvPage() {
-  try {
-    await api.media.getTmdbTrending.prefetch();
-    await api.media.getTmdbTrending.prefetch();
-    await api.media.getTmdbTrending.prefetch();
-  } catch (error) {
-    console.log(`Prefetch failed: `, error);
-  }
+  const topMvList = await api.media.getTmdbTopRatedMv();
 
   return (
     <HydrateClient>
       <main className="flex flex-col items-center justify-center p-4 gap-8">
-        {/* full top mv list */}
-        <RankedList viewMode="full" mediaType="top mv" />
+        <MediaList mediaList={topMvList} viewMode="full" label="TOP MOVIES" />
       </main>
     </HydrateClient>
   );

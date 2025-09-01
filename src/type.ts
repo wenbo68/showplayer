@@ -34,3 +34,15 @@ export type ListMedia = {
   averageRating?: number;
   voteCount?: number;
 };
+
+export type FilterOptions = {
+  genres: {
+    id: number;
+    name: string;
+  }[];
+  origins: {
+    id: string;
+    name: string;
+  }[];
+  years: number[];
+};

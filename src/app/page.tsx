@@ -1,36 +1,66 @@
 import { api, HydrateClient } from '~/trpc/server';
 import TmdbAdmin from './_components/TmdbAdmin';
-import RankedList from './_components/media/RankedList';
 import SearchBar from './_components/search/SearchBar';
+import { Suspense } from 'react';
+import MediaList from './_components/media/MediaList';
+import type { FilterOptions } from '~/type';
+
+// A simple loading skeleton for your SearchBar
+function SearchBarFallback() {
+  return (
+    <div className="w-full flex gap-4 flex-auto text-sm text-gray-400 animate-pulse">
+      <div className="w-full flex flex-col gap-3">
+        <div className="h-5 bg-gray-700 rounded w-1/4"></div>
+        <div className="h-10 bg-gray-800 rounded"></div>
+      </div>
+      <div className="w-full flex flex-col gap-3">
+        <div className="h-5 bg-gray-700 rounded w-1/4"></div>
+        <div className="h-10 bg-gray-800 rounded"></div>
+      </div>
+      <div className="w-full flex flex-col gap-3">
+        <div className="h-5 bg-gray-700 rounded w-1/4"></div>
+        <div className="h-10 bg-gray-800 rounded"></div>
+      </div>
+      <div className="w-full flex flex-col gap-3">
+        <div className="h-5 bg-gray-700 rounded w-1/4"></div>
+        <div className="h-10 bg-gray-800 rounded"></div>
+      </div>
+    </div>
+  );
+}
 
 export default async function Home() {
+  const trendingList = await api.media.getTmdbTrending();
+  const topMvList = await api.media.getTmdbTopRatedMv();
+  const topTvList = await api.media.getTmdbTopRatedTv();
+  const filterOptions = await api.media.getFilterOptions();
+
   return (
     <HydrateClient>
       <main className="flex flex-col items-center justify-center p-4 gap-8">
         <TmdbAdmin />
 
-        {/* Always display search and filter controls */}
-        <SearchBar />
+        <Suspense fallback={<SearchBarFallback />}>
+          <SearchBar filterOptions={filterOptions} />
+        </Suspense>
 
-        {/* 1. Trending List */}
-        <RankedList
+        <MediaList
+          mediaList={trendingList}
           viewMode="preview"
-          mediaType="trending"
-          // viewAllLink="/trending"
+          label="TRENDING NOW"
+          link="/trending"
         />
-
-        {/* 2. Top Rated Movies List */}
-        <RankedList
+        <MediaList
+          mediaList={topMvList}
           viewMode="preview"
-          mediaType="top mv"
-          // viewAllLink="/top/movie"
+          label="TOP MOVIES"
+          link="/top/movie"
         />
-
-        {/* 3. Top Rated TV List */}
-        <RankedList
+        <MediaList
+          mediaList={topTvList}
           viewMode="preview"
-          mediaType="top tv"
-          // viewAllLink="/top/tv"
+          label="TOP SHOWS"
+          link="/top/tv"
         />
       </main>
     </HydrateClient>

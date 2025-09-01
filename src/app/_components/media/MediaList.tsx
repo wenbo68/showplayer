@@ -12,9 +12,16 @@ import FullList from './FullList';
 interface MediaListProps {
   viewMode: 'preview' | 'full';
   mediaList: ListMedia[];
+  label?: string;
+  link?: string;
 }
 
-export default function MediaList({ viewMode, mediaList }: MediaListProps) {
+export default function MediaList({
+  viewMode,
+  mediaList,
+  label,
+  link,
+}: MediaListProps) {
   // create component states
   const [selectedMedia, setSelectedMedia] = useState<ListMedia | null>(null);
 
@@ -27,11 +34,16 @@ export default function MediaList({ viewMode, mediaList }: MediaListProps) {
         <PreviewList
           mediaList={previewItems}
           setSelectedMedia={setSelectedMedia}
+          label={label}
+          link={link}
         />
       ) : (
-        <FullList mediaList={mediaList} setSelectedMedia={setSelectedMedia} />
+        <FullList
+          mediaList={mediaList}
+          setSelectedMedia={setSelectedMedia}
+          label={label}
+        />
       )}
-      {/* Conditionally render the modal */}
       {selectedMedia && (
         <MediaPopup
           mediaParam={selectedMedia}

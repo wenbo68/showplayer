@@ -30,7 +30,7 @@ export default async function RootLayout({
   }
   return (
     <html lang="en" className={`${geist.variable}`}>
-      <body className="bg-gray-900 text-gray-400">
+      <body className="bg-gray-900 text-gray-400 max-w-7xl mx-auto">
         <TRPCReactProvider>{children}</TRPCReactProvider>
       </body>
     </html>
@@ -43,6 +43,10 @@ export default async function RootLayout({
 // search bar, mv/tv, genre, origin, release year,
 // airing status (finished: all episodes are older than yesterday, airing: at least 1 episode is in future, not released: releaseDate in the future),
 // availability (full: all episodes have source, partial: at least 1 episode have no src, none: 0 episodes or no episode have src)
+
+// add sorting to the search page (based on title, release date, etc.)
+// sorting based on popularity and vote might require adding popularity/voteAverage/voteCount columns to media table
+// and require fetching details for all media daily to update those new columns
 
 // login
 // media request

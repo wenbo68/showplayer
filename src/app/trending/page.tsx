@@ -1,5 +1,6 @@
 import { api, HydrateClient } from '~/trpc/server';
 import MediaList from '~/app/_components/media/MediaList';
+import RankedList from '../_components/media/RankedList';
 
 export default async function TrendingPage() {
   try {
@@ -12,9 +13,9 @@ export default async function TrendingPage() {
 
   return (
     <HydrateClient>
-      <main className="flex flex-col items-center justify-center max-w-6xl mx-auto p-4 gap-8">
+      <main className="flex flex-col items-center justify-center p-4 gap-8">
         {/* full trending list */}
-        <MediaList viewMode="full" mediaType="trending" />
+        <RankedList viewMode="full" mediaType="trending" />
       </main>
     </HydrateClient>
   );

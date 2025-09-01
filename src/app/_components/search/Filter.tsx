@@ -7,7 +7,7 @@ import { X } from 'lucide-react';
 import { IoIosArrowDown } from 'react-icons/io';
 
 type Option = {
-  value: string | number;
+  trpcInput: string | number;
   label: string;
 };
 
@@ -18,22 +18,22 @@ type FilterProps = {
 } & (
   | {
       mode: 'single';
-      value: string | number;
-      onChange: (value: string | number) => void;
+      state: string | number;
+      setState: (value: string | number) => void;
     }
   | {
       mode: 'multi';
-      value: (string | number)[];
-      onChange: (value: (string | number)[]) => void;
+      state: (string | number)[];
+      setState: (value: (string | number)[]) => void;
     }
 );
 
 export default function Filter(props: FilterProps) {
-  const { label, options, placeholder } = props;
+  const { label, options, placeholder, mode, state, setState } = props;
 
-  const [inputValue, setInputValue] = useState('');
+  const [writtenText, setWrittenText] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isFocused, setIsFocused] = useState(false); // NEW: State to track focus
+
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Effect to handle "clicking away"
@@ -44,8 +44,7 @@ export default function Filter(props: FilterProps) {
         !containerRef.current.contains(event.target as Node)
       ) {
         setIsDropdownOpen(false);
-        setIsFocused(false); // Remove focus
-        setInputValue(''); // Clear input text
+        setWrittenText('');
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -53,42 +52,52 @@ export default function Filter(props: FilterProps) {
   }, []); // This effect only needs to run once
 
   const filteredOptions = options.filter((option) =>
-    option.label.toLowerCase().includes(inputValue.toLowerCase())
+    option.label.toLowerCase().includes(writtenText.toLowerCase())
   );
 
   const handleSelectOption = (option: Option) => {
-    if (props.mode === 'single') {
-      props.onChange(String(option.value));
+    if (mode === 'single') {
+      setState(option.trpcInput); // No change needed here
       setIsDropdownOpen(false);
-      setIsFocused(false);
-      setInputValue('');
+      setWrittenText('');
     } else {
-      const currentSelection = [...props.value];
-      const index = currentSelection.indexOf(option.value);
+      const currentSelection = [...state];
+      // --- FIX: Use findIndex with string comparison ---
+      const index = currentSelection.findIndex(
+        (item) => String(item) === String(option.trpcInput)
+      );
+
       if (index > -1) {
-        currentSelection.splice(index, 1); // Remove if exists
+        currentSelection.splice(index, 1);
       } else {
-        currentSelection.push(option.value); // Add if not
+        currentSelection.push(option.trpcInput);
       }
-      props.onChange(currentSelection);
-      setInputValue(''); // Clear input after selection to allow further filtering
+      setState(currentSelection);
     }
   };
 
   const handleRemoveOption = (valueToRemove: string | number) => {
-    if (props.mode === 'multi') {
-      props.onChange(props.value.filter((v) => v !== valueToRemove));
+    if (mode === 'single') {
+      setState('');
+    } else {
+      // --- FIX: Filter with string comparison ---
+      setState(state.filter((v) => String(v) !== String(valueToRemove)));
     }
   };
 
-  // Helper to get the full Option object from a value
   const getSelectedOptions = () => {
-    if (props.mode === 'single') {
-      const selected = options.find((opt) => opt.value === props.value);
+    if (mode === 'single') {
+      // --- FIX: Compare as strings ---
+      const selected = options.find(
+        (opt) => String(opt.trpcInput) === String(state)
+      );
       return selected ? [selected] : [];
     }
-    return props.value
-      .map((val) => options.find((opt) => opt.value === val))
+    // --- FIX: Compare as strings ---
+    return state
+      .map((val) =>
+        options.find((opt) => String(opt.trpcInput) === String(val))
+      )
       .filter((opt): opt is Option => opt !== undefined);
   };
 
@@ -96,48 +105,36 @@ export default function Filter(props: FilterProps) {
 
   return (
     <div className="relative flex flex-col w-full gap-3" ref={containerRef}>
+      {/** above search bar */}
       <div className="flex w-full gap-3 items-center">
+        {/** filter title */}
         <label className="font-semibold">{label}</label>
 
+        {/** selected options */}
         {selectedOptions.length > 0 && (
-          <div className="flex flex-wrap gap-0">
+          <div className="flex flex-wrap space-x-1">
             {selectedOptions.map((option) => (
               <button
-                onClick={() =>
-                  props.mode === 'single'
-                    ? props.onChange('')
-                    : handleRemoveOption(option.value)
-                }
-                key={option.value}
-                className="flex items-center gap-1 bg-gray-900 text-blue-400 px-2 py-1 rounded-md text-xs cursor-pointer"
+                onClick={() => handleRemoveOption(option.trpcInput)}
+                key={option.trpcInput}
+                className="flex gap-0 bg-gray-900 text-blue-400 text-xs cursor-pointer"
               >
                 {option.label}
-                {/* <button
-                  onClick={() =>
-                    props.mode === 'single'
-                      ? props.onChange('')
-                      : handleRemoveOption(option.value)
-                  }
-                  className="hover:text-white"
-                > */}
-                <X size={14} />
-                {/* </button> */}
+                <X size={14} className="relative top-[1px]" />
               </button>
             ))}
           </div>
         )}
       </div>
 
+      {/** search/filter */}
       <div className="w-full relative">
         <input
           type="text"
-          value={inputValue}
-          onFocus={() => {
-            setIsFocused(true);
-            setIsDropdownOpen(true);
-          }}
+          value={writtenText}
+          onFocus={() => setIsDropdownOpen(true)}
           onChange={(e) => {
-            setInputValue(e.target.value);
+            setWrittenText(e.target.value);
             setIsDropdownOpen(true);
           }}
           placeholder={placeholder ?? `Filter ${label.toLowerCase()}...`}
@@ -151,36 +148,35 @@ export default function Filter(props: FilterProps) {
         </button>
       </div>
 
+      {/** filter dropdown */}
       {isDropdownOpen && (
-        <div className="absolute z-10 top-full mt-2 w-full flex flex-col bg-gray-800 rounded p-2 shadow-lg max-h-60 overflow-y-auto scrollbar-thin">
+        <div className="absolute z-10 top-full mt-2 w-full flex flex-col bg-gray-800 rounded p-2 max-h-60 overflow-y-auto scrollbar-thin">
           {filteredOptions.map((option) => (
-            <label
-              key={option.value}
+            <button
+              key={option.trpcInput}
+              onClick={() => handleSelectOption(option)}
               className={`w-full text-start p-2 rounded flex items-center gap-3 cursor-pointer hover:text-blue-400
               ${
-                props.mode === 'multi' && props.value.includes(option.value)
+                // --- FIX FOR MULTI-SELECT ---
+                // Use .some() to check for inclusion with string comparison
+                mode === 'multi' &&
+                state.some((item) => String(item) === String(option.trpcInput))
                   ? 'bg-gray-900 text-blue-400'
                   : ''
               }
               ${
-                props.mode === 'single' && props.value === option.value
+                // --- FIX FOR SINGLE-SELECT ---
+                // Compare as strings
+                mode === 'single' && String(state) === String(option.trpcInput)
                   ? 'bg-gray-900 text-blue-400'
                   : ''
               }`}
             >
-              <span
-                onClick={() => handleSelectOption(option)}
-                className="flex-1"
-              >
-                {option.label}
-              </span>
-            </label>
+              {option.label}
+            </button>
           ))}
         </div>
       )}
     </div>
   );
 }
-
-// NOTE: I've omitted the repeated JSX for the dropdown list for brevity,
-// as it remains the same. You can copy it from your previous version.

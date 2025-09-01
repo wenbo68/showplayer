@@ -13,7 +13,7 @@ export default async function TopTvPage() {
 
   return (
     <HydrateClient>
-      <main className="flex flex-col items-center justify-center max-w-6xl mx-auto p-4 gap-8">
+      <main className="flex flex-col items-center justify-center p-4 gap-8">
         {/* full top tv list */}
         <RankedList viewMode="full" mediaType="top tv" />
       </main>

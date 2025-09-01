@@ -91,7 +91,7 @@ export const mediaRouter = createTRPCRouter({
     .input(
       z.object({
         query: z.string().optional(),
-        type: z.array(z.enum(['movie', 'tv'])).optional(),
+        types: z.array(z.enum(['movie', 'tv'])).optional(),
         genres: z.array(z.number()).optional(),
         origins: z.array(z.string()).optional(),
         years: z.array(z.number()).optional(),
@@ -169,12 +169,12 @@ export const mediaRouter = createTRPCRouter({
 
       // 3. gather all conditions from input
       const conditions = [];
-      const { query, type, genres, origins, years } = input;
+      const { query, types, genres, origins, years } = input;
       if (query) {
         conditions.push(ilike(tmdbMedia.title, `%${query}%`));
       }
-      if (type) {
-        conditions.push(inArray(tmdbMedia.type, type));
+      if (types && types.length > 0) {
+        conditions.push(inArray(tmdbMedia.type, types));
       }
       if (years && years.length > 0) {
         // Use a SQL function to extract the year from the release_date column
@@ -196,16 +196,16 @@ export const mediaRouter = createTRPCRouter({
         qb.where(and(...conditions));
       }
 
-      const results = await qb.orderBy(desc(tmdbMedia.releaseDate));
-      return results.map((result) => {
-        return {
-          ...result,
-          // origins: [],
-          // genres: [],
-          // availabilityCount: 0,
-          // totalEpisodeCount: 0,
-        };
-      });
+      return await qb.orderBy(desc(tmdbMedia.releaseDate));
+      // return results.map((result) => {
+      //   return {
+      //     ...result,
+      //     // origins: [],
+      //     // genres: [],
+      //     // availabilityCount: 0,
+      //     // totalEpisodeCount: 0,
+      //   };
+      // });
     }),
 
   getTmdbTrending: publicProcedure.query(async ({ ctx }) => {

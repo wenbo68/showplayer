@@ -13,7 +13,7 @@ export default async function TopMvPage() {
 
   return (
     <HydrateClient>
-      <main className="flex flex-col items-center justify-center max-w-6xl mx-auto p-4 gap-8">
+      <main className="flex flex-col items-center justify-center p-4 gap-8">
         {/* full top mv list */}
         <RankedList viewMode="full" mediaType="top mv" />
       </main>

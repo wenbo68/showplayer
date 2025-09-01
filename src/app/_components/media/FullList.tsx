@@ -15,7 +15,7 @@ export default function FullList({
   setSelectedMedia,
 }: FullListProps) {
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] lg:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] justify-center gap-4">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,160px))] lg:grid-cols-[repeat(auto-fit,minmax(200px,200px))] justify-center gap-4">
       {mediaList.map((mediaDetail) => {
         return (
           <MediaButton

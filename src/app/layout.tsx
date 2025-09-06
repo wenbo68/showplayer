@@ -1,10 +1,15 @@
+// /src/app/layout.tsx
+
 import '~/styles/globals.css';
 
 import { type Metadata } from 'next';
 import { Geist } from 'next/font/google';
 
 import { TRPCReactProvider } from '~/trpc/react';
-import { api } from '~/trpc/server';
+import { TopNav } from '~/app/_components/TopNav'; // ✨ Import the TopNav component
+import { MediaPopupProvider } from './_contexts/MediaPopupContext';
+import { AuthProvider } from './_contexts/AuthContext';
+import { auth } from '~/server/auth';
 
 export const metadata: Metadata = {
   title: 'Create T3 App',
@@ -20,22 +25,30 @@ const geist = Geist({
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  // try {
-  //   await api.media.getTmdbTrending.prefetch();
-  //   await api.media.getTmdbTopRatedMv.prefetch();
-  //   await api.media.getTmdbTopRatedTv.prefetch();
-  //   await api.media.getFilterOptions.prefetch();
-  // } catch (error) {
-  //   console.log(`Prefetch failed: `, error);
-  // }
+  // const session = await auth();
   return (
     <html lang="en" className={`${geist.variable}`}>
-      <body className="bg-gray-900 text-gray-400 max-w-7xl mx-auto">
-        <TRPCReactProvider>{children}</TRPCReactProvider>
+      <body className="flex min-h-screen flex-col bg-gray-900 text-gray-400">
+        <TRPCReactProvider>
+          <AuthProvider>
+            <MediaPopupProvider>
+              <TopNav /> {/* ✨ Add the navigation bar here */}
+              <main className="max-w-7xl mx-auto w-full flex-grow py-4">
+                {children}
+              </main>
+            </MediaPopupProvider>
+          </AuthProvider>
+        </TRPCReactProvider>
       </body>
     </html>
   );
 }
+
+// add selected labels in search page
+// add pagination to search page
+// don't show media that isn't available (no src or not released)
+// add my list in login icon
+// add display modes to search page (grid, detailed grid, horizontal strips)
 
 // for overview, add "show/hide backdrop" arrow.
 // allow 3 modes for season/episode selector: horizontal scrolling, grid, detailed vertical scrolling (show poster, title, description)
@@ -48,11 +61,12 @@ export default async function RootLayout({
 // sorting based on popularity and vote might require adding popularity/voteAverage/voteCount columns to media table
 // and require fetching details for all media daily to update those new columns
 
-// login
+// login (if you want google oauth for 37.60.250.227 you need a domain for that)
 // media request function for users
 // way to stop an trpc procedure (eg src fetch) without shutting down the server
 
 // add vidfast
+// add recapture/cloudflare at access/login
 
 // if a movie belongs to a collection, fetch all others in the collection (and display them as related?)
 // add recommendations (just implement your own, tmdb recommendations are too random)

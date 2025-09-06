@@ -1,9 +1,10 @@
 import puppeteer, { Browser, HTTPRequest, type Page } from 'puppeteer';
 import type { M3U8Result, PuppeteerResult } from '~/type';
 import { NextResponse } from 'next/server';
-import { withCors } from '~/utils/api';
+import { withCors } from '~/app/_utils/api';
 import { Cluster } from 'puppeteer-cluster';
-import { providerIndexMap } from '~/server/utils';
+import { providerIndexMap } from '~/app/_utils/puppeteer';
+// import { providerIndexMap } from '~/server/utils';
 
 // vidjoy: m3u8 before play (has antibot measures: wont load m3u8 if youre bot)
 // videasy: have to click play

@@ -1,0 +1,95 @@
+'use client';
+
+import { api } from '~/trpc/react';
+import { FaHeart } from 'react-icons/fa6';
+import { useState } from 'react';
+import { useIsMediaInUserList } from '~/app/_utils/hooks';
+import type { UserList } from '~/type';
+
+export function AddToUserListButton({
+  pageMediaIds,
+  mediaId,
+  listType,
+}: {
+  pageMediaIds: string[];
+  mediaId: string;
+  listType: UserList;
+}) {
+  const isInUserList = useIsMediaInUserList(pageMediaIds, mediaId, 'saved');
+  const [buttonDisabled, setButtonDisabled] = useState(false);
+
+  const utils = api.useUtils();
+  const updateMediaInUserList = api.media.updateMediaInUserList.useMutation({
+    onMutate: async ({ mediaId, listType, desiredState }) => {
+      // 1. Cancel ongoing refetches to prevent overwriting our optimistic update
+      await utils.media.getUserDetailsForMediaList.cancel({
+        mediaIds: pageMediaIds,
+      });
+
+      // 2. Snapshot the previous data
+      const oldUserDetails = utils.media.getUserDetailsForMediaList.getData({
+        mediaIds: pageMediaIds,
+      });
+
+      // 3. Optimistically update the cache
+      if (oldUserDetails) {
+        const newUserDetails = new Map(oldUserDetails);
+        const oldUserDetail = newUserDetails.get(mediaId) ?? [];
+        const newUserDetail = desiredState
+          ? [...new Set([...oldUserDetail, listType])] // Add to list
+          : oldUserDetail.filter((list) => list !== listType); // Remove from list
+        newUserDetails.set(mediaId, newUserDetail);
+        utils.media.getUserDetailsForMediaList.setData(
+          { mediaIds: pageMediaIds },
+          newUserDetails
+        );
+      }
+
+      return { oldUserDetails };
+    },
+    // 4. On error, roll back to the previous data
+    onError: (err, variables, context) => {
+      if (context?.oldUserDetails) {
+        utils.media.getUserDetailsForMediaList.setData(
+          { mediaIds: pageMediaIds },
+          context.oldUserDetails
+        );
+      }
+    },
+    // 5. After mutation settles, invalidate the cache to refetch from the server
+    onSettled: () => {
+      utils.media.getUserDetailsForMediaList.invalidate({
+        mediaIds: pageMediaIds,
+      });
+    },
+  });
+
+  // For now we only have a 'saved' list for users
+  if (listType !== 'saved') return null;
+
+  return (
+    <button
+      onClick={() => {
+        setButtonDisabled(true);
+        // Call the mutation with the desired new state
+        updateMediaInUserList.mutate({
+          mediaId: mediaId,
+          listType: listType,
+          desiredState: !isInUserList,
+        });
+
+        // Re-enable after 0.5s to prevent spamming
+        setTimeout(() => setButtonDisabled(false), 500);
+      }}
+      disabled={buttonDisabled}
+      className={`cursor-pointer rounded-lg p-3 text-gray-300 transition-colors ${
+        isInUserList
+          ? 'bg-pink-700 hover:bg-pink-600'
+          : 'bg-gray-700 hover:bg-gray-600'
+      }`}
+      aria-label={isInUserList ? 'Remove from saved' : 'Add to saved'}
+    >
+      <FaHeart />
+    </button>
+  );
+}

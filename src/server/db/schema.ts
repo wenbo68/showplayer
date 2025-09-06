@@ -24,6 +24,8 @@ import { type AdapterAccount } from 'next-auth/adapters';
 
 export const tmdbTypeEnum = pgEnum('tmdb_type', ['movie', 'tv']);
 export const m3u8TypeEnum = pgEnum('m3u8_type', ['master', 'media']);
+export const userListEnum = pgEnum('list_type', ['saved', 'favorite', 'later']);
+export const userRoleEnum = pgEnum('user_role', ['user', 'admin']);
 
 export const tmdbOrigin = pgTable('tmdb_origin', {
   id: varchar('id', { length: 2 }).primaryKey(),
@@ -186,6 +188,7 @@ export const tmdbMediaRelations = relations(tmdbMedia, ({ one, many }) => ({
   recommended: many(tmdbRecommendation, {
     relationName: 'recommended',
   }),
+  lists: many(userMediaList), // ✨ Add this line
 }));
 
 export const tmdbTrending = pgTable('tmdb_trending', {
@@ -368,10 +371,12 @@ export const users = pgTable('user', {
     withTimezone: true,
   }).default(sql`CURRENT_TIMESTAMP`),
   image: varchar({ length: 255 }),
+  role: userRoleEnum('role').default('user').notNull(),
 });
 
 export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
+  lists: many(userMediaList), // ✨ Add this line
 }));
 
 export const accounts = pgTable(
@@ -426,3 +431,35 @@ export const verificationTokens = pgTable(
   },
   (t) => [primaryKey({ columns: [t.identifier, t.token] })]
 );
+
+// /src/server/db/schema.ts
+
+export const userMediaList = pgTable(
+  'user_media_list',
+  {
+    userId: varchar('user_id', { length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    mediaId: varchar('media_id', { length: 255 })
+      .notNull()
+      .references(() => tmdbMedia.id, { onDelete: 'cascade' }),
+    listType: userListEnum('list_type').notNull(),
+    createdAt: timestamp('created_at', {
+      mode: 'date',
+      withTimezone: true,
+    }).default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.mediaId, t.listType] })]
+);
+
+// Define the relations for the new join table
+export const userMediaListsRelations = relations(userMediaList, ({ one }) => ({
+  user: one(users, {
+    fields: [userMediaList.userId],
+    references: [users.id],
+  }),
+  media: one(tmdbMedia, {
+    fields: [userMediaList.mediaId],
+    references: [tmdbMedia.id],
+  }),
+}));

@@ -257,13 +257,29 @@
     {
       "idx": 36,
       "version": "7",
-<<<<<<< HEAD
-      "when": 1756452390398,
-      "tag": "0036_nosy_gorgon",
-=======
       "when": 1756477886986,
       "tag": "0036_equal_zodiak",
->>>>>>> search-and-filters
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1756808641874,
+      "tag": "0037_silky_adam_warlock",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1756828095136,
+      "tag": "0038_chief_whiplash",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1756978088958,
+      "tag": "0039_unusual_cerise",
       "breakpoints": true
     }
   ]

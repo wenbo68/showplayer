@@ -1,8 +1,11 @@
 // ~/app/search/page.tsx
 
-import { api } from '~/trpc/server';
+import { api, HydrateClient } from '~/trpc/server';
 import SearchBar from '../_components/search/SearchBar';
 import MediaList from '../_components/media/MediaList';
+import { Suspense } from 'react';
+import SearchBarFallback from '../_components/search/SearchBarFallback';
+import ActiveFilters from '../_components/search/ActiveFilters';
 
 // Helper function to ensure a value is an array of strings
 const ensureStringArray = (value: string | string[] | undefined): string[] => {
@@ -17,32 +20,59 @@ export default async function SearchPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const params = await searchParams;
-  // 1. Parse URL search params into the format your tRPC procedure expects
-  const searchInput = {
-    query: typeof params.query === 'string' ? params.query : undefined,
-    types: ensureStringArray(params.types) as ('movie' | 'tv')[] | undefined,
-    genres: ensureStringArray(params.genres).map(Number),
-    origins: ensureStringArray(params.origins),
-    years: ensureStringArray(params.years).map(Number),
+
+  const trpcSearchAndFilterInput = {
+    title: typeof params.title === 'string' ? params.title : undefined,
+    year: ensureStringArray(params.year).map(Number),
+    format: ensureStringArray(params.format) as ('movie' | 'tv')[],
+    origin: ensureStringArray(params.origin),
+    genre: ensureStringArray(params.genre).map(Number),
+    order:
+      typeof params.order === 'string'
+        ? (params.order as
+            | 'date-desc'
+            | 'date-asc'
+            | 'title-desc'
+            | 'title-asc')
+        : undefined,
   };
 
-  // 2. Fetch the search results from your tRPC procedure on the server
-  const searchResults = await api.media.searchAndFilter(searchInput);
+  // get results from trpc
+  const searchResults = await api.media.searchAndFilter(
+    trpcSearchAndFilterInput
+  );
+
+  // prefetch for client cache
+  const pageMediaIds = searchResults.map((m) => m.media.id);
+  const uniquePageMediaIds = [...new Set(pageMediaIds)];
+  api.media.getUserDetailsForMediaList.prefetch({
+    mediaIds: uniquePageMediaIds,
+  });
+
+  // get filter options from trpc
   const filterOptions = await api.media.getFilterOptions();
 
   return (
-    <main className="flex flex-col gap-8 p-4">
-      {/* Include the SearchBar so users can refine their search */}
-      <SearchBar filterOptions={filterOptions} />
+    <div className="flex flex-col gap-10 p-4">
+      <Suspense fallback={<SearchBarFallback />}>
+        <SearchBar filterOptions={filterOptions} />
+      </Suspense>
 
-      {/* 3. Conditionally render the results or a 'not found' message */}
-      {searchResults && searchResults.length > 0 ? (
-        <MediaList viewMode="full" mediaList={searchResults} />
-      ) : (
-        <div className="w-full flex h-64 items-center justify-center rounded-lg bg-gray-800">
-          <p className="text-gray-400">No results found for your query.</p>
-        </div>
-      )}
-    </main>
+      <ActiveFilters filterOptions={filterOptions} />
+
+      <HydrateClient>
+        {searchResults && searchResults.length > 0 ? (
+          <MediaList
+            viewMode="full"
+            mediaList={searchResults}
+            pageMediaIds={uniquePageMediaIds}
+          />
+        ) : (
+          <div className="flex h-64 w-full items-center justify-center rounded-lg bg-gray-800">
+            <p className="text-gray-400">No results found for your query.</p>
+          </div>
+        )}
+      </HydrateClient>
+    </div>
   );
 }

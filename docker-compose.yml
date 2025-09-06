@@ -1,15 +1,19 @@
 services:
   #container name
   app:
-    image: showplayer:2.6
+    image: showplayer:2.9
     build:
       context: .
       # only needed if you have env vars that are needed at build time
       args:
         - AUTH_SECRET=${AUTH_SECRET}
+        - AUTH_URL=${AUTH_URL}
+        - AUTH_TRUST_HOST=${AUTH_TRUST_HOST}
+        - AUTH_GOOGLE_ID=${AUTH_GOOGLE_ID}
+        - AUTH_GOOGLE_SECRET=${AUTH_GOOGLE_SECRET}
         - DATABASE_URL=${DATABASE_URL}
         - TMDB_API_KEY=${TMDB_API_KEY}
-        - VPS_URL=${VPS_URL}
+        - BUNNY_URL=${BUNNY_URL}
         - FRONTEND_URL=${FRONTEND_URL}
         - HEADLESS=${HEADLESS}
         - FIRST_CLICK=${FIRST_CLICK}
@@ -27,9 +31,13 @@ services:
     environment:
       - NODE_ENV=production
       - AUTH_SECRET=${AUTH_SECRET}
+      - AUTH_URL=${AUTH_URL}
+      - AUTH_TRUST_HOST=${AUTH_TRUST_HOST}
+      - AUTH_GOOGLE_ID=${AUTH_GOOGLE_ID}
+      - AUTH_GOOGLE_SECRET=${AUTH_GOOGLE_SECRET}
       - DATABASE_URL=${DATABASE_URL}
       - TMDB_API_KEY=${TMDB_API_KEY}
-      - VPS_URL=${VPS_URL}
+      - BUNNY_URL=${BUNNY_URL}
       - FRONTEND_URL=${FRONTEND_URL}
       - HEADLESS=${HEADLESS}
       - FIRST_CLICK=${FIRST_CLICK}

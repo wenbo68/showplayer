@@ -1,15 +1,9 @@
-// src/app/_components/MediaList.tsx
-'use client';
-
-import { useState } from 'react';
 import type { ListMedia } from '~/type';
-import { MediaPopup } from './MediaPopup';
 import Link from 'next/link';
-import { api } from '~/trpc/react';
-import PreviewList from './PreviewList';
-import FullList from './FullList';
+import MediaButton from './MediaButton';
 
 interface MediaListProps {
+  pageMediaIds: string[];
   viewMode: 'preview' | 'full';
   mediaList: ListMedia[];
   label?: string;
@@ -17,39 +11,55 @@ interface MediaListProps {
 }
 
 export default function MediaList({
+  pageMediaIds,
   viewMode,
   mediaList,
   label,
   link,
 }: MediaListProps) {
-  // create component states
-  const [selectedMedia, setSelectedMedia] = useState<ListMedia | null>(null);
-
-  // Take only the top 20 items for the preview row
-  const previewItems = mediaList.slice(0, 20);
-
-  return (
-    <>
-      {viewMode === 'preview' ? (
-        <PreviewList
-          mediaList={previewItems}
-          setSelectedMedia={setSelectedMedia}
-          label={label}
-          link={link}
-        />
-      ) : (
-        <FullList
-          mediaList={mediaList}
-          setSelectedMedia={setSelectedMedia}
-          label={label}
-        />
+  return viewMode === 'preview' ? (
+    // preview list
+    <div className={`${label && link ? `w-full flex flex-col gap-4` : ``}`}>
+      {label && link && (
+        <div className="flex items-end justify-between">
+          <span className="font-bold">{label}</span>
+          <Link
+            href={link}
+            className="text-gray-500 text-xs font-semibold transition hover:text-blue-500"
+          >
+            View All
+          </Link>
+        </div>
       )}
-      {selectedMedia && (
-        <MediaPopup
-          mediaParam={selectedMedia}
-          onClose={() => setSelectedMedia(null)}
-        />
-      )}
-    </>
+      <div className="flex gap-4 overflow-x-auto scrollbar-hide">
+        {mediaList.slice(0, 20).map((mediaDetail) => {
+          return (
+            <div
+              key={mediaDetail.media.id}
+              className="flex-shrink-0 w-[160px] lg:w-[200px]"
+            >
+              <MediaButton
+                pageMediaIds={pageMediaIds}
+                mediaDetail={mediaDetail}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  ) : (
+    // full list
+    <div className="w-full grid grid-cols-[repeat(auto-fit,minmax(170px,170px))] lg:grid-cols-[repeat(auto-fit,minmax(194px,194px))] justify-center gap-4">
+      {label && <span className="col-span-full font-bold">{label}</span>}
+      {mediaList.map((mediaDetail) => {
+        return (
+          <MediaButton
+            key={mediaDetail.media.id}
+            pageMediaIds={pageMediaIds}
+            mediaDetail={mediaDetail}
+          />
+        );
+      })}
+    </div>
   );
 }

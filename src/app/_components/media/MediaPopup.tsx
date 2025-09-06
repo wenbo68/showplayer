@@ -1,22 +1,27 @@
-// components/MediaModal.tsx
+'use client';
+
 import Link from 'next/link';
 import type { ListMedia } from '~/type';
 import { MediaBadge } from './MediaBadge';
+import { AddToUserListButton } from './AddToUserListButton';
+
+interface MediaPopupProps {
+  pageMediaIds: string[];
+  mediaDetail: ListMedia;
+  onClose: () => void;
+}
 
 export function MediaPopup({
-  mediaParam,
+  pageMediaIds,
+  mediaDetail,
   onClose,
-}: {
-  mediaParam: ListMedia;
-  onClose: () => void;
-}) {
-  const media = mediaParam.media;
+}: MediaPopupProps) {
+  const media = mediaDetail.media;
   const isReleased = media.releaseDate
     ? new Date(media.releaseDate) <= new Date()
     : false;
 
   return (
-    // Backdrop
     <div
       onClick={onClose}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
@@ -65,6 +70,7 @@ export function MediaPopup({
             <h2 className="text-3xl font-bold">{media.title}</h2>
             {/* Tags */}
             <div className="flex flex-wrap items-center text-xs font-medium gap-2">
+              {/** release date */}
               {media.releaseDate && (
                 <MediaBadge className="bg-gray-700">
                   {new Date(media.releaseDate).toLocaleDateString(undefined, {
@@ -74,17 +80,18 @@ export function MediaPopup({
                   })}
                 </MediaBadge>
               )}
+              {/** media type */}
               <MediaBadge className="bg-gray-700">
                 {media.type === 'movie' ? `Movie` : `TV`}
               </MediaBadge>
               {/* Origins */}
-              {mediaParam.origins.map((origin) => (
+              {mediaDetail.origins.map((origin) => (
                 <MediaBadge key={origin} className="bg-gray-700">
                   {origin}
                 </MediaBadge>
               ))}
               {/* Genres */}
-              {mediaParam.genres.map((genre) => (
+              {mediaDetail.genres.map((genre) => (
                 <MediaBadge key={genre} className="bg-gray-700">
                   {genre}
                 </MediaBadge>
@@ -99,25 +106,32 @@ export function MediaPopup({
             }}
           />
 
-          {/* Action Button */}
-          <div className="mt-auto">
+          <div className="mt-auto flex gap-3">
+            {/** Add to list button */}
+            <AddToUserListButton
+              pageMediaIds={pageMediaIds}
+              mediaId={media.id}
+              listType="saved"
+            />
+
+            {/** Watch now button */}
             <Link
               href={`/${media.type}/${media.tmdbId}${
                 media.type === 'movie' ? '' : '/1/1'
               }`}
               className={`${
-                !isReleased || mediaParam.availabilityCount <= 0
+                !isReleased || mediaDetail.availabilityCount <= 0
                   ? `bg-gray-700 hover:bg-gray-600`
-                  : `bg-blue-600 hover:bg-blue-500 text-gray-100`
-              } inline-block w-full text-center px-6 py-3 font-semibold rounded-lg`}
+                  : `bg-blue-600 hover:bg-blue-500 text-gray-300`
+              } flex-grow flex items-center justify-center font-semibold rounded-lg`}
             >
               {!isReleased
                 ? `Not Released`
-                : mediaParam.availabilityCount <= 0
+                : mediaDetail.availabilityCount <= 0
                 ? `Not Available`
                 : media.type === 'movie'
                 ? `Watch Now`
-                : `${mediaParam.availabilityCount}/${mediaParam.totalEpisodeCount} Episodes`}
+                : `${mediaDetail.availabilityCount}/${mediaDetail.totalEpisodeCount} Episodes`}
             </Link>
           </div>
         </div>

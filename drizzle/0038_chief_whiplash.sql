@@ -1,0 +1,1 @@
+ALTER TYPE "public"."list_type" ADD VALUE 'saved' BEFORE 'favorite';

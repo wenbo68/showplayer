@@ -4,9 +4,13 @@ FROM node:20-slim
 # used when you build the image (only if your env vars are needed at build time, which is the case due to env.js)
 # these won't be included in the image
 ARG AUTH_SECRET
+ARG AUTH_URL
+ARG AUTH_TRUST_HOST
+ARG AUTH_GOOGLE_ID
+ARG AUTH_GOOGLE_SECRET
 ARG DATABASE_URL
 ARG TMDB_API_KEY
-ARG VPS_URL
+ARG BUNNY_URL
 ARG FRONTEND_URL
 ARG HEADLESS
 ARG FIRST_CLICK

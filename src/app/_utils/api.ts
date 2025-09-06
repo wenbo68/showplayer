@@ -27,7 +27,7 @@ export function getProxiedSrcUrl(selectedSrc?: {
   }[];
 }) {
   if (!selectedSrc) return undefined;
-  const urlObject = new URL(`${process.env.VPS_URL}/api/proxy`);
+  const urlObject = new URL(`${process.env.BUNNY_URL}/api/proxy`);
   urlObject.searchParams.set('url', selectedSrc.url);
 
   if (selectedSrc.headers && typeof selectedSrc.headers === 'object') {

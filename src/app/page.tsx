@@ -1,68 +1,66 @@
 import { api, HydrateClient } from '~/trpc/server';
-import TmdbAdmin from './_components/TmdbAdmin';
+import TmdbAdmin from './_components/auth/TmdbAdmin';
 import SearchBar from './_components/search/SearchBar';
 import { Suspense } from 'react';
 import MediaList from './_components/media/MediaList';
-import type { FilterOptions } from '~/type';
-
-// A simple loading skeleton for your SearchBar
-function SearchBarFallback() {
-  return (
-    <div className="w-full flex gap-4 flex-auto text-sm text-gray-400 animate-pulse">
-      <div className="w-full flex flex-col gap-3">
-        <div className="h-5 bg-gray-700 rounded w-1/4"></div>
-        <div className="h-10 bg-gray-800 rounded"></div>
-      </div>
-      <div className="w-full flex flex-col gap-3">
-        <div className="h-5 bg-gray-700 rounded w-1/4"></div>
-        <div className="h-10 bg-gray-800 rounded"></div>
-      </div>
-      <div className="w-full flex flex-col gap-3">
-        <div className="h-5 bg-gray-700 rounded w-1/4"></div>
-        <div className="h-10 bg-gray-800 rounded"></div>
-      </div>
-      <div className="w-full flex flex-col gap-3">
-        <div className="h-5 bg-gray-700 rounded w-1/4"></div>
-        <div className="h-10 bg-gray-800 rounded"></div>
-      </div>
-    </div>
-  );
-}
+import SearchBarFallback from './_components/search/SearchBarFallback';
+import { auth } from '~/server/auth';
 
 export default async function Home() {
+  const session = await auth();
+
   const trendingList = await api.media.getTmdbTrending();
   const topMvList = await api.media.getTmdbTopRatedMv();
   const topTvList = await api.media.getTmdbTopRatedTv();
   const filterOptions = await api.media.getFilterOptions();
 
+  // need to pass down all media ids on the page so that optimistically updating of one media will apply to copies of that same media on the entire page
+  // eg this home page may have multiple media lists that may or may not share the some same media
+  const pageMediaIds = [
+    ...trendingList.map((m) => m.media.id),
+    ...topMvList.map((m) => m.media.id),
+    ...topTvList.map((m) => m.media.id),
+  ];
+  const uniquePageMediaIds = [...new Set(pageMediaIds)];
+
+  // Perform a SINGLE prefetch for the entire page
+  api.media.getUserDetailsForMediaList.prefetch({
+    mediaIds: uniquePageMediaIds,
+  });
+
   return (
     <HydrateClient>
-      <main className="flex flex-col items-center justify-center p-4 gap-8">
-        <TmdbAdmin />
+      <div className="flex flex-col items-center justify-center p-4 gap-10">
+        {session?.user.role === 'admin' && <TmdbAdmin />}
 
         <Suspense fallback={<SearchBarFallback />}>
           <SearchBar filterOptions={filterOptions} />
         </Suspense>
 
+        {/* <div className="w-full flex flex-col gap-6"> */}
         <MediaList
+          pageMediaIds={uniquePageMediaIds}
           mediaList={trendingList}
           viewMode="preview"
           label="TRENDING NOW"
           link="/trending"
         />
         <MediaList
+          pageMediaIds={uniquePageMediaIds}
           mediaList={topMvList}
           viewMode="preview"
           label="TOP MOVIES"
           link="/top/movie"
         />
         <MediaList
+          pageMediaIds={uniquePageMediaIds}
           mediaList={topTvList}
           viewMode="preview"
           label="TOP SHOWS"
           link="/top/tv"
         />
-      </main>
+        {/* </div> */}
+      </div>
     </HydrateClient>
   );
 }

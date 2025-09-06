@@ -16,8 +16,13 @@ import {
   sql,
 } from 'drizzle-orm';
 
-import { createTRPCRouter, publicProcedure } from '~/server/api/trpc';
 import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from '~/server/api/trpc';
+import {
+  userListEnum,
   tmdbEpisode,
   tmdbGenre,
   tmdbMedia,
@@ -28,6 +33,7 @@ import {
   tmdbSource,
   tmdbTopRated,
   tmdbTrending,
+  userMediaList,
 } from '~/server/db/schema';
 import {
   batchProcess,
@@ -43,8 +49,116 @@ import {
   upsertSeasonsAndEpisodes,
 } from '~/server/utils';
 import type { ListMedia } from '~/type';
+import { closeCluster, getCluster } from '~/app/_utils/clusterManager';
 
 export const mediaRouter = createTRPCRouter({
+  // addToList: protectedProcedure
+  //   .input(
+  //     z.object({
+  //       mediaId: z.string(),
+  //       listType: z.enum(listTypeEnum.enumValues),
+  //     })
+  //   )
+  //   .mutation(async ({ ctx, input }) => {
+  //     await ctx.db
+  //       .insert(userMediaList)
+  //       .values({
+  //         userId: ctx.session.user.id,
+  //         mediaId: input.mediaId,
+  //         listType: input.listType,
+  //       })
+  //       .onConflictDoNothing(); // Prevents duplicates
+  //   }),
+
+  // removeFromList: protectedProcedure
+  //   .input(
+  //     z.object({
+  //       mediaId: z.string(),
+  //       listType: z.enum(listTypeEnum.enumValues),
+  //     })
+  //   )
+  //   .mutation(async ({ ctx, input }) => {
+  //     await ctx.db
+  //       .delete(userMediaList)
+  //       .where(
+  //         and(
+  //           eq(userMediaList.userId, ctx.session.user.id),
+  //           eq(userMediaList.mediaId, input.mediaId),
+  //           eq(userMediaList.listType, input.listType)
+  //         )
+  //       );
+  //   }),
+
+  // ... other procedures
+  updateMediaInUserList: protectedProcedure
+    .input(
+      z.object({
+        mediaId: z.string(),
+        listType: z.enum(['saved', 'favorite', 'later']),
+        desiredState: z.boolean(), // The desired state (true for add, false for remove)
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { db, session } = ctx;
+      const { mediaId, listType, desiredState } = input;
+
+      if (desiredState) {
+        // Add to list
+        await db
+          .insert(userMediaList)
+          .values({
+            userId: session.user.id,
+            mediaId: mediaId,
+            listType: listType,
+          })
+          .onConflictDoNothing();
+      } else {
+        // Remove from list
+        await db
+          .delete(userMediaList)
+          .where(
+            and(
+              eq(userMediaList.userId, session.user.id),
+              eq(userMediaList.mediaId, mediaId),
+              eq(userMediaList.listType, listType)
+            )
+          );
+      }
+      return { success: true };
+    }),
+
+  getUserDetailsForMediaList: protectedProcedure
+    .input(z.object({ mediaIds: z.array(z.string()) }))
+    .query(async ({ ctx, input }) => {
+      const { db, session } = ctx;
+      const userId = session.user.id;
+
+      const userDetails = await db
+        .select({
+          mediaId: userMediaList.mediaId,
+          listType: userMediaList.listType,
+        })
+        .from(userMediaList)
+        .where(
+          and(
+            eq(userMediaList.userId, userId),
+            inArray(userMediaList.mediaId, input.mediaIds)
+          )
+        );
+
+      const detailsMap = new Map<string, ('saved' | 'favorite' | 'later')[]>();
+      for (const detail of userDetails) {
+        const existingDetail = detailsMap.get(detail.mediaId);
+        if (existingDetail) {
+          existingDetail.push(detail.listType);
+        } else {
+          detailsMap.set(detail.mediaId, [detail.listType]);
+        }
+      }
+
+      return detailsMap;
+    }),
+
   getFilterOptions: publicProcedure.query(async ({ ctx }) => {
     const genres = await ctx.db
       .selectDistinct({
@@ -90,11 +204,14 @@ export const mediaRouter = createTRPCRouter({
   searchAndFilter: publicProcedure
     .input(
       z.object({
-        query: z.string().optional(),
-        types: z.array(z.enum(['movie', 'tv'])).optional(),
-        genres: z.array(z.number()).optional(),
-        origins: z.array(z.string()).optional(),
-        years: z.array(z.number()).optional(),
+        title: z.string().optional(),
+        format: z.array(z.enum(['movie', 'tv'])).optional(),
+        genre: z.array(z.number()).optional(),
+        origin: z.array(z.string()).optional(),
+        year: z.array(z.number()).optional(),
+        order: z
+          .enum(['date-desc', 'date-asc', 'title-desc', 'title-asc'])
+          .optional(),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -169,26 +286,26 @@ export const mediaRouter = createTRPCRouter({
 
       // 3. gather all conditions from input
       const conditions = [];
-      const { query, types, genres, origins, years } = input;
-      if (query) {
-        conditions.push(ilike(tmdbMedia.title, `%${query}%`));
+      const { title, format, genre, origin, year } = input;
+      if (title) {
+        conditions.push(ilike(tmdbMedia.title, `%${title}%`));
       }
-      if (types && types.length > 0) {
-        conditions.push(inArray(tmdbMedia.type, types));
+      if (format && format.length > 0) {
+        conditions.push(inArray(tmdbMedia.type, format));
       }
-      if (years && years.length > 0) {
+      if (year && year.length > 0) {
         // Use a SQL function to extract the year from the release_date column
         conditions.push(
-          inArray(sql`extract(year from ${tmdbMedia.releaseDate})`, years)
+          inArray(sql`extract(year from ${tmdbMedia.releaseDate})`, year)
         );
       }
       // Handle genres filter (acts on the joined tmdbMediaToTmdbGenre table)
-      if (genres && genres.length > 0) {
-        conditions.push(inArray(tmdbMediaToTmdbGenre.genreId, genres));
+      if (genre && genre.length > 0) {
+        conditions.push(inArray(tmdbMediaToTmdbGenre.genreId, genre));
       }
       // Handle origins filter (acts on the joined tmdbMediaToTmdbOrigin table)
-      if (origins && origins.length > 0) {
-        conditions.push(inArray(tmdbMediaToTmdbOrigin.originId, origins));
+      if (origin && origin.length > 0) {
+        conditions.push(inArray(tmdbMediaToTmdbOrigin.originId, origin));
       }
 
       // 4. add all conditions to the query
@@ -196,16 +313,24 @@ export const mediaRouter = createTRPCRouter({
         qb.where(and(...conditions));
       }
 
-      return await qb.orderBy(desc(tmdbMedia.releaseDate));
-      // return results.map((result) => {
-      //   return {
-      //     ...result,
-      //     // origins: [],
-      //     // genres: [],
-      //     // availabilityCount: 0,
-      //     // totalEpisodeCount: 0,
-      //   };
-      // });
+      // 5. Determine the orderBy clause based on the input
+      let orderByClause; // Default sort
+      switch (input.order) {
+        case 'date-desc':
+          orderByClause = desc(tmdbMedia.releaseDate);
+          break;
+        case 'date-asc':
+          orderByClause = asc(tmdbMedia.releaseDate);
+          break;
+        case 'title-desc':
+          orderByClause = desc(tmdbMedia.title);
+          break;
+        case 'title-asc':
+          orderByClause = asc(tmdbMedia.title);
+          break;
+      }
+
+      return orderByClause ? await qb.orderBy(orderByClause) : await qb;
     }),
 
   getTmdbTrending: publicProcedure.query(async ({ ctx }) => {
@@ -615,94 +740,106 @@ export const mediaRouter = createTRPCRouter({
       )
       .execute();
 
-    let mvCount = 0;
-    await batchProcess(srclessMv, 1, async (media) => {
-      mvCount++;
-      console.log(`=======`);
-      console.log(
-        `[mediaSrcFetch] mv progress: ${mvCount}/${srclessMv.length} (${media.tmdbId}: ${media.title})`
-      );
+    // Get the cluster instance. It will be created on the first call.
+    const cluster = await getCluster();
+    try {
+      let mvCount = 0;
+      await batchProcess(srclessMv, 1, async (media) => {
+        mvCount++;
+        console.log(`=======`);
+        console.log(
+          `[mediaSrcFetch] mv progress: ${mvCount}/${srclessMv.length} (${media.tmdbId}: ${media.title})`
+        );
 
-      // 2. for mv, fetch src
-      await fetchAndUpsertMvSrc(media.tmdbId);
-    });
+        // 2. for mv, fetch src
+        await fetchAndUpsertMvSrc(media.tmdbId);
+      });
 
-    // 3. find episodes whose airDate is older than yesterday but have no src
+      // 3. find episodes whose airDate is older than yesterday but have no src
 
-    // 1. Create a subquery to count aired episodes for each media.
-    // This subquery calculates the total number of episodes for each `mediaId`
-    // where the airDate is valid and in the past.
-    const episodeCounts = ctx.db
-      .select({
-        mediaId: tmdbSeason.mediaId,
-        // We use sql`count(...)` to perform the aggregation and cast it to a number.
-        // The .as('episode_count') is crucial for referencing this column later.
-        episodeCount: sql<number>`count(${tmdbEpisode.id})`.as('episode_count'),
-      })
-      .from(tmdbEpisode)
-      .innerJoin(tmdbSeason, eq(tmdbEpisode.seasonId, tmdbSeason.id))
-      .where(
-        and(isNotNull(tmdbEpisode.airDate), lte(tmdbEpisode.airDate, yesterday))
-      )
-      .groupBy(tmdbSeason.mediaId)
-      .as('episode_counts'); // We must alias the subquery to use it in a join.
-
-    // 2. Use the subquery in your main query to order the results.
-    const srclessEpisodes = await ctx.db
-      .select({
-        episode: tmdbEpisode,
-        season: tmdbSeason,
-        media: tmdbMedia,
-        // You can optionally select the count to see it in the results
-        episodeCount: episodeCounts.episodeCount,
-      })
-      .from(tmdbEpisode)
-      .innerJoin(tmdbSeason, eq(tmdbEpisode.seasonId, tmdbSeason.id))
-      .innerJoin(tmdbMedia, eq(tmdbSeason.mediaId, tmdbMedia.id))
-      // Join our episode count subquery on the media ID.
-      .innerJoin(episodeCounts, eq(tmdbMedia.id, episodeCounts.mediaId))
-      .where(
-        and(
-          // The conditions from your original query remain the same.
-          isNotNull(tmdbEpisode.airDate),
-          lte(tmdbEpisode.airDate, yesterday),
-          notExists(
-            ctx.db
-              .select({ one: sql`1` })
-              .from(tmdbSource)
-              .where(eq(tmdbSource.episodeId, tmdbEpisode.id))
+      // 1. Create a subquery to count aired episodes for each media.
+      // This subquery calculates the total number of episodes for each `mediaId`
+      // where the airDate is valid and in the past.
+      const episodeCounts = ctx.db
+        .select({
+          mediaId: tmdbSeason.mediaId,
+          // We use sql`count(...)` to perform the aggregation and cast it to a number.
+          // The .as('episode_count') is crucial for referencing this column later.
+          episodeCount: sql<number>`count(${tmdbEpisode.id})`.as(
+            'episode_count'
+          ),
+        })
+        .from(tmdbEpisode)
+        .innerJoin(tmdbSeason, eq(tmdbEpisode.seasonId, tmdbSeason.id))
+        .where(
+          and(
+            isNotNull(tmdbEpisode.airDate),
+            lte(tmdbEpisode.airDate, yesterday)
           )
         )
-      )
-      // 3. Update the orderBy clause.
-      // We now order by our calculated episodeCount first (ascending).
-      // The original ordering is kept as a secondary sort criterion.
-      .orderBy(
-        asc(episodeCounts.episodeCount),
-        asc(tmdbMedia.tmdbId),
-        asc(tmdbSeason.seasonNumber),
-        asc(tmdbEpisode.episodeNumber)
-      )
-      .execute();
+        .groupBy(tmdbSeason.mediaId)
+        .as('episode_counts'); // We must alias the subquery to use it in a join.
 
-    let episodeCount = 0;
-    await batchProcess(srclessEpisodes, 1, async (item) => {
-      episodeCount++;
-      console.log(`=======`);
-      console.log(
-        `[mediaSrcFetch] tv progress: ${episodeCount}/${srclessEpisodes.length} (${item.media.tmdbId}/${item.season.seasonNumber}/${item.episode.episodeNumber}: ${item.media.title}) (${item.episodeCount})`
-      );
+      // 2. Use the subquery in your main query to order the results.
+      const srclessEpisodes = await ctx.db
+        .select({
+          episode: tmdbEpisode,
+          season: tmdbSeason,
+          media: tmdbMedia,
+          // You can optionally select the count to see it in the results
+          episodeCount: episodeCounts.episodeCount,
+        })
+        .from(tmdbEpisode)
+        .innerJoin(tmdbSeason, eq(tmdbEpisode.seasonId, tmdbSeason.id))
+        .innerJoin(tmdbMedia, eq(tmdbSeason.mediaId, tmdbMedia.id))
+        // Join our episode count subquery on the media ID.
+        .innerJoin(episodeCounts, eq(tmdbMedia.id, episodeCounts.mediaId))
+        .where(
+          and(
+            // The conditions from your original query remain the same.
+            isNotNull(tmdbEpisode.airDate),
+            lte(tmdbEpisode.airDate, yesterday),
+            notExists(
+              ctx.db
+                .select({ one: sql`1` })
+                .from(tmdbSource)
+                .where(eq(tmdbSource.episodeId, tmdbEpisode.id))
+            )
+          )
+        )
+        // 3. Update the orderBy clause.
+        // We now order by our calculated episodeCount first (ascending).
+        // The original ordering is kept as a secondary sort criterion.
+        .orderBy(
+          asc(episodeCounts.episodeCount),
+          asc(tmdbMedia.tmdbId),
+          asc(tmdbSeason.seasonNumber),
+          asc(tmdbEpisode.episodeNumber)
+        )
+        .execute();
 
-      // 4. for episode, fetch src
-      const { episode, season, media } = item;
-      await fetchAndUpsertTvSrc(
-        // 'fast',
-        media.tmdbId,
-        season.seasonNumber,
-        episode.episodeNumber,
-        episode.episodeIndex
-      );
-    });
+      let episodeCount = 0;
+      await batchProcess(srclessEpisodes, 1, async (item) => {
+        episodeCount++;
+        console.log(`=======`);
+        console.log(
+          `[mediaSrcFetch] tv progress: ${episodeCount}/${srclessEpisodes.length} (${item.media.tmdbId}/${item.season.seasonNumber}/${item.episode.episodeNumber}: ${item.media.title}) (${item.episodeCount})`
+        );
+
+        // 4. for episode, fetch src
+        const { episode, season, media } = item;
+        await fetchAndUpsertTvSrc(
+          // 'fast',
+          media.tmdbId,
+          season.seasonNumber,
+          episode.episodeNumber,
+          episode.episodeIndex
+        );
+      });
+    } finally {
+      // CRITICAL: Close the cluster after ALL media items are processed.
+      await closeCluster();
+    }
   }),
 
   fetchAndInsertMvSrc: publicProcedure

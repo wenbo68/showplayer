@@ -11,11 +11,13 @@ export const env = createEnv({
       process.env.NODE_ENV === 'production'
         ? z.string()
         : z.string().optional(),
-    // AUTH_DISCORD_ID: z.string(),
-    // AUTH_DISCORD_SECRET: z.string(),
+    AUTH_URL: z.string().url(),
+    AUTH_TRUST_HOST: z.string(),
+    AUTH_GOOGLE_ID: z.string(),
+    AUTH_GOOGLE_SECRET: z.string(),
     DATABASE_URL: z.string().url(),
     TMDB_API_KEY: z.string(),
-    VPS_URL: z.string().url(),
+    BUNNY_URL: z.string().url(),
     FRONTEND_URL: z.string(),
     HEADLESS: z.string(),
     FIRST_CLICK: z.string(),
@@ -46,11 +48,13 @@ export const env = createEnv({
    */
   runtimeEnv: {
     AUTH_SECRET: process.env.AUTH_SECRET,
-    // AUTH_DISCORD_ID: process.env.AUTH_DISCORD_ID,
-    // AUTH_DISCORD_SECRET: process.env.AUTH_DISCORD_SECRET,
+    AUTH_URL: process.env.AUTH_URL,
+    AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST,
+    AUTH_GOOGLE_ID: process.env.AUTH_GOOGLE_ID,
+    AUTH_GOOGLE_SECRET: process.env.AUTH_GOOGLE_SECRET,
     DATABASE_URL: process.env.DATABASE_URL,
     TMDB_API_KEY: process.env.TMDB_API_KEY,
-    VPS_URL: process.env.VPS_URL,
+    BUNNY_URL: process.env.BUNNY_URL,
     FRONTEND_URL: process.env.FRONTEND_URL,
     NODE_ENV: process.env.NODE_ENV,
     HEADLESS: process.env.HEADLESS,

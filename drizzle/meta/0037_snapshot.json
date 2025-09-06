@@ -1,6 +1,6 @@
 {
-  "id": "a45a81be-1a43-4d3f-b7bf-d3e502f718a8",
-  "prevId": "376b1820-d17f-4fab-bc6d-56045f6106ad",
+  "id": "49b09ad8-40ca-469f-9e22-9bfc5526677a",
+  "prevId": "a45a81be-1a43-4d3f-b7bf-d3e502f718a8",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -97,8 +97,12 @@
           "name": "account_userId_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -106,7 +110,10 @@
       "compositePrimaryKeys": {
         "account_provider_providerAccountId_pk": {
           "name": "account_provider_providerAccountId_pk",
-          "columns": ["provider", "providerAccountId"]
+          "columns": [
+            "provider",
+            "providerAccountId"
+          ]
         }
       },
       "uniqueConstraints": {},
@@ -159,8 +166,12 @@
           "name": "session_userId_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -246,8 +257,12 @@
           "name": "tmdb_episode_seasonId_tmdb_season_id_fk",
           "tableFrom": "tmdb_episode",
           "tableTo": "tmdb_season",
-          "columnsFrom": ["seasonId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "seasonId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -282,7 +297,9 @@
         "tmdb_genre_name_unique": {
           "name": "tmdb_genre_name_unique",
           "nullsNotDistinct": false,
-          "columns": ["name"]
+          "columns": [
+            "name"
+          ]
         }
       },
       "policies": {},
@@ -364,7 +381,9 @@
         "tmdb_media_tmdb_id_unique": {
           "name": "tmdb_media_tmdb_id_unique",
           "nullsNotDistinct": false,
-          "columns": ["tmdb_id"]
+          "columns": [
+            "tmdb_id"
+          ]
         }
       },
       "policies": {},
@@ -394,8 +413,12 @@
           "name": "tmdb_media_to_tmdb_genre_media_id_tmdb_media_id_fk",
           "tableFrom": "tmdb_media_to_tmdb_genre",
           "tableTo": "tmdb_media",
-          "columnsFrom": ["media_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "media_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -403,8 +426,12 @@
           "name": "tmdb_media_to_tmdb_genre_genre_id_tmdb_genre_id_fk",
           "tableFrom": "tmdb_media_to_tmdb_genre",
           "tableTo": "tmdb_genre",
-          "columnsFrom": ["genre_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "genre_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -412,7 +439,10 @@
       "compositePrimaryKeys": {
         "tmdb_media_to_tmdb_genre_media_id_genre_id_pk": {
           "name": "tmdb_media_to_tmdb_genre_media_id_genre_id_pk",
-          "columns": ["media_id", "genre_id"]
+          "columns": [
+            "media_id",
+            "genre_id"
+          ]
         }
       },
       "uniqueConstraints": {},
@@ -443,8 +473,12 @@
           "name": "tmdb_media_to_tmdb_origin_media_id_tmdb_media_id_fk",
           "tableFrom": "tmdb_media_to_tmdb_origin",
           "tableTo": "tmdb_media",
-          "columnsFrom": ["media_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "media_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -452,8 +486,12 @@
           "name": "tmdb_media_to_tmdb_origin_origin_id_tmdb_origin_id_fk",
           "tableFrom": "tmdb_media_to_tmdb_origin",
           "tableTo": "tmdb_origin",
-          "columnsFrom": ["origin_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "origin_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -461,7 +499,10 @@
       "compositePrimaryKeys": {
         "tmdb_media_to_tmdb_origin_media_id_origin_id_pk": {
           "name": "tmdb_media_to_tmdb_origin_media_id_origin_id_pk",
-          "columns": ["media_id", "origin_id"]
+          "columns": [
+            "media_id",
+            "origin_id"
+          ]
         }
       },
       "uniqueConstraints": {},
@@ -493,7 +534,9 @@
         "tmdb_origin_name_unique": {
           "name": "tmdb_origin_name_unique",
           "nullsNotDistinct": false,
-          "columns": ["name"]
+          "columns": [
+            "name"
+          ]
         }
       },
       "policies": {},
@@ -530,8 +573,12 @@
           "name": "tmdb_recommendation_source_media_id_tmdb_media_id_fk",
           "tableFrom": "tmdb_recommendation",
           "tableTo": "tmdb_media",
-          "columnsFrom": ["source_media_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "source_media_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -539,8 +586,12 @@
           "name": "tmdb_recommendation_recommended_media_id_tmdb_media_id_fk",
           "tableFrom": "tmdb_recommendation",
           "tableTo": "tmdb_media",
-          "columnsFrom": ["recommended_media_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "recommended_media_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -548,7 +599,10 @@
       "compositePrimaryKeys": {
         "tmdb_recommendation_source_media_id_recommended_media_id_pk": {
           "name": "tmdb_recommendation_source_media_id_recommended_media_id_pk",
-          "columns": ["source_media_id", "recommended_media_id"]
+          "columns": [
+            "source_media_id",
+            "recommended_media_id"
+          ]
         }
       },
       "uniqueConstraints": {},
@@ -625,8 +679,12 @@
           "name": "tmdb_season_mediaId_tmdb_media_id_fk",
           "tableFrom": "tmdb_season",
           "tableTo": "tmdb_media",
-          "columnsFrom": ["mediaId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "mediaId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -734,8 +792,12 @@
           "name": "tmdb_source_mediaId_tmdb_media_id_fk",
           "tableFrom": "tmdb_source",
           "tableTo": "tmdb_media",
-          "columnsFrom": ["mediaId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "mediaId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -743,8 +805,12 @@
           "name": "tmdb_source_episodeId_tmdb_episode_id_fk",
           "tableFrom": "tmdb_source",
           "tableTo": "tmdb_episode",
-          "columnsFrom": ["episodeId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "episodeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -812,8 +878,12 @@
           "name": "tmdb_subtitle_sourceId_tmdb_source_id_fk",
           "tableFrom": "tmdb_subtitle",
           "tableTo": "tmdb_source",
-          "columnsFrom": ["sourceId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "sourceId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -865,8 +935,12 @@
           "name": "tmdb_top_rated_mediaId_tmdb_media_id_fk",
           "tableFrom": "tmdb_top_rated",
           "tableTo": "tmdb_media",
-          "columnsFrom": ["mediaId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "mediaId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -876,7 +950,9 @@
         "tmdb_top_rated_mediaId_unique": {
           "name": "tmdb_top_rated_mediaId_unique",
           "nullsNotDistinct": false,
-          "columns": ["mediaId"]
+          "columns": [
+            "mediaId"
+          ]
         }
       },
       "policies": {},
@@ -912,8 +988,12 @@
           "name": "tmdb_trending_mediaId_tmdb_media_id_fk",
           "tableFrom": "tmdb_trending",
           "tableTo": "tmdb_media",
-          "columnsFrom": ["mediaId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "mediaId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -923,9 +1003,86 @@
         "tmdb_trending_mediaId_unique": {
           "name": "tmdb_trending_mediaId_unique",
           "nullsNotDistinct": false,
-          "columns": ["mediaId"]
+          "columns": [
+            "mediaId"
+          ]
         }
       },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user_media_list": {
+      "name": "user_media_list",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "media_id": {
+          "name": "media_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "list_type": {
+          "name": "list_type",
+          "type": "list_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_media_list_user_id_user_id_fk": {
+          "name": "user_media_list_user_id_user_id_fk",
+          "tableFrom": "user_media_list",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "user_media_list_media_id_tmdb_media_id_fk": {
+          "name": "user_media_list_media_id_tmdb_media_id_fk",
+          "tableFrom": "user_media_list",
+          "tableTo": "tmdb_media",
+          "columnsFrom": [
+            "media_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "user_media_list_user_id_media_id_list_type_pk": {
+          "name": "user_media_list_user_id_media_id_list_type_pk",
+          "columns": [
+            "user_id",
+            "media_id",
+            "list_type"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -1002,7 +1159,10 @@
       "compositePrimaryKeys": {
         "verification_token_identifier_token_pk": {
           "name": "verification_token_identifier_token_pk",
-          "columns": ["identifier", "token"]
+          "columns": [
+            "identifier",
+            "token"
+          ]
         }
       },
       "uniqueConstraints": {},
@@ -1012,15 +1172,29 @@
     }
   },
   "enums": {
+    "public.list_type": {
+      "name": "list_type",
+      "schema": "public",
+      "values": [
+        "favorite",
+        "later"
+      ]
+    },
     "public.m3u8_type": {
       "name": "m3u8_type",
       "schema": "public",
-      "values": ["master", "media"]
+      "values": [
+        "master",
+        "media"
+      ]
     },
     "public.tmdb_type": {
       "name": "tmdb_type",
       "schema": "public",
-      "values": ["movie", "tv"]
+      "values": [
+        "movie",
+        "tv"
+      ]
     }
   },
   "schemas": {},

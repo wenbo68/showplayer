@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withCors } from '~/utils/api';
+import { withCors } from '~/app/_utils/api';
 
 //bunny caching behavior is weird: different comb of Smart Cache and Optimize for Video Delivery result in different caching behavior
 
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
       // if playlist => rewrite the vidseg urls to be directed to proxy and include our headers here => send it back to frontend
       console.log(`it's a playlist`);
       const playlistText = buffer.toString('utf-8');
-      const proxyUrl = `${process.env.VPS_URL}/api/proxy`;
+      const proxyUrl = `${process.env.BUNNY_URL}/api/proxy`;
       const rewrittenPlaylist = rewritePlaylist(
         playlistText,
         proxyUrl,

@@ -1,27 +1,40 @@
+'use client';
+
+import { useState, useEffect } from 'react'; // Import hooks
 import type { ListMedia } from '~/type';
 import { MediaBadge } from './MediaBadge';
-import type { Dispatch, SetStateAction } from 'react';
+import { useMediaPopup } from '~/app/_contexts/MediaPopupContext';
+import { useIsMediaInUserList } from '~/app/_utils/hooks';
 
 interface MediaButtonProps {
+  pageMediaIds: string[];
   mediaDetail: ListMedia;
-  setSelectedMedia: Dispatch<SetStateAction<ListMedia | null>>;
 }
 
 export default function MediaButton({
+  pageMediaIds,
   mediaDetail,
-  setSelectedMedia,
 }: MediaButtonProps) {
+  const { openPopup } = useMediaPopup();
+  const [hasMounted, setHasMounted] = useState(false); // 1. Add mounted state
+
+  // 2. Set mounted to true only on the client
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
   const media = mediaDetail.media;
   const isReleased = media.releaseDate
     ? new Date(media.releaseDate) <= new Date()
     : false;
 
+  const isInUserList = useIsMediaInUserList(pageMediaIds, media.id, 'saved');
+
   return (
     <button
-      onClick={() => setSelectedMedia(mediaDetail)}
+      onClick={() => openPopup(pageMediaIds, mediaDetail)}
       className="flex w-full flex-col items-center gap-2 overflow-hidden text-sm transition group"
     >
-      {/* Image and Title content remains the same... */}
       <div className="relative w-full">
         <img
           src={
@@ -33,9 +46,18 @@ export default function MediaButton({
         />
       </div>
       <div className="flex flex-col items-center gap-1 text-center">
-        <span className="font-semibold transition-colors group-hover:text-blue-400">
-          {media.title}
-        </span>
+        <div className="flex items-center gap-1.5 font-semibold transition-colors group-hover:text-blue-400">
+          {/** is in user list? indicator */}
+          {/* 3. Check for hasMounted before rendering */}
+          {hasMounted && isInUserList && (
+            <span
+              className="h-[10px] w-[10px] rounded-full bg-pink-600 inline-block"
+              aria-label="In your list"
+            />
+          )}
+          {/** title */}
+          <span>{media.title}</span>
+        </div>
         {/* Badge logic remains the same... */}
         {!isReleased ? (
           <MediaBadge className="bg-yellow-900 text-yellow-200">

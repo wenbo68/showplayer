@@ -5,10 +5,13 @@ export default async function TopMvPage() {
   const topMvList = await api.media.getTmdbTopRatedMv();
 
   return (
-    <HydrateClient>
-      <main className="flex flex-col items-center justify-center p-4 gap-8">
-        <MediaList mediaList={topMvList} viewMode="full" label="TOP MOVIES" />
-      </main>
-    </HydrateClient>
+    <div className="flex flex-col items-center justify-center p-4 gap-8">
+      <MediaList
+        pageMediaIds={topMvList.map((listMedia) => listMedia.media.id)}
+        mediaList={topMvList}
+        viewMode="full"
+        label="TOP MOVIES"
+      />
+    </div>
   );
 }

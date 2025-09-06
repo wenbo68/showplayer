@@ -1,3 +1,4 @@
+import { getCluster } from '~/app/_utils/clusterManager';
 import { db } from './db';
 import {
   tmdbEpisode,
@@ -10,6 +11,11 @@ import {
 } from './db/schema';
 import { and, eq, sql } from 'drizzle-orm';
 import type { PuppeteerResult } from '~/type';
+import {
+  indexProviderMap,
+  mvProvidersMap,
+  tvProvidersMap,
+} from '~/app/_utils/puppeteer';
 
 export async function fetchTmdbTopRatedViaApi(
   limit: number,
@@ -280,48 +286,84 @@ export async function batchProcess<T>(
   }
 }
 
-export const indexProviderMap: Record<string, string> = {
-  1: 'videasy',
-  2: 'vidjoy',
-  3: 'vidlink',
-  4: 'vidfast',
-};
+// async function fetchSrcFromProvidersFast(
+//   type: 'mv' | 'tv',
+//   path: string
+// ): Promise<PuppeteerResult[]> {
+//   const response = await fetch(`${process.env.BUNNY_URL}/api/puppeteer`, {
+//     method: 'POST',
+//     headers: { 'Content-Type': 'application/json' },
+//     body: JSON.stringify({ type, path }), // Send the batch job
+//   });
+//   if (!response.ok) {
+//     console.error(
+//       `[fetchSrcFromProvidersFast] Batch request failed with status ${response.status}. Response obj: `,
+//       response
+//     );
+//   }
 
-export const providerIndexMap: Record<string, number> = {
-  videasy: 1,
-  vidjoy: 2,
-  vidlink: 3,
-  vidfast: 4,
-};
+//   const results = (await response.json()) as PuppeteerResult[];
+//   return results.map((result) => {
+//     console.log(
+//       `[${indexProviderMap[result.provider]}] success: ${result.m3u8.type} ${
+//         result.subtitle ? '+ subtitle' : ''
+//       }`
+//     );
+//     return {
+//       ...result,
+//       subtitle: result.subtitle ? convertToVtt(result.subtitle) : undefined,
+//     };
+//   });
+// }
 
+/**
+ * This function now runs entirely on the server, using the shared cluster
+ * instance instead of making an internal HTTP request.
+ */
 async function fetchSrcFromProvidersFast(
   type: 'mv' | 'tv',
   path: string
 ): Promise<PuppeteerResult[]> {
-  const response = await fetch(`${process.env.VPS_URL}/api/puppeteer`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type, path }), // Send the batch job
-  });
-  if (!response.ok) {
-    console.error(
-      `[fetchSrcFromProvidersFast] Batch request failed with status ${response.status}. Response obj: `,
-      response
-    );
-  }
+  try {
+    // 1. Get the already-initialized shared cluster instance.
+    const cluster = await getCluster();
+    const providers = ['videasy', 'vidjoy', 'vidlink'];
 
-  const results = (await response.json()) as PuppeteerResult[];
-  return results.map((result) => {
-    console.log(
-      `[${indexProviderMap[result.provider]}] success: ${result.m3u8.type} ${
-        result.subtitle ? '+ subtitle' : ''
-      }`
+    // 2. Queue all tasks to run in parallel on the cluster.
+    const promises = providers.map((provider) => {
+      const embedUrl = `${
+        type === 'mv' ? mvProvidersMap[provider] : tvProvidersMap[provider]
+      }/${path}`;
+      return cluster.execute({ provider, embedUrl });
+    });
+
+    // 3. Wait for all tasks to complete.
+    const results = await Promise.all(promises);
+
+    // 4. Filter out failures and process successful results.
+    const successfulResults = results.filter(
+      (r): r is PuppeteerResult => r !== null
     );
-    return {
+
+    successfulResults.forEach((result) => {
+      console.log(
+        `[${indexProviderMap[result.provider]}] success: ${result.m3u8.type} ${
+          result.subtitle ? '+ subtitle' : ''
+        }`
+      );
+    });
+
+    return successfulResults.map((result) => ({
       ...result,
       subtitle: result.subtitle ? convertToVtt(result.subtitle) : undefined,
-    };
-  });
+    }));
+  } catch (error) {
+    console.error(
+      `[fetchSrcFromProvidersFast] A critical error occurred:`,
+      error
+    );
+    return []; // Return empty array on failure
+  }
 }
 
 // async function fetchSrcFromProvidersSlow(
@@ -334,7 +376,7 @@ async function fetchSrcFromProvidersFast(
 //   for (const provider of providers) {
 //     console.log('=======');
 //     try {
-//       const res = await fetch(`${process.env.VPS_URL}/api/puppeteer`, {
+//       const res = await fetch(`${process.env.BUNNY_URL}/api/puppeteer`, {
 //         method: 'POST',
 //         headers: { 'Content-Type': 'application/json' },
 //         body: JSON.stringify({ type, path, index: providerIndexMap[provider] }),

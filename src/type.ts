@@ -30,7 +30,6 @@ export type ListMedia = {
   genres: string[];
   availabilityCount: number;
   totalEpisodeCount: number;
-  // rank?: number;
   averageRating?: number;
   voteCount?: number;
 };
@@ -46,3 +45,6 @@ export type FilterOptions = {
   }[];
   years: number[];
 };
+
+export type UserList = 'saved' | 'favorite' | 'later';
+export type UserRole = 'user' | 'admin';

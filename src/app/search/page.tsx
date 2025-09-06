@@ -6,6 +6,7 @@ import MediaList from '../_components/media/MediaList';
 import { Suspense } from 'react';
 import SearchBarFallback from '../_components/search/SearchBarFallback';
 import ActiveFilters from '../_components/search/ActiveFilters';
+import Pagination from '../_components/search/Pagination';
 
 // Helper function to ensure a value is an array of strings
 const ensureStringArray = (value: string | string[] | undefined): string[] => {
@@ -35,12 +36,16 @@ export default async function SearchPage({
             | 'title-desc'
             | 'title-asc')
         : undefined,
+    page: typeof params.page === 'string' ? Number(params.page) : 1,
   };
 
   // get results from trpc
-  const searchResults = await api.media.searchAndFilter(
-    trpcSearchAndFilterInput
-  );
+  const {
+    pageSize,
+    pageMedia: searchResults,
+    totalCount,
+  } = await api.media.searchAndFilter(trpcSearchAndFilterInput);
+  console.log(`totalCount: ${totalCount}`);
 
   // prefetch for client cache
   const pageMediaIds = searchResults.map((m) => m.media.id);
@@ -62,11 +67,18 @@ export default async function SearchPage({
 
       <HydrateClient>
         {searchResults && searchResults.length > 0 ? (
-          <MediaList
-            viewMode="full"
-            mediaList={searchResults}
-            pageMediaIds={uniquePageMediaIds}
-          />
+          <div className="flex flex-col gap-8">
+            <MediaList
+              viewMode="full"
+              mediaList={searchResults}
+              pageMediaIds={uniquePageMediaIds}
+            />
+            <Pagination
+              totalCount={totalCount}
+              pageSize={pageSize}
+              currentPage={trpcSearchAndFilterInput.page}
+            />
+          </div>
         ) : (
           <div className="flex h-64 w-full items-center justify-center rounded-lg bg-gray-800">
             <p className="text-gray-400">No results found for your query.</p>

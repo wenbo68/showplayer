@@ -14,6 +14,9 @@ import {
   notExists,
   or,
   sql,
+  gt,
+  countDistinct,
+  count,
 } from 'drizzle-orm';
 
 import {
@@ -212,6 +215,8 @@ export const mediaRouter = createTRPCRouter({
         order: z
           .enum(['date-desc', 'date-asc', 'title-desc', 'title-asc'])
           .optional(),
+        // 1. Add page to the input schema
+        page: z.number().min(1).default(1),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -225,7 +230,7 @@ export const mediaRouter = createTRPCRouter({
       >`array_agg(DISTINCT ${tmdbGenre.name})`.as('genres');
       // mv: how many sources
       // tv: how many episodes have source
-      const availabilityCount = sql<number>`
+      const availabilityCountExpression = sql<number>`
         CASE
           WHEN ${tmdbMedia.type} = 'movie'
           THEN (
@@ -241,9 +246,9 @@ export const mediaRouter = createTRPCRouter({
             WHERE ${tmdbSeason.mediaId} = ${tmdbMedia.id}
           )
           ELSE 0
-        END`
-        .mapWith(Number)
-        .as('availabilityCount');
+        END`.mapWith(Number);
+      const availabilityCount =
+        availabilityCountExpression.as('availabilityCount');
       // mv: 0
       // tv: how many episodes with airDate before today
       const totalEpisodeCount = sql<number>`
@@ -260,9 +265,58 @@ export const mediaRouter = createTRPCRouter({
         END`
         .mapWith(Number)
         .as('totalEpisodeCount');
+      const { title, format, genre, origin, year, page } = input;
 
-      // 2. join media with origins and genres
-      let qb = ctx.db
+      // --- 1. Create a Subquery with all filters and grouping ---
+      // This forms the base for both our count and data queries.
+      // It includes all the complex logic.
+      const countSubquery = ctx.db
+        .select({
+          id: tmdbMedia.id, // Only need ID for counting
+          // Add columns needed for ordering later
+          releaseDate: tmdbMedia.releaseDate,
+          title: tmdbMedia.title,
+        })
+        .from(tmdbMedia)
+        .leftJoin(
+          tmdbMediaToTmdbOrigin,
+          eq(tmdbMedia.id, tmdbMediaToTmdbOrigin.mediaId)
+        )
+        .leftJoin(tmdbOrigin, eq(tmdbMediaToTmdbOrigin.originId, tmdbOrigin.id))
+        .leftJoin(
+          tmdbMediaToTmdbGenre,
+          eq(tmdbMedia.id, tmdbMediaToTmdbGenre.mediaId)
+        )
+        .leftJoin(tmdbGenre, eq(tmdbMediaToTmdbGenre.genreId, tmdbGenre.id))
+        // We must group by media to deduplicate media and aggregate origins/genres
+        .groupBy(tmdbMedia.id)
+        .having(gt(availabilityCountExpression, 0))
+        .$dynamic(); // Use $dynamic to apply WHERE clause next
+
+      // // --- 2. Build the Count Query ---
+      // // only need to select count of distinct media
+      // const countQueryBuilder = ctx.db
+      //   .select({
+      //     availabilityCount: availabilityCount,
+      //     count: countDistinct(tmdbMedia.id),
+      //   })
+      //   .from(tmdbMedia)
+      //   .leftJoin(
+      //     tmdbMediaToTmdbOrigin,
+      //     eq(tmdbMedia.id, tmdbMediaToTmdbOrigin.mediaId)
+      //   )
+      //   .leftJoin(tmdbOrigin, eq(tmdbMediaToTmdbOrigin.originId, tmdbOrigin.id))
+      //   .leftJoin(
+      //     tmdbMediaToTmdbGenre,
+      //     eq(tmdbMedia.id, tmdbMediaToTmdbGenre.mediaId)
+      //   )
+      //   .leftJoin(tmdbGenre, eq(tmdbMediaToTmdbGenre.genreId, tmdbGenre.id))
+      //   // We must group by media to deduplicate media and aggregate origins/genres
+      //   .groupBy(tmdbMedia.id);
+
+      // --- 3. Build the Data Query ---
+      // select all needed fields
+      const dataQueryBuilder = ctx.db
         .select({
           media: tmdbMedia,
           origins: aggregatedOrigins,
@@ -284,9 +338,8 @@ export const mediaRouter = createTRPCRouter({
         // We must group by media to deduplicate media and aggregate origins/genres
         .groupBy(tmdbMedia.id);
 
-      // 3. gather all conditions from input
+      // 4. apply all conditions to count and data query
       const conditions = [];
-      const { title, format, genre, origin, year } = input;
       if (title) {
         conditions.push(ilike(tmdbMedia.title, `%${title}%`));
       }
@@ -308,13 +361,22 @@ export const mediaRouter = createTRPCRouter({
         conditions.push(inArray(tmdbMediaToTmdbOrigin.originId, origin));
       }
 
-      // 4. add all conditions to the query
       if (conditions.length > 0) {
-        qb.where(and(...conditions));
+        countSubquery.where(and(...conditions));
+        dataQueryBuilder.where(and(...conditions));
       }
+      countSubquery.having(gt(availabilityCountExpression, 0));
+      dataQueryBuilder.having(gt(availabilityCountExpression, 0));
 
-      // 5. Determine the orderBy clause based on the input
-      let orderByClause; // Default sort
+      // 5. Get the Total Count from the Subquery
+      // This is now very efficient. The database does all the hard work and returns one row.
+      const countResult = await ctx.db
+        .select({ count: count() })
+        .from(countSubquery.as('sq'));
+      const totalCount = countResult[0]?.count ?? 0;
+
+      // 6. add order by to data query
+      let orderByClause;
       switch (input.order) {
         case 'date-desc':
           orderByClause = desc(tmdbMedia.releaseDate);
@@ -329,8 +391,19 @@ export const mediaRouter = createTRPCRouter({
           orderByClause = asc(tmdbMedia.title);
           break;
       }
+      if (orderByClause) dataQueryBuilder.orderBy(orderByClause);
 
-      return orderByClause ? await qb.orderBy(orderByClause) : await qb;
+      // 6. get all media for chosen page
+      const pageSize = 30;
+      const pageMedia = await dataQueryBuilder
+        .limit(pageSize)
+        .offset((page - 1) * pageSize);
+
+      return {
+        pageSize,
+        pageMedia,
+        totalCount,
+      };
     }),
 
   getTmdbTrending: publicProcedure.query(async ({ ctx }) => {

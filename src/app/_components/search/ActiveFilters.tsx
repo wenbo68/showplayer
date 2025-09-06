@@ -101,7 +101,7 @@ export default function ActiveFilters({
   }
 
   return (
-    <div className="flex w-full flex-wrap space-x-2 text-xs font-semibold">
+    <div className="flex w-full flex-wrap gap-2 text-xs font-semibold justify-center">
       {/* <span className="text-sm font-semibold">Active Filters:</span> */}
       {activePills.map((pill) => (
         <button

@@ -33,18 +33,25 @@ type FilterProps = {
 } & (
   | {
       mode: 'single';
-      state: string | number;
-      setState: (value: string | number) => void;
+      valuesFromUrl: string | number;
+      setUrl: (value: string | number) => void;
     }
   | {
       mode: 'multi';
-      state: (string | number)[];
-      setState: (value: (string | number)[]) => void;
+      valuesFromUrl: (string | number)[];
+      setUrl: (value: (string | number)[]) => void;
     }
 );
 
 export default function Filter(props: FilterProps) {
-  const { label, options, placeholder, mode, state, setState } = props;
+  const {
+    label,
+    options,
+    placeholder,
+    mode,
+    valuesFromUrl: state,
+    setUrl: setState,
+  } = props;
 
   const [writtenText, setWrittenText] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);

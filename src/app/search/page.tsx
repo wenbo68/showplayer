@@ -7,6 +7,8 @@ import { Suspense } from 'react';
 import SearchBarFallback from '../_components/search/SearchBarFallback';
 import ActiveFilters from '../_components/search/ActiveFilters';
 import Pagination from '../_components/search/Pagination';
+import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 
 // Helper function to ensure a value is an array of strings
 const ensureStringArray = (value: string | string[] | undefined): string[] => {
@@ -22,33 +24,52 @@ export default async function SearchPage({
 }) {
   const params = await searchParams;
 
+  // --- 1. Check for missing required parameters ---
+  const isOrderMissing = typeof params.order !== 'string';
+  const isPageMissing = typeof params.page !== 'string';
+
+  // --- 2. If any parameter is missing, redirect to a complete URL ---
+  if (isOrderMissing || isPageMissing) {
+    // Create a mutable copy of the current params
+    const newParams = new URLSearchParams(params as Record<string, string>);
+
+    // Add the defaults if they are missing
+    if (isOrderMissing) {
+      // 2. get user's last used order from cookie or use default
+      const cookieStore = await cookies();
+      const lastUsedOrder =
+        cookieStore.get('lastUsedOrder')?.value ?? 'date-desc';
+      newParams.set('order', lastUsedOrder);
+    }
+    if (isPageMissing) {
+      newParams.set('page', '1');
+    }
+
+    // Redirect to the same page but with the corrected query string
+    return redirect(`/search?${newParams.toString()}`);
+  }
   const trpcSearchAndFilterInput = {
     title: typeof params.title === 'string' ? params.title : undefined,
     year: ensureStringArray(params.year).map(Number),
     format: ensureStringArray(params.format) as ('movie' | 'tv')[],
     origin: ensureStringArray(params.origin),
     genre: ensureStringArray(params.genre).map(Number),
-    order:
-      typeof params.order === 'string'
-        ? (params.order as
-            | 'date-desc'
-            | 'date-asc'
-            | 'title-desc'
-            | 'title-asc')
-        : undefined,
-    page: typeof params.page === 'string' ? Number(params.page) : 1,
+    order: params.order as
+      | 'date-desc'
+      | 'date-asc'
+      | 'title-desc'
+      | 'title-asc',
+    page: Number(params.page),
   };
 
   // get results from trpc
-  const {
-    pageSize,
-    pageMedia: searchResults,
-    totalCount,
-  } = await api.media.searchAndFilter(trpcSearchAndFilterInput);
+  const { pageSize, pageMedia, totalCount } = await api.media.searchAndFilter(
+    trpcSearchAndFilterInput
+  );
   console.log(`totalCount: ${totalCount}`);
 
   // prefetch for client cache
-  const pageMediaIds = searchResults.map((m) => m.media.id);
+  const pageMediaIds = pageMedia.map((m) => m.media.id);
   const uniquePageMediaIds = [...new Set(pageMediaIds)];
   api.media.getUserDetailsForMediaList.prefetch({
     mediaIds: uniquePageMediaIds,
@@ -66,11 +87,11 @@ export default async function SearchPage({
       <ActiveFilters filterOptions={filterOptions} />
 
       <HydrateClient>
-        {searchResults && searchResults.length > 0 ? (
+        {pageMedia && pageMedia.length > 0 ? (
           <div className="flex flex-col gap-8">
             <MediaList
               viewMode="full"
-              mediaList={searchResults}
+              mediaList={pageMedia}
               pageMediaIds={uniquePageMediaIds}
             />
             <Pagination

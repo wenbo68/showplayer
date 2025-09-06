@@ -2,11 +2,12 @@
 
 import { X } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useDebounce } from 'use-debounce';
 import { IoSearchSharp } from 'react-icons/io5';
 import Filter from './Filter';
 import type { FilterOptions } from '~/type';
+import Cookies from 'js-cookie';
 
 export default function SearchBar({
   filterOptions,
@@ -18,93 +19,89 @@ export default function SearchBar({
   const searchParams = useSearchParams();
   const initialPathRef = useRef(pathname);
 
-  // get the initial states from the url
-  const [title, setTitle] = useState(searchParams.get('title') ?? '');
-  const [format, setFormat] = useState<string[]>(() =>
-    searchParams.getAll('format')
-  );
-  const [genre, setGenre] = useState<number[]>(() =>
-    searchParams.getAll('genre').map(Number)
-  );
-  const [origin, setOrigin] = useState<string[]>(() =>
-    searchParams.getAll('origin')
-  );
-  const [year, setYear] = useState<number[]>(() =>
-    searchParams.getAll('year').map(Number)
-  );
-  const [order, setOrder] = useState(searchParams.get('order') ?? ''); // Add order state
+  const [titleInput, setTitleInput] = useState(searchParams.get('title') ?? '');
+  const [debouncedTitle] = useDebounce(titleInput, 500);
 
-  const [debouncedQuery] = useDebounce(title, 500);
+  const format = searchParams.getAll('format');
+  const genre = searchParams.getAll('genre').map(Number);
+  const origin = searchParams.getAll('origin');
+  const year = searchParams.getAll('year').map(Number);
+  const order = searchParams.get('order') ?? '';
 
-  // when url changes, adjust the states
+  // if url changes, update title
   useEffect(() => {
-    setTitle(searchParams.get('title') ?? '');
-    setFormat(searchParams.getAll('format'));
-    setGenre(searchParams.getAll('genre').map(Number));
-    setOrigin(searchParams.getAll('origin'));
-    setYear(searchParams.getAll('year').map(Number));
-    setOrder(searchParams.get('order') ?? '');
+    setTitleInput(searchParams.get('title') ?? '');
   }, [searchParams]);
 
-  // whenever the states change, adjust the url
+  // if title changes, update url
   useEffect(() => {
-    // 1. Get the most recent order from sessionStorage, with a fallback default.
-    const defaultOrder = sessionStorage.getItem('lastUsedOrder') ?? 'date-desc';
-
     const params = new URLSearchParams(searchParams.toString());
 
-    // 1. Determine if any filters are active in a single, clear expression.
-    const hasFilters =
-      debouncedQuery.length > 0 ||
-      format.length > 0 ||
-      genre.length > 0 ||
-      origin.length > 0 ||
-      year.length > 0;
-
-    // --- Filter Logic (No changes here) ---
-    // Title
-    if (debouncedQuery) params.set('title', debouncedQuery);
-    else params.delete('title');
-    // Filters
-    params.delete('format');
-    format.forEach((f) => params.append('format', f));
-    params.delete('genre');
-    genre.forEach((g) => params.append('genre', String(g)));
-    params.delete('origin');
-    origin.forEach((o) => params.append('origin', o));
-    params.delete('year');
-    year.forEach((y) => params.append('year', String(y)));
-
-    // --- Updated Order Logic ---
-    if (order) {
-      // 2. If an order is explicitly set, use it AND save it to sessionStorage for next time.
-      params.set('order', order);
-      sessionStorage.setItem('lastUsedOrder', order);
-    } else if (hasFilters) {
-      // 3. If no order is set but other filters are active, apply the saved default.
-      params.set('order', defaultOrder);
+    if (debouncedTitle) {
+      params.set('title', debouncedTitle);
+      params.set('page', '1');
     } else {
-      // 4. If no order and no other params, remove the order parameter.
-      params.delete('order');
+      params.delete('title');
     }
 
-    const queryString = params.toString();
-    if (queryString) {
-      router.push(`/search?${queryString}`);
-    } else if (pathname === '/search') {
-      router.push(initialPathRef.current);
+    const newQueryString = params.toString();
+    const currentQueryString = searchParams.toString();
+
+    if (newQueryString !== currentQueryString) {
+      if (newQueryString) {
+        router.push(`/search?${newQueryString}`);
+      } else if (pathname === '/search') {
+        router.push('/');
+      }
     }
-  }, [
-    debouncedQuery,
-    format,
-    genre,
-    origin,
-    year,
-    order,
-    router,
-    pathname,
-    searchParams,
-  ]);
+  }, [debouncedTitle, pathname, router, searchParams]);
+
+  // update url when selected filter options change
+  // useCallback to prevent the 2 functions from being recreated when SearchBar rerenders (unless the dependencies change)
+  // if the 2 functions are recreated, the Filter will rerender b/c it use the function as props
+  const handleMultiFilterChange = useCallback(
+    (key: string, values: (string | number)[]) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete(key);
+      values.forEach((value) => params.append(key, String(value)));
+
+      params.set('page', '1');
+
+      const queryString = params.toString();
+      if (queryString) {
+        router.push(`/search?${queryString}`);
+      } else if (pathname === '/search') {
+        router.push(initialPathRef.current);
+      }
+    },
+    [pathname, router, initialPathRef, searchParams]
+  );
+
+  const handleSingleFilterChange = useCallback(
+    (key: string, value: string | number) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value) {
+        params.set(key, String(value));
+        // if user sets the order, put that order in cookie for 7 days
+        if (key === 'order') {
+          sessionStorage.setItem('lastUsedOrder', String(value));
+          Cookies.set('lastUsedOrder', String(value), { expires: 7 });
+        }
+      } else {
+        params.delete(key);
+      }
+
+      params.set('page', '1');
+
+      const queryString = params.toString();
+      if (queryString) {
+        router.push(`/search?${queryString}`);
+      } else if (pathname === '/search') {
+        router.push(initialPathRef.current);
+      }
+    },
+    [pathname, router, initialPathRef, searchParams]
+  );
 
   // dropdown options from db
   const formatOptions = [
@@ -153,11 +150,14 @@ export default function SearchBar({
           </div>
           <input
             type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            value={titleInput}
+            onChange={(e) => setTitleInput(e.target.value)}
             className="w-full outline-none"
           />
-          <button onClick={() => setTitle('')} className={`p-2 cursor-pointer`}>
+          <button
+            onClick={() => setTitleInput('')}
+            className={`p-2 cursor-pointer`}
+          >
             <X size={20} />
           </button>
         </div>
@@ -165,36 +165,36 @@ export default function SearchBar({
       <Filter
         label="Year"
         options={yearOptions}
-        state={year}
-        setState={(v) => setYear(v as number[])}
+        valuesFromUrl={year}
+        setUrl={(v) => handleMultiFilterChange('year', v as number[])}
         mode="multi"
       />
       <Filter
         label="Format"
         options={formatOptions}
-        state={format}
-        setState={(v) => setFormat(v as string[])}
+        valuesFromUrl={format}
+        setUrl={(v) => handleMultiFilterChange('format', v as string[])}
         mode="multi"
       />
       <Filter
         label="Origin"
         options={originOptions}
-        state={origin}
-        setState={(v) => setOrigin(v as string[])}
+        valuesFromUrl={origin}
+        setUrl={(v) => handleMultiFilterChange('origin', v as string[])}
         mode="multi"
       />
       <Filter
         label="Genre"
         options={genreOptions}
-        state={genre}
-        setState={(v) => setGenre(v as number[])}
+        valuesFromUrl={genre}
+        setUrl={(v) => handleMultiFilterChange('genre', v as number[])}
         mode="multi"
       />
       <Filter
         label="Order"
         options={orderOptions}
-        state={order}
-        setState={(v) => setOrder(v as string)}
+        valuesFromUrl={order}
+        setUrl={(v) => handleSingleFilterChange('order', v as string)}
         mode="single"
       />
     </div>

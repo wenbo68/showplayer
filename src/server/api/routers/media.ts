@@ -212,11 +212,9 @@ export const mediaRouter = createTRPCRouter({
         genre: z.array(z.number()).optional(),
         origin: z.array(z.string()).optional(),
         year: z.array(z.number()).optional(),
-        order: z
-          .enum(['date-desc', 'date-asc', 'title-desc', 'title-asc'])
-          .optional(),
+        order: z.enum(['date-desc', 'date-asc', 'title-desc', 'title-asc']),
         // 1. Add page to the input schema
-        page: z.number().min(1).default(1),
+        page: z.number().min(1),
       })
     )
     .query(async ({ ctx, input }) => {

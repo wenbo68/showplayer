@@ -4,7 +4,6 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
-import { X } from 'lucide-react';
 import type { FilterOptions } from '~/type';
 
 type Pill = {
@@ -40,6 +39,8 @@ export default function ActiveFilters({
       const newValues = currentValues.filter((v) => v !== value);
       params.delete(key);
       newValues.forEach((v) => params.append(key, v));
+      // Reset to the first page whenever a filter is removed.
+      params.set('page', '1');
       router.push(`${pathname}?${params.toString()}`);
     };
 

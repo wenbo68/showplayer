@@ -21,6 +21,7 @@
     "@trpc/client": "^11.0.0",
     "@trpc/react-query": "^11.0.0",
     "@trpc/server": "^11.0.0",
+    "date-fns": "^4.1.0",
     "drizzle-orm": "^0.41.0",
     "hls.js": "^1.6.7",
     "js-cookie": "^3.0.5",

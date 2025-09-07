@@ -157,6 +157,13 @@ export const tmdbMedia = pgTable('tmdb_media', {
     mode: 'date',
     withTimezone: true,
   }),
+  popularity: real('popularity').default(0).notNull(),
+  voteAverage: real('vote_average').default(0).notNull(),
+  voteCount: integer('vote_count').default(0).notNull(),
+  ratingsUpdatedAt: timestamp('ratings_updated_at', {
+    mode: 'date',
+    withTimezone: true,
+  }),
   createdAt: timestamp('created_at', {
     mode: 'date',
     withTimezone: true,

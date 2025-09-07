@@ -5,6 +5,8 @@ import { useState, useRef, useEffect } from 'react';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { FaHeart } from 'react-icons/fa6';
+import { RiLogoutBoxRLine } from 'react-icons/ri';
 
 export function AuthShowcase() {
   const { data: session, status: sessionStatus } = useSession();
@@ -37,7 +39,7 @@ export function AuthShowcase() {
     return (
       <button
         onClick={() => signIn('google')}
-        className="rounded-full bg-white/10 px-8 py-2 font-semibold no-underline transition hover:bg-white/20"
+        className="rounded bg-blue-600 hover:bg-blue-500 text-gray-300 px-4 py-2 text-sm font-semibold transition cursor-pointer"
       >
         Login
       </button>
@@ -65,12 +67,15 @@ export function AuthShowcase() {
 
       {/* Dropdown Menu */}
       {isDropdownOpen && (
-        <div className="z-10 absolute right-0 mt-4 w-48 origin-top-right rounded bg-gray-800 p-2">
+        <div className="z-10 absolute right-0 mt-4 w-36 origin-top-right rounded bg-gray-800 p-2 flex flex-col">
           <Link
-            href="/my-list" // 👈 Change this to your list page URL
-            className="block rounded w-full p-2 text-left text-sm hover:bg-gray-900 hover:text-blue-400"
+            href="/search?list=saved" // 👈 Change this to your list page URL
+            className="flex items-center gap-2 rounded w-full p-2 text-left text-sm hover:bg-gray-900 hover:text-blue-400"
             onClick={() => setDropdownOpen(false)} // Close dropdown on navigation
           >
+            <div className="flex items-center justify-center h-4 w-4">
+              <FaHeart size={12} />
+            </div>
             My List
           </Link>
           <button
@@ -78,8 +83,11 @@ export function AuthShowcase() {
               setDropdownOpen(false);
               signOut();
             }}
-            className="block rounded w-full p-2 text-left text-sm hover:bg-gray-900 hover:text-blue-400"
+            className="flex items-center gap-2 rounded w-full p-2 text-left text-sm hover:bg-gray-900 hover:text-blue-400"
           >
+            <div className="flex items-center justify-center h-4 w-4">
+              <RiLogoutBoxRLine size={15} />
+            </div>
             Logout
           </button>
         </div>

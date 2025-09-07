@@ -23,10 +23,12 @@ export default async function Home() {
   ];
   const uniquePageMediaIds = [...new Set(pageMediaIds)];
 
-  // Perform a SINGLE prefetch for the entire page
-  api.media.getUserDetailsForMediaList.prefetch({
-    mediaIds: uniquePageMediaIds,
-  });
+  // Perform a SINGLE prefetch for the entire page (only if user logged in)
+  if (session?.user) {
+    api.media.getUserDetailsForMediaList.prefetch({
+      mediaIds: uniquePageMediaIds,
+    });
+  }
 
   return (
     <HydrateClient>

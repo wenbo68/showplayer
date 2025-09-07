@@ -9,6 +9,7 @@ import ActiveFilters from '../_components/search/ActiveFilters';
 import Pagination from '../_components/search/Pagination';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
+import { auth } from '~/server/auth';
 
 // Helper function to ensure a value is an array of strings
 const ensureStringArray = (value: string | string[] | undefined): string[] => {
@@ -22,6 +23,7 @@ export default async function SearchPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  const session = await auth();
   const params = await searchParams;
 
   // --- 1. Check for missing required parameters ---
@@ -60,13 +62,13 @@ export default async function SearchPage({
       | 'title-desc'
       | 'title-asc',
     page: Number(params.page),
+    list: ensureStringArray(params.list) as ('saved' | 'favorite' | 'later')[],
   };
 
   // get results from trpc
   const { pageSize, pageMedia, totalCount } = await api.media.searchAndFilter(
     trpcSearchAndFilterInput
   );
-  console.log(`totalCount: ${totalCount}`);
 
   // prefetch for client cache
   const pageMediaIds = pageMedia.map((m) => m.media.id);

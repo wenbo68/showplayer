@@ -9,7 +9,7 @@ import type { FilterOptions } from '~/type';
 type Pill = {
   key: string;
   label: string;
-  type: 'year' | 'format' | 'origin' | 'genre';
+  type: 'year' | 'format' | 'origin' | 'genre' | 'list';
   onRemove: () => void;
 };
 
@@ -18,6 +18,7 @@ const pillColors = {
   format: 'bg-orange-500/20 text-orange-300 ring-orange-500/30',
   origin: 'bg-cyan-500/20 text-cyan-300 ring-cyan-500/30',
   genre: 'bg-blue-500/20 text-blue-300 ring-blue-500/30',
+  list: 'bg-violet-500/20 text-violet-300 ring-violet-500/30', // 2. Add a new color
 };
 
 export default function ActiveFilters({
@@ -92,6 +93,22 @@ export default function ActiveFilters({
           onRemove: createRemoveHandler('genre', genreId),
         });
       }
+    });
+
+    // 3. Add logic to create pills for the 'list' parameter
+    const lists = searchParams.getAll('list');
+    lists.forEach((listValue) => {
+      const listLabels = {
+        saved: 'My List',
+        favorite: 'Favorites',
+        later: 'Watch Later',
+      };
+      pills.push({
+        key: `list-${listValue}`,
+        label: listLabels[listValue as keyof typeof listLabels] ?? listValue,
+        type: 'list',
+        onRemove: createRemoveHandler('list', listValue),
+      });
     });
 
     return pills;

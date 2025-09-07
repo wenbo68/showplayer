@@ -53,46 +53,9 @@ import {
 } from '~/server/utils';
 import type { ListMedia } from '~/type';
 import { closeCluster, getCluster } from '~/app/_utils/clusterManager';
+import { TRPCError } from '@trpc/server';
 
 export const mediaRouter = createTRPCRouter({
-  // addToList: protectedProcedure
-  //   .input(
-  //     z.object({
-  //       mediaId: z.string(),
-  //       listType: z.enum(listTypeEnum.enumValues),
-  //     })
-  //   )
-  //   .mutation(async ({ ctx, input }) => {
-  //     await ctx.db
-  //       .insert(userMediaList)
-  //       .values({
-  //         userId: ctx.session.user.id,
-  //         mediaId: input.mediaId,
-  //         listType: input.listType,
-  //       })
-  //       .onConflictDoNothing(); // Prevents duplicates
-  //   }),
-
-  // removeFromList: protectedProcedure
-  //   .input(
-  //     z.object({
-  //       mediaId: z.string(),
-  //       listType: z.enum(listTypeEnum.enumValues),
-  //     })
-  //   )
-  //   .mutation(async ({ ctx, input }) => {
-  //     await ctx.db
-  //       .delete(userMediaList)
-  //       .where(
-  //         and(
-  //           eq(userMediaList.userId, ctx.session.user.id),
-  //           eq(userMediaList.mediaId, input.mediaId),
-  //           eq(userMediaList.listType, input.listType)
-  //         )
-  //       );
-  //   }),
-
-  // ... other procedures
   updateMediaInUserList: protectedProcedure
     .input(
       z.object({
@@ -215,9 +178,14 @@ export const mediaRouter = createTRPCRouter({
         order: z.enum(['date-desc', 'date-asc', 'title-desc', 'title-asc']),
         // 1. Add page to the input schema
         page: z.number().min(1),
+        list: z.array(z.enum(['saved', 'favorite', 'later'])).optional(),
       })
     )
     .query(async ({ ctx, input }) => {
+      // In a publicProcedure, ctx.session is available but can be null.
+      const { session } = ctx;
+      const { title, format, genre, origin, year, page, list } = input;
+
       // 1. define columns in order to select them in the query
       // aggregate means to combine all values from 1 column to 1 cell array (so that media won't be duplicated)
       const aggregatedOrigins = sql<
@@ -263,15 +231,11 @@ export const mediaRouter = createTRPCRouter({
         END`
         .mapWith(Number)
         .as('totalEpisodeCount');
-      const { title, format, genre, origin, year, page } = input;
 
-      // --- 1. Create a Subquery with all filters and grouping ---
-      // This forms the base for both our count and data queries.
-      // It includes all the complex logic.
+      // 2. create subquery for getting how many total media there are
       const countSubquery = ctx.db
         .select({
           id: tmdbMedia.id, // Only need ID for counting
-          // Add columns needed for ordering later
           releaseDate: tmdbMedia.releaseDate,
           title: tmdbMedia.title,
         })
@@ -288,29 +252,7 @@ export const mediaRouter = createTRPCRouter({
         .leftJoin(tmdbGenre, eq(tmdbMediaToTmdbGenre.genreId, tmdbGenre.id))
         // We must group by media to deduplicate media and aggregate origins/genres
         .groupBy(tmdbMedia.id)
-        .having(gt(availabilityCountExpression, 0))
         .$dynamic(); // Use $dynamic to apply WHERE clause next
-
-      // // --- 2. Build the Count Query ---
-      // // only need to select count of distinct media
-      // const countQueryBuilder = ctx.db
-      //   .select({
-      //     availabilityCount: availabilityCount,
-      //     count: countDistinct(tmdbMedia.id),
-      //   })
-      //   .from(tmdbMedia)
-      //   .leftJoin(
-      //     tmdbMediaToTmdbOrigin,
-      //     eq(tmdbMedia.id, tmdbMediaToTmdbOrigin.mediaId)
-      //   )
-      //   .leftJoin(tmdbOrigin, eq(tmdbMediaToTmdbOrigin.originId, tmdbOrigin.id))
-      //   .leftJoin(
-      //     tmdbMediaToTmdbGenre,
-      //     eq(tmdbMedia.id, tmdbMediaToTmdbGenre.mediaId)
-      //   )
-      //   .leftJoin(tmdbGenre, eq(tmdbMediaToTmdbGenre.genreId, tmdbGenre.id))
-      //   // We must group by media to deduplicate media and aggregate origins/genres
-      //   .groupBy(tmdbMedia.id);
 
       // --- 3. Build the Data Query ---
       // select all needed fields
@@ -334,10 +276,30 @@ export const mediaRouter = createTRPCRouter({
         )
         .leftJoin(tmdbGenre, eq(tmdbMediaToTmdbGenre.genreId, tmdbGenre.id))
         // We must group by media to deduplicate media and aggregate origins/genres
-        .groupBy(tmdbMedia.id);
+        .groupBy(tmdbMedia.id)
+        .$dynamic();
 
       // 4. apply all conditions to count and data query
       const conditions = [];
+      // if list exists, check if user is logged in
+      if (list && list.length > 0) {
+        if (!session?.user?.id) {
+          // If not, throw an error. This protects the endpoint.
+          throw new TRPCError({ code: 'UNAUTHORIZED' });
+        }
+        const userId = session.user.id;
+        conditions.push(eq(userMediaList.userId, userId));
+        conditions.push(inArray(userMediaList.listType, list));
+        // add inner join
+        countSubquery.innerJoin(
+          userMediaList,
+          eq(tmdbMedia.id, userMediaList.mediaId)
+        );
+        dataQueryBuilder.innerJoin(
+          userMediaList,
+          eq(tmdbMedia.id, userMediaList.mediaId)
+        );
+      }
       if (title) {
         conditions.push(ilike(tmdbMedia.title, `%${title}%`));
       }

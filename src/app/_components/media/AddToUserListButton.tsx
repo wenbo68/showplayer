@@ -5,6 +5,7 @@ import { FaHeart } from 'react-icons/fa6';
 import { useState } from 'react';
 import { useIsMediaInUserList } from '~/app/_utils/hooks';
 import type { UserList } from '~/type';
+import { useSession } from 'next-auth/react';
 
 export function AddToUserListButton({
   pageMediaIds,
@@ -15,6 +16,7 @@ export function AddToUserListButton({
   mediaId: string;
   listType: UserList;
 }) {
+  const { data: session } = useSession(); // 2. Get user's session status
   const isInUserList = useIsMediaInUserList(pageMediaIds, mediaId, 'saved');
   const [buttonDisabled, setButtonDisabled] = useState(false);
 
@@ -67,20 +69,26 @@ export function AddToUserListButton({
   // For now we only have a 'saved' list for users
   if (listType !== 'saved') return null;
 
+  const handleClick = () => {
+    // 3. Check for a session inside the click handler
+    if (session?.user) {
+      // If logged in, perform the mutation
+      setButtonDisabled(true);
+      updateMediaInUserList.mutate({
+        mediaId: mediaId,
+        listType: listType,
+        desiredState: !isInUserList,
+      });
+      setTimeout(() => setButtonDisabled(false), 500);
+    } else {
+      // If not logged in, show an alert
+      alert('Need to login');
+    }
+  };
+
   return (
     <button
-      onClick={() => {
-        setButtonDisabled(true);
-        // Call the mutation with the desired new state
-        updateMediaInUserList.mutate({
-          mediaId: mediaId,
-          listType: listType,
-          desiredState: !isInUserList,
-        });
-
-        // Re-enable after 0.5s to prevent spamming
-        setTimeout(() => setButtonDisabled(false), 500);
-      }}
+      onClick={handleClick}
       disabled={buttonDisabled}
       className={`cursor-pointer rounded-lg p-3 text-gray-300 transition-colors ${
         isInUserList
@@ -88,6 +96,13 @@ export function AddToUserListButton({
           : 'bg-gray-700 hover:bg-gray-600'
       }`}
       aria-label={isInUserList ? 'Remove from saved' : 'Add to saved'}
+      title={
+        session?.user
+          ? isInUserList
+            ? 'Remove from saved'
+            : 'Add to saved'
+          : 'Log in to save'
+      }
     >
       <FaHeart />
     </button>

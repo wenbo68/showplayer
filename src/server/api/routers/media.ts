@@ -770,6 +770,12 @@ export const mediaRouter = createTRPCRouter({
       }
 
       // 4. if tv is missing seasons, upsert seasons/episodes
+      if (!details.seasons) {
+        console.log(
+          `[populateMediaDetails] tv ${tv.title}: ${tv.seasons.length} vs No Seasons from API`
+        );
+        return;
+      }
       const seasonNum = details.seasons.some(
         (season: { season_number: number }) => season.season_number === 0
       )

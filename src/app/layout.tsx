@@ -44,11 +44,9 @@ export default async function RootLayout({
   );
 }
 
-// add selected labels in search page
-// add pagination to search page
-// don't show media that isn't available (no src or not released)
 // add my list in login icon
 // add display modes to search page (grid, detailed grid, horizontal strips)
+// add popularity and score ordering to search page
 
 // for overview, add "show/hide backdrop" arrow.
 // allow 3 modes for season/episode selector: horizontal scrolling, grid, detailed vertical scrolling (show poster, title, description)

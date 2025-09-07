@@ -78,6 +78,7 @@ export default async function SearchPage({
   // get filter options from trpc
   const filterOptions = await api.media.getFilterOptions();
 
+  // just use traditional pagination instead of infinite scrolling (harder to use go back/forward in browser)
   return (
     <div className="flex flex-col gap-10 p-4">
       <Suspense fallback={<SearchBarFallback />}>

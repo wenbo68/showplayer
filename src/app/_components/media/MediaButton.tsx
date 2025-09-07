@@ -33,7 +33,7 @@ export default function MediaButton({
   return (
     <button
       onClick={() => openPopup(pageMediaIds, mediaDetail)}
-      className="flex w-full flex-col items-center gap-2 overflow-hidden text-sm transition group"
+      className="flex w-full flex-col items-center gap-2 overflow-hidden text-sm transition group cursor-pointer"
     >
       <div className="relative w-full">
         <img
@@ -45,21 +45,29 @@ export default function MediaButton({
           className="aspect-[2/3] w-full rounded object-cover"
         />
       </div>
-      <div className="flex flex-col items-center gap-1 text-center">
-        <div className="flex items-center gap-1.5 font-semibold transition-colors group-hover:text-blue-400">
+      <div className="flex flex-col items-center gap-1">
+        <div
+          className={`flex items-center gap-1.5 font-semibold transition-colors ${
+            hasMounted && isInUserList
+              ? `text-pink-400 group-hover:text-pink-300`
+              : `group-hover:text-blue-400`
+          }`}
+        >
           {/** is in user list? indicator */}
           {/* 3. Check for hasMounted before rendering */}
-          {hasMounted && isInUserList && (
+          {/* {hasMounted && isInUserList && (
             <span
               className="h-[10px] w-[10px] rounded-full bg-pink-600 inline-block"
               aria-label="In your list"
             />
-          )}
+          )} */}
           {/** title */}
-          <span>{media.title}</span>
+          <span className={`leading-normal min-h-[3em] line-clamp-2`}>
+            {media.title}
+          </span>
         </div>
         {/* Badge logic remains the same... */}
-        {!isReleased ? (
+        {/* {!isReleased ? (
           <MediaBadge className="bg-yellow-900 text-yellow-200">
             Not Released
           </MediaBadge>
@@ -78,7 +86,7 @@ export default function MediaButton({
           <MediaBadge className="bg-gray-700 text-gray-400">
             Not Available
           </MediaBadge>
-        )}
+        )} */}
       </div>
     </button>
   );

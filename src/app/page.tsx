@@ -37,29 +37,29 @@ export default async function Home() {
           <SearchBar filterOptions={filterOptions} />
         </Suspense>
 
-        {/* <div className="w-full flex flex-col gap-6"> */}
-        <MediaList
-          pageMediaIds={uniquePageMediaIds}
-          mediaList={trendingList}
-          viewMode="preview"
-          label="TRENDING NOW"
-          link="/trending"
-        />
-        <MediaList
-          pageMediaIds={uniquePageMediaIds}
-          mediaList={topMvList}
-          viewMode="preview"
-          label="TOP MOVIES"
-          link="/top/movie"
-        />
-        <MediaList
-          pageMediaIds={uniquePageMediaIds}
-          mediaList={topTvList}
-          viewMode="preview"
-          label="TOP SHOWS"
-          link="/top/tv"
-        />
-        {/* </div> */}
+        <div className="w-full flex flex-col gap-8">
+          <MediaList
+            pageMediaIds={uniquePageMediaIds}
+            mediaList={trendingList}
+            viewMode="preview"
+            label="TRENDING NOW"
+            link="/trending"
+          />
+          <MediaList
+            pageMediaIds={uniquePageMediaIds}
+            mediaList={topMvList}
+            viewMode="preview"
+            label="TOP MOVIES"
+            link="/top/movie"
+          />
+          <MediaList
+            pageMediaIds={uniquePageMediaIds}
+            mediaList={topTvList}
+            viewMode="preview"
+            label="TOP SHOWS"
+            link="/top/tv"
+          />
+        </div>
       </div>
     </HydrateClient>
   );

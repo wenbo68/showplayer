@@ -44,11 +44,11 @@ export default async function SearchPage({
         cookieStore.get('lastUsedOrder')?.value ?? 'popularity-desc';
       newParams.set('order', lastUsedOrder);
     }
-    if (isPageMissing) {
-      newParams.set('page', '1');
-    }
     if (isCountMissing) {
       newParams.set('count', '0');
+    }
+    if (isPageMissing) {
+      newParams.set('page', '1');
     }
 
     // Redirect to the same page but with the corrected query string
@@ -76,11 +76,12 @@ export default async function SearchPage({
       | 'vote-count-desc'
       | 'vote-count-asc',
     page: Number(params.page),
+    pageSize: 30,
     list: ensureStringArray(params.list) as ('saved' | 'favorite' | 'later')[],
   };
 
   // get results from trpc
-  const { pageSize, pageMedia, totalCount } = await api.media.searchAndFilter(
+  const { pageMedia, totalPages } = await api.media.searchAndFilter(
     trpcSearchAndFilterInput
   );
 
@@ -112,9 +113,9 @@ export default async function SearchPage({
               pageMediaIds={uniquePageMediaIds}
             />
             <Pagination
-              totalCount={totalCount}
-              pageSize={pageSize}
+              pageSize={trpcSearchAndFilterInput.pageSize}
               currentPage={trpcSearchAndFilterInput.page}
+              totalPages={totalPages}
             />
           </div>
         ) : (

@@ -11,21 +11,21 @@ import {
 } from 'lucide-react';
 
 type PaginationProps = {
-  totalCount: number;
   pageSize: number;
   currentPage: number;
+  totalPages: number;
 };
 
 export default function Pagination({
-  totalCount,
   pageSize,
   currentPage,
+  totalPages,
 }: PaginationProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const totalPages = Math.ceil(totalCount / pageSize);
+  // const totalPages = Math.ceil(totalCount / pageSize);
 
   // Don't render pagination if there's only one page or less
   if (totalPages <= 1) {

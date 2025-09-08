@@ -32,7 +32,7 @@ export default function MediaList({
         </div>
       )}
       <div className="flex gap-4 overflow-x-auto scrollbar-hide">
-        {mediaList.slice(0, 20).map((mediaDetail) => {
+        {mediaList.map((mediaDetail) => {
           return (
             <div
               key={mediaDetail.media.id}

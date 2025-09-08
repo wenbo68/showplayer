@@ -191,14 +191,24 @@ export const mediaRouter = createTRPCRouter({
           'updated-asc',
         ]),
         page: z.number().min(1),
+        pageSize: z.number().min(1),
         list: z.array(z.enum(['saved', 'favorite', 'later'])).optional(),
       })
     )
     .query(async ({ ctx, input }) => {
       // In a publicProcedure, ctx.session is available but can be null.
       const { session } = ctx;
-      const { title, format, genre, origin, year, minVoteCount, page, list } =
-        input;
+      const {
+        title,
+        format,
+        genre,
+        origin,
+        year,
+        minVoteCount,
+        page,
+        pageSize,
+        list,
+      } = input;
 
       // 1. define columns in order to select them in the query
       // aggregate means to combine all values from 1 column to 1 cell array (so that media won't be duplicated)
@@ -368,7 +378,8 @@ export const mediaRouter = createTRPCRouter({
       const countResult = await ctx.db
         .select({ count: count() })
         .from(countSubquery.as('sq'));
-      const totalCount = countResult[0]?.count ?? 0;
+      const totalMediaCount = countResult[0]?.count ?? 0;
+      const totalPages = Math.ceil(totalMediaCount / pageSize);
 
       // 6. add order by to data query
       let orderByClause;
@@ -413,15 +424,15 @@ export const mediaRouter = createTRPCRouter({
       if (orderByClause) dataQueryBuilder.orderBy(orderByClause);
 
       // 6. get all media for chosen page
-      const pageSize = 30;
+      // const pageSize = 30;
       const pageMedia = await dataQueryBuilder
         .limit(pageSize)
         .offset((page - 1) * pageSize);
 
       return {
-        pageSize,
+        // pageSize,
         pageMedia,
-        totalCount,
+        totalPages,
       };
     }),
 

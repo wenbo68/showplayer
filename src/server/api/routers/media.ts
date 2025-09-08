@@ -125,7 +125,7 @@ export const mediaRouter = createTRPCRouter({
       return detailsMap;
     }),
 
-  getFilterOptions: publicProcedure.query(async ({ ctx }) => {
+  getFilterOptions: protectedProcedure.query(async ({ ctx }) => {
     const genres = await ctx.db
       .selectDistinct({
         id: tmdbGenre.id,
@@ -175,8 +175,21 @@ export const mediaRouter = createTRPCRouter({
         genre: z.array(z.number()).optional(),
         origin: z.array(z.string()).optional(),
         year: z.array(z.number()).optional(),
-        order: z.enum(['date-desc', 'date-asc', 'title-desc', 'title-asc']),
-        // 1. Add page to the input schema
+        minVoteCount: z.number().min(0),
+        order: z.enum([
+          'released-desc',
+          'released-asc',
+          'title-desc',
+          'title-asc',
+          'popularity-desc',
+          'popularity-asc',
+          'vote-avg-desc',
+          'vote-avg-asc',
+          'vote-count-desc',
+          'vote-count-asc',
+          'updated-desc',
+          'updated-asc',
+        ]),
         page: z.number().min(1),
         list: z.array(z.enum(['saved', 'favorite', 'later'])).optional(),
       })
@@ -184,7 +197,8 @@ export const mediaRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       // In a publicProcedure, ctx.session is available but can be null.
       const { session } = ctx;
-      const { title, format, genre, origin, year, page, list } = input;
+      const { title, format, genre, origin, year, minVoteCount, page, list } =
+        input;
 
       // 1. define columns in order to select them in the query
       // aggregate means to combine all values from 1 column to 1 cell array (so that media won't be duplicated)
@@ -231,6 +245,23 @@ export const mediaRouter = createTRPCRouter({
         END`
         .mapWith(Number)
         .as('totalEpisodeCount');
+      // mv: releaseDate
+      // tv: airDate of most recent episode that has source
+      const updatedDateExpression = sql<Date>`
+        CASE
+          WHEN ${tmdbMedia.type} = 'movie' THEN ${tmdbMedia.releaseDate}
+          WHEN ${tmdbMedia.type} = 'tv' THEN (
+            SELECT MAX(e.air_date)
+            FROM ${tmdbEpisode} e
+            JOIN ${tmdbSeason} s ON e.season_id = s.id
+            WHERE s.media_id = ${tmdbMedia.id}
+              AND EXISTS (
+                SELECT 1 FROM ${tmdbSource} src WHERE src.episode_id = e.id
+              )
+          )
+          ELSE ${tmdbMedia.releaseDate}
+        END`.mapWith(Date);
+      const updatedDate = updatedDateExpression.as('updatedDate');
 
       // 2. create subquery for getting how many total media there are
       const countSubquery = ctx.db
@@ -263,6 +294,7 @@ export const mediaRouter = createTRPCRouter({
           genres: aggregatedGenres,
           availabilityCount: availabilityCount,
           totalEpisodeCount: totalEpisodeCount,
+          updatedDate: updatedDate,
         })
         .from(tmdbMedia)
         .leftJoin(
@@ -320,6 +352,9 @@ export const mediaRouter = createTRPCRouter({
       if (origin && origin.length > 0) {
         conditions.push(inArray(tmdbMediaToTmdbOrigin.originId, origin));
       }
+      if (minVoteCount > 0) {
+        conditions.push(gt(tmdbMedia.voteCount, minVoteCount));
+      }
 
       if (conditions.length > 0) {
         countSubquery.where(and(...conditions));
@@ -338,17 +373,41 @@ export const mediaRouter = createTRPCRouter({
       // 6. add order by to data query
       let orderByClause;
       switch (input.order) {
-        case 'date-desc':
-          orderByClause = desc(tmdbMedia.releaseDate);
-          break;
-        case 'date-asc':
-          orderByClause = asc(tmdbMedia.releaseDate);
-          break;
         case 'title-desc':
           orderByClause = desc(tmdbMedia.title);
           break;
         case 'title-asc':
           orderByClause = asc(tmdbMedia.title);
+          break;
+        case 'released-desc':
+          orderByClause = desc(tmdbMedia.releaseDate);
+          break;
+        case 'released-asc':
+          orderByClause = asc(tmdbMedia.releaseDate);
+          break;
+        case 'updated-desc':
+          orderByClause = desc(updatedDate);
+          break;
+        case 'updated-asc':
+          orderByClause = asc(updatedDate);
+          break;
+        case 'popularity-desc':
+          orderByClause = desc(tmdbMedia.popularity);
+          break;
+        case 'popularity-asc':
+          orderByClause = asc(tmdbMedia.popularity);
+          break;
+        case 'vote-avg-desc':
+          orderByClause = desc(tmdbMedia.voteAverage);
+          break;
+        case 'vote-avg-asc':
+          orderByClause = asc(tmdbMedia.voteAverage);
+          break;
+        case 'vote-count-desc':
+          orderByClause = desc(tmdbMedia.voteCount);
+          break;
+        case 'vote-count-asc':
+          orderByClause = asc(tmdbMedia.voteCount);
           break;
       }
       if (orderByClause) dataQueryBuilder.orderBy(orderByClause);
@@ -366,7 +425,7 @@ export const mediaRouter = createTRPCRouter({
       };
     }),
 
-  getTmdbTrending: publicProcedure.query(async ({ ctx }) => {
+  getTmdbTrending: protectedProcedure.query(async ({ ctx }) => {
     const trending: ListMedia[] = await ctx.db
       .select({
         // rank: tmdbTrending.rank,
@@ -424,7 +483,7 @@ export const mediaRouter = createTRPCRouter({
     return trending;
   }),
 
-  getTmdbTopRatedMv: publicProcedure.query(async ({ ctx }) => {
+  getTmdbTopRatedMv: protectedProcedure.query(async ({ ctx }) => {
     const topRatedMovies: ListMedia[] = await ctx.db
       .select({
         // rank: tmdbTopRated.rank,
@@ -477,7 +536,7 @@ export const mediaRouter = createTRPCRouter({
     return topRatedMovies;
   }),
 
-  getTmdbTopRatedTv: publicProcedure.query(async ({ ctx }) => {
+  getTmdbTopRatedTv: protectedProcedure.query(async ({ ctx }) => {
     const topRatedTv: ListMedia[] = await ctx.db
       .select({
         // rank: tmdbTopRated.rank,
@@ -532,7 +591,7 @@ export const mediaRouter = createTRPCRouter({
     return topRatedTv;
   }),
 
-  fetchOrigins: publicProcedure.mutation(async ({ ctx }) => {
+  fetchOrigins: protectedProcedure.mutation(async ({ ctx }) => {
     // 1. Fetch the origins from the TMDB API
     const origins = await fetchTmdbOriginsViaApi();
 
@@ -558,7 +617,7 @@ export const mediaRouter = createTRPCRouter({
     return { count: originOutput.length };
   }),
 
-  fetchGenres: publicProcedure.mutation(async ({ ctx }) => {
+  fetchGenres: protectedProcedure.mutation(async ({ ctx }) => {
     const { genres: mvGenres } = await fetchTmdbMvGenresViaApi();
     const { genres: tvGenres } = await fetchTmdbTvGenresViaApi();
 
@@ -586,7 +645,7 @@ export const mediaRouter = createTRPCRouter({
     return { count: genreOutput.length };
   }),
 
-  fetchTmdbTopRated: publicProcedure
+  fetchTmdbTopRated: protectedProcedure
     .input(z.object({ limit: z.number() }))
     .mutation(async ({ input, ctx }) => {
       // 1. Delete the old top-rated list first
@@ -643,7 +702,7 @@ export const mediaRouter = createTRPCRouter({
       return { count: mediaOutput.length };
     }),
 
-  fetchTmdbTrending: publicProcedure
+  fetchTmdbTrending: protectedProcedure
     .input(z.object({ limit: z.number() }))
     .mutation(async ({ input, ctx }) => {
       // 1. delete trending list first
@@ -667,7 +726,7 @@ export const mediaRouter = createTRPCRouter({
       return { count: mediaOutput.length };
     }),
 
-  populateMediaDetails: publicProcedure.mutation(async ({ ctx }) => {
+  populateMediaDetails: protectedProcedure.mutation(async ({ ctx }) => {
     // 1. find all movie without origin
     const moviesWithoutOrigin = await ctx.db
       .select()
@@ -751,7 +810,7 @@ export const mediaRouter = createTRPCRouter({
     });
   }),
 
-  fetchMediaSrc: publicProcedure.mutation(async ({ ctx }) => {
+  fetchMediaSrc: protectedProcedure.mutation(async ({ ctx }) => {
     const yesterday = new Date();
     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
 

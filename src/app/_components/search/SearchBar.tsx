@@ -27,6 +27,7 @@ export default function SearchBar({
   const origin = searchParams.getAll('origin');
   const year = searchParams.getAll('year').map(Number);
   const order = searchParams.get('order') ?? '';
+  const count = searchParams.get('count') ?? '';
 
   // if url changes, update title
   useEffect(() => {
@@ -51,7 +52,7 @@ export default function SearchBar({
       if (newQueryString) {
         router.push(`/search?${newQueryString}`);
       } else if (pathname === '/search') {
-        router.push('/');
+        router.push(initialPathRef.current);
       }
     }
   }, [debouncedTitle, pathname, router, searchParams]);
@@ -123,6 +124,14 @@ export default function SearchBar({
       trpcInput: origin.id,
       label: origin.name,
     })) ?? [];
+  const countOptions = [
+    { label: '0+', trpcInput: 0 },
+    { label: '100+', trpcInput: 100 },
+    { label: '200+', trpcInput: 200 },
+    { label: '300+', trpcInput: 300 },
+    { label: '400+', trpcInput: 400 },
+    { label: '500+', trpcInput: 500 },
+  ];
   const orderOptions = [
     {
       groupLabel: 'Title',
@@ -134,8 +143,36 @@ export default function SearchBar({
     {
       groupLabel: 'Release Date',
       options: [
-        { label: 'New → Old', trpcInput: 'date-desc' },
-        { label: 'Old → New', trpcInput: 'date-asc' },
+        { label: 'New → Old', trpcInput: 'released-desc' },
+        { label: 'Old → New', trpcInput: 'released-asc' },
+      ],
+    },
+    {
+      groupLabel: 'Updated Date',
+      options: [
+        { label: 'Recent → Old', trpcInput: 'updated-desc' },
+        { label: 'Old → Recent', trpcInput: 'updated-asc' },
+      ],
+    },
+    {
+      groupLabel: 'Popularity',
+      options: [
+        { label: 'Most → Least', trpcInput: 'popularity-desc' },
+        { label: 'Least → Most', trpcInput: 'popularity-asc' },
+      ],
+    },
+    {
+      groupLabel: 'Vote Average',
+      options: [
+        { label: 'High → Low', trpcInput: 'vote-avg-desc' },
+        { label: 'Low → High', trpcInput: 'vote-avg-asc' },
+      ],
+    },
+    {
+      groupLabel: 'Vote Count',
+      options: [
+        { label: 'Most → Fewest', trpcInput: 'vote-count-desc' },
+        { label: 'Fewest → Most', trpcInput: 'vote-count-asc' },
       ],
     },
   ];
@@ -165,36 +202,43 @@ export default function SearchBar({
       <Filter
         label="Year"
         options={yearOptions}
-        valuesFromUrl={year}
-        setUrl={(v) => handleMultiFilterChange('year', v as number[])}
+        urlValues={year}
+        setUrlValues={(v) => handleMultiFilterChange('year', v as number[])}
         mode="multi"
       />
       <Filter
         label="Format"
         options={formatOptions}
-        valuesFromUrl={format}
-        setUrl={(v) => handleMultiFilterChange('format', v as string[])}
+        urlValues={format}
+        setUrlValues={(v) => handleMultiFilterChange('format', v as string[])}
         mode="multi"
       />
       <Filter
         label="Origin"
         options={originOptions}
-        valuesFromUrl={origin}
-        setUrl={(v) => handleMultiFilterChange('origin', v as string[])}
+        urlValues={origin}
+        setUrlValues={(v) => handleMultiFilterChange('origin', v as string[])}
         mode="multi"
       />
       <Filter
         label="Genre"
         options={genreOptions}
-        valuesFromUrl={genre}
-        setUrl={(v) => handleMultiFilterChange('genre', v as number[])}
+        urlValues={genre}
+        setUrlValues={(v) => handleMultiFilterChange('genre', v as number[])}
         mode="multi"
       />
       <Filter
         label="Order"
         options={orderOptions}
-        valuesFromUrl={order}
-        setUrl={(v) => handleSingleFilterChange('order', v as string)}
+        urlValues={order}
+        setUrlValues={(v) => handleSingleFilterChange('order', v as string)}
+        mode="single"
+      />
+      <Filter
+        label="Vote Count"
+        options={countOptions}
+        urlValues={count}
+        setUrlValues={(v) => handleSingleFilterChange('count', v as string)}
         mode="single"
       />
     </div>

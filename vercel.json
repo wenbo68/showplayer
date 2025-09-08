@@ -1,8 +1,16 @@
 {
   "crons": [
     {
-      "path": "/api/cron/refresh",
-      "schedule": "0 5 * * *"
+      "path": "/api/trpc/cron.syncPopularity?cronSecret=CRON_SECRET_PLACEHOLDER&mediaType=movie",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/trpc/cron.syncPopularity?cronSecret=CRON_SECRET_PLACEHOLDER&mediaType=tv",
+      "schedule": "30 9 * * *"
+    },
+    {
+      "path": "/api/trpc/cron.refreshRatings?cronSecret=CRON_SECRET_PLACEHOLDER&limit=2000",
+      "schedule": "0 10 * * *"
     }
   ]
 }

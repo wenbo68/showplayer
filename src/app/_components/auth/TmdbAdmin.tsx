@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+// import { env } from '~/env';
 import { api } from '~/trpc/react';
 
 export default function TmdbAdmin() {
@@ -11,11 +12,18 @@ export default function TmdbAdmin() {
   const [season, setSeason] = useState('');
   const [episode, setEpisode] = useState('');
 
+  // --- 1. Add new state for the ratings refresh limit ---
+  const [ratingsLimit, setRatingsLimit] = useState(100);
+
   const fetchOriginsMutation = api.media.fetchOrigins.useMutation();
   const fetchGenresMutation = api.media.fetchGenres.useMutation();
 
   const fetchTmdbTrendingMutation = api.media.fetchTmdbTrending.useMutation();
   const fetchTmdbTopMutation = api.media.fetchTmdbTopRated.useMutation();
+
+  // --- 2. Add new mutation hooks for the cron procedures ---
+  const updatePopularityMutation = api.cron.updatePopularity.useMutation();
+  const updateRatingsMutation = api.cron.updateRatings.useMutation();
 
   const populateDetailsMutation = api.media.populateMediaDetails.useMutation();
   const dailySrcFetchMutation = api.media.fetchMediaSrc.useMutation();
@@ -51,6 +59,37 @@ export default function TmdbAdmin() {
       {
         onSuccess: (data) => console.log('Fetched:', data),
         onError: (err) => console.error('Error:', err),
+      }
+    );
+  };
+  // --- 3. Add new handlers for the cron procedures ---
+  const handleUpdatePopularity = (mediaType: 'movie' | 'tv') => {
+    // NOTE: This can take a long time to run!
+    updatePopularityMutation.mutate(
+      {
+        cronSecret:
+          'd23b4a9f9d009dcf28bd69cdbb2815819379db2702dc96251bd72f2dfa1c9d4e',
+        mediaType: mediaType,
+      },
+      {
+        onSuccess: (data) =>
+          console.log(`Sync ${mediaType} popularity complete:`, data),
+        onError: (err) =>
+          console.error(`Error syncing ${mediaType} popularity:`, err),
+      }
+    );
+  };
+  const handleUpdateRatings = () => {
+    // NOTE: This can also take a long time to run!
+    updateRatingsMutation.mutate(
+      {
+        cronSecret:
+          'd23b4a9f9d009dcf28bd69cdbb2815819379db2702dc96251bd72f2dfa1c9d4e',
+        limit: ratingsLimit,
+      },
+      {
+        onSuccess: (data) => console.log('Refresh ratings complete:', data),
+        onError: (err) => console.error('Error refreshing ratings:', err),
       }
     );
   };
@@ -176,6 +215,60 @@ export default function TmdbAdmin() {
             Error: {fetchTmdbTopMutation.error.message}
           </p>
         )}
+
+        <hr className="w-full my-4 border-gray-300 dark:border-gray-700" />
+
+        {/* --- 4. Add new JSX for the cron job buttons --- */}
+        <div className="flex flex-col items-center gap-2 w-full">
+          <h3 className="font-semibold text-gray-400">Cron Jobs</h3>
+          <div className="flex gap-2 w-60">
+            <button
+              onClick={() => handleUpdatePopularity('movie')}
+              disabled={updatePopularityMutation.isPending}
+              className="px-4 py-2 bg-purple-600 text-white rounded w-full hover:bg-purple-700 disabled:opacity-50"
+            >
+              {updatePopularityMutation.isPending
+                ? 'Updating...'
+                : 'Update MV Popularity'}
+            </button>
+            <button
+              onClick={() => handleUpdatePopularity('tv')}
+              disabled={updatePopularityMutation.isPending}
+              className="px-4 py-2 bg-purple-600 text-white rounded w-full hover:bg-purple-700 disabled:opacity-50"
+            >
+              {updatePopularityMutation.isPending
+                ? 'Updating...'
+                : 'Update TV Popularity'}
+            </button>
+          </div>
+          {updatePopularityMutation.error && (
+            <p className="text-red-400 mt-2">
+              Error: {updatePopularityMutation.error.message}
+            </p>
+          )}
+
+          <input
+            type="number"
+            placeholder="Ratings Refresh Limit"
+            value={ratingsLimit}
+            onChange={(e) => setRatingsLimit(Number(e.target.value))}
+            className="mt-2 px-3 py-2 rounded w-60 text-gray-900 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-700"
+          />
+          <button
+            onClick={handleUpdateRatings}
+            disabled={updateRatingsMutation.isPending}
+            className="px-4 py-2 bg-teal-600 text-white rounded w-60 hover:bg-teal-700 disabled:opacity-50"
+          >
+            {updateRatingsMutation.isPending
+              ? 'Refreshing...'
+              : 'Refresh Ratings'}
+          </button>
+          {updateRatingsMutation.error && (
+            <p className="text-red-400 mt-2">
+              Error: {updateRatingsMutation.error.message}
+            </p>
+          )}
+        </div>
 
         <hr className="w-full my-4 border-gray-300 dark:border-gray-700" />
 

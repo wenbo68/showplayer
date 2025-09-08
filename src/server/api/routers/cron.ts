@@ -1,22 +1,31 @@
 // ~/server/api/routers/cron.ts
 
-import { createTRPCRouter, publicProcedure } from '~/server/api/trpc';
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from '~/server/api/trpc';
 import { z } from 'zod';
 import { env } from '~/env';
 import { TRPCError } from '@trpc/server';
 import { tmdbMedia } from '~/server/db/schema';
 import { and, asc, desc, eq, gt, isNull, lt, or, sql } from 'drizzle-orm';
-import { format } from 'date-fns';
-import { zlib } from 'node:zlib';
+import { format, subDays } from 'date-fns';
+import { createGunzip } from 'node:zlib';
 import { Readable } from 'stream';
 import readline from 'readline';
+import {
+  batchProcess,
+  batchUpdatePopularity,
+  fetchTmdbDetailViaApi,
+} from '~/server/utils';
 
 export const cronRouter = createTRPCRouter({
   /**
    * Downloads the daily TMDB export file, parses it, and bulk-updates the popularity
    * for all corresponding media in the database.
    */
-  syncPopularity: publicProcedure
+  updatePopularity: protectedProcedure
     .input(
       z.object({
         cronSecret: z.string(),
@@ -28,59 +37,68 @@ export const cronRouter = createTRPCRouter({
         throw new TRPCError({ code: 'UNAUTHORIZED' });
       }
 
-      const dateStr = format(subDays(new Date(), 1), 'MM_dd_yyyy');
+      // get body from url
+      const yesterdayDateStr = format(subDays(new Date(), 1), 'MM_dd_yyyy');
       const fileName =
         input.mediaType === 'movie'
-          ? `movie_ids_${dateStr}.json.gz`
-          : `tv_series_ids_${dateStr}.json.gz`;
+          ? `movie_ids_${yesterdayDateStr}.json.gz`
+          : `tv_series_ids_${yesterdayDateStr}.json.gz`;
       const url = `http://files.tmdb.org/p/exports/${fileName}`;
 
-      console.log(`[syncPopularity] Starting download from ${url}`);
-      const response = await fetch(url);
-      if (!response.ok || !response.body) {
-        throw new Error(`Failed to download file: ${response.statusText}`);
+      console.log(`[updatePopularity] Downloading json.gz from: ${url}`);
+      const tmdbResponse = await fetch(url);
+      if (!tmdbResponse.ok || !tmdbResponse.body) {
+        throw new Error(`Failed to download file: ${tmdbResponse.statusText}`);
       }
 
       // Process the large gzipped file as a stream without loading it all into memory
-      const gunzip = zlib.createGunzip();
+      const gunzip = createGunzip();
       const rl = readline.createInterface({ input: gunzip });
-      Readable.fromWeb(response.body as any).pipe(gunzip);
+      Readable.fromWeb(tmdbResponse.body as any).pipe(gunzip);
 
-      const updates: { tmdbId: number; popularity: number }[] = [];
+      console.log(`[updatePopularity] batch update starts...`);
+
+      const batchSize = 25000;
+      let newPopularity: { tmdbId: number; popularity: number }[] = [];
+      let totalCount = 0;
       for await (const line of rl) {
+        // 2. The try...catch now ONLY wraps the JSON.parse, which is the only
+        //    part that should be allowed to fail without stopping the whole process.
         try {
           const item = JSON.parse(line);
-          updates.push({ tmdbId: item.id, popularity: item.popularity });
+          newPopularity.push({
+            tmdbId: item.id,
+            popularity: item.popularity,
+          });
         } catch (e) {
-          /* Ignore malformed lines */
+          /* Ignore parse errors */
+        }
+        // When the batch is full, bulk insert to db and clear popularity arr
+        if (newPopularity.length >= batchSize) {
+          await batchUpdatePopularity(newPopularity);
+          totalCount += newPopularity.length;
+          newPopularity = [];
+          console.log(
+            `[updatePopularity] batch progress: ${totalCount} items.`
+          );
         }
       }
 
-      console.log(
-        `[syncPopularity] Parsed ${updates.length} items. Starting DB update...`
-      );
+      // Process any remaining items in the last batch
+      if (newPopularity.length > 0) {
+        await batchUpdatePopularity(newPopularity);
+        totalCount += newPopularity.length;
+      }
 
-      // Perform a bulk update in a transaction
-      await ctx.db.transaction(async (tx) => {
-        for (const update of updates) {
-          await tx
-            .update(tmdbMedia)
-            .set({ popularity: update.popularity })
-            .where(eq(tmdbMedia.tmdbId, update.tmdbId));
-        }
-      });
-
-      console.log(
-        `[syncPopularity] Finished updating popularity for ${updates.length} items.`
-      );
-      return { success: true, count: updates.length };
+      console.log(`[updatePopularity] finished: ${totalCount} items.`);
+      return { success: true, count: totalCount };
     }),
 
   /**
    * Intelligently selects a batch of the most important media (new, popular, or stale)
    * and refreshes their ratings from the TMDB API.
    */
-  refreshRatings: publicProcedure
+  updateRatings: protectedProcedure
     .input(
       z.object({
         cronSecret: z.string(),
@@ -92,13 +110,11 @@ export const cronRouter = createTRPCRouter({
         throw new TRPCError({ code: 'UNAUTHORIZED' });
       }
 
-      console.log(
-        `[refreshRatings] Finding up to ${input.limit} media items to refresh.`
-      );
-      const mediaToRefresh = await ctx.db
+      const mediaToUpdate = await ctx.db
         .select({
           id: tmdbMedia.id,
           tmdbId: tmdbMedia.tmdbId,
+          title: tmdbMedia.title,
           type: tmdbMedia.type,
         })
         .from(tmdbMedia)
@@ -122,33 +138,77 @@ export const cronRouter = createTRPCRouter({
         .orderBy(desc(tmdbMedia.popularity), asc(tmdbMedia.ratingsUpdatedAt))
         .limit(input.limit);
 
-      if (mediaToRefresh.length === 0) {
-        console.log('[refreshRatings] No media needed a rating refresh.');
+      if (mediaToUpdate.length === 0) {
+        console.log('[updateRatings] No media needed a rating refresh.');
         return { success: true, count: 0 };
+      }
+      console.log(
+        `[updateRatings] DB has ${mediaToUpdate.length} media to update. Starting API calls...`
+      );
+
+      // 1. Collect all the new rating details in an array first.
+      const newRatings: {
+        id: string;
+        voteAverage: number;
+        voteCount: number;
+      }[] = [];
+
+      await batchProcess(mediaToUpdate, 10, async (media) => {
+        const details = await fetchTmdbDetailViaApi(media.type, media.tmdbId);
+        if (details?.vote_average && details?.vote_count) {
+          newRatings.push({
+            id: media.id,
+            voteAverage: details.vote_average,
+            voteCount: details.vote_count,
+          });
+          // console.log(
+          //   `[updateRatings] ${media.type} ${media.id} (${media.title}): ${details.vote_average} ${details.vote_count}`
+          // );
+        } else {
+          console.log(
+            `[updateRatings] ${media.type} ${media.id} (${
+              media.title
+            }): Missing ${
+              details?.vote_average
+                ? `Count`
+                : details?.vote_count
+                ? `Rating`
+                : `Both`
+            }`
+          );
+        }
+      });
+      if (newRatings.length === 0) {
+        console.log('[updateRatings] No media from API had ratings.');
+        return { success: true, count: 0 };
+      }
+      console.log(
+        `[updateRatings] API returned ${newRatings.length} ratings for media. Starting bulk db insert...`
+      );
+
+      // --- THE FIX: Add explicit type casts for all columns from the VALUES clause ---
+      try {
+        await ctx.db.execute(sql`
+          UPDATE ${tmdbMedia} SET
+            vote_average = ${sql.raw(`data.vote_average::real`)},
+            vote_count = ${sql.raw(`data.vote_count::integer`)},
+            ratings_updated_at = NOW()
+          FROM (VALUES ${sql.join(
+            newRatings.map(
+              (r) => sql`(${r.id}, ${r.voteAverage}, ${r.voteCount})`
+            ),
+            sql`, `
+          )}) AS data(id, vote_average, vote_count)
+          WHERE ${tmdbMedia.id} = ${sql.raw(`data.id::varchar`)};
+        `);
+      } catch (error) {
+        console.error('[updateRatings] DATABASE UPDATE FAILED:', error);
+        throw error;
       }
 
       console.log(
-        `[refreshRatings] Found ${mediaToRefresh.length} items. Starting API calls...`
+        `[updateRatings] Done: db updated ${newRatings.length} media ratings.`
       );
-      let updatedCount = 0;
-      await batchProcess(mediaToRefresh, 10, async (media) => {
-        const details = await fetchTmdbDetailViaApi(media.type, media.tmdbId);
-        if (details?.vote_average) {
-          await ctx.db
-            .update(tmdbMedia)
-            .set({
-              voteAverage: details.vote_average,
-              voteCount: details.vote_count,
-              ratingsUpdatedAt: new Date(),
-            })
-            .where(eq(tmdbMedia.id, media.id));
-          updatedCount++;
-        }
-      });
-
-      console.log(
-        `[refreshRatings] Finished refreshing ratings for ${updatedCount} items.`
-      );
-      return { success: true, count: updatedCount };
+      return { success: true, count: newRatings.length };
     }),
 });

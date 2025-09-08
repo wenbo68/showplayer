@@ -40,13 +40,9 @@ export default async function Home() {
         </Suspense>
 
         <div className="w-full flex flex-col gap-8">
-          <MediaList
-            pageMediaIds={uniquePageMediaIds}
-            mediaList={trendingList}
-            viewMode="preview"
-            label="TRENDING NOW"
-            link="/trending"
-          />
+          {/** I want 4 previews here: popular mv, popular tv, top mv (count>200), top tv (count>200)
+           * they all should link to the search page with appropriate filters applied
+           */}
           <MediaList
             pageMediaIds={uniquePageMediaIds}
             mediaList={topMvList}

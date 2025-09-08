@@ -33,25 +33,18 @@ type FilterProps = {
 } & (
   | {
       mode: 'single';
-      valuesFromUrl: string | number;
-      setUrl: (value: string | number) => void;
+      urlValues: string | number;
+      setUrlValues: (value: string | number) => void;
     }
   | {
       mode: 'multi';
-      valuesFromUrl: (string | number)[];
-      setUrl: (value: (string | number)[]) => void;
+      urlValues: (string | number)[];
+      setUrlValues: (value: (string | number)[]) => void;
     }
 );
 
 export default function Filter(props: FilterProps) {
-  const {
-    label,
-    options,
-    placeholder,
-    mode,
-    valuesFromUrl: state,
-    setUrl: setState,
-  } = props;
+  const { label, options, placeholder, mode, urlValues, setUrlValues } = props;
 
   const [writtenText, setWrittenText] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -110,11 +103,11 @@ export default function Filter(props: FilterProps) {
 
   const handleSelectOption = (option: FilterOption) => {
     if (mode === 'single') {
-      setState(option.trpcInput);
+      setUrlValues(option.trpcInput);
       setIsDropdownOpen(false);
       setWrittenText('');
     } else {
-      const currentSelection = [...state];
+      const currentSelection = [...urlValues];
       const index = currentSelection.findIndex(
         (item) => String(item) === String(option.trpcInput)
       );
@@ -123,34 +116,84 @@ export default function Filter(props: FilterProps) {
       } else {
         currentSelection.unshift(option.trpcInput);
       }
-      setState(currentSelection);
+      setUrlValues(currentSelection);
     }
   };
 
   const handleRemoveOption = (valueToRemove: string | number) => {
     if (mode === 'single') {
-      setState('');
+      setUrlValues('');
     } else {
-      setState(state.filter((v) => String(v) !== String(valueToRemove)));
+      setUrlValues(
+        urlValues.filter((v) => String(v) !== String(valueToRemove))
+      );
     }
   };
 
+  // // --- Smarter getter for both flat and grouped options ---
+  // const getSelectedOptions = (): FilterOption[] => {
+  //   const allOptionsFlat = isGroupedOptions(options)
+  //     ? options.flatMap((g) => g.options)
+  //     : (options as FilterOption[]);
+  //   if (mode === 'single') {
+  //     const selected = allOptionsFlat.find(
+  //       (opt) => String(opt.trpcInput) === String(state)
+  //     );
+  //     return selected ? [selected] : [];
+  //   }
+  //   return state
+  //     .map((val) =>
+  //       allOptionsFlat.find((opt) => String(opt.trpcInput) === String(val))
+  //     )
+  //     .filter((opt): opt is FilterOption => opt !== undefined);
+  // };
+
   // --- Smarter getter for both flat and grouped options ---
   const getSelectedOptions = (): FilterOption[] => {
-    const allOptionsFlat = isGroupedOptions(options)
-      ? options.flatMap((g) => g.options)
-      : (options as FilterOption[]);
-    if (mode === 'single') {
-      const selected = allOptionsFlat.find(
-        (opt) => String(opt.trpcInput) === String(state)
+    // For MULTI mode, the existing logic is correct as it doesn't show group context.
+    if (mode === 'multi') {
+      const allOptionsFlatMulti = isGroupedOptions(options)
+        ? options.flatMap((g) => g.options)
+        : (options as FilterOption[]);
+      return urlValues
+        .map((val) =>
+          allOptionsFlatMulti.find(
+            (opt) => String(opt.trpcInput) === String(val)
+          )
+        )
+        .filter((opt): opt is FilterOption => opt !== undefined);
+    }
+
+    // For SINGLE mode, we add the new logic.
+    if (isGroupedOptions(options)) {
+      // If options are grouped, we need to find the parent group.
+      for (const group of options) {
+        const foundOption = group.options.find(
+          (opt) => String(opt.trpcInput) === String(urlValues)
+        );
+        if (foundOption) {
+          // Return a NEW option object with the combined label.
+          return [
+            {
+              ...foundOption,
+              label: group.groupLabel,
+            },
+            {
+              ...foundOption,
+              label: foundOption.label,
+            },
+          ];
+        }
+      }
+      return []; // No match found in any group
+    } else {
+      // If options are not grouped, use the original simple find logic.
+      const allOptionsFlatSingle = options as FilterOption[];
+      const selected = allOptionsFlatSingle.find(
+        (opt) => String(opt.trpcInput) === String(urlValues)
       );
       return selected ? [selected] : [];
     }
-    return state
-      .map((val) =>
-        allOptionsFlat.find((opt) => String(opt.trpcInput) === String(val))
-      )
-      .filter((opt): opt is FilterOption => opt !== undefined);
   };
 
   const selectedOptions = getSelectedOptions();
@@ -163,17 +206,17 @@ export default function Filter(props: FilterProps) {
         {/* * selected option labels */}
         {selectedOptions.length > 0 && mode === 'single' && (
           <div className="flex flex-wrap gap-1">
-            {selectedOptions.map((option) => (
-              <button
-                disabled={mode === 'single'}
-                onClick={() => handleRemoveOption(option.trpcInput)}
-                key={option.trpcInput}
+            {selectedOptions.map((option, index) => (
+              <label
+                // disabled={mode === 'single'}
+                // onClick={() => handleRemoveOption(option.trpcInput)}
+                key={index}
                 className={`flex items-center gap-1 bg-gray-800 ${
                   mode === 'single' ? `` : `hover:text-blue-400 cursor-pointer`
                 } rounded px-2 text-xs font-semibold`}
               >
                 {option.label}
-              </button>
+              </label>
             ))}
           </div>
         )}
@@ -201,7 +244,7 @@ export default function Filter(props: FilterProps) {
         </div>
         {/** dropdown */}
         {isDropdownOpen && (
-          <div className="text-xs font-semibold absolute z-10 top-full mt-2 w-full flex flex-col bg-gray-800 rounded p-2 max-h-60 overflow-y-auto scrollbar-thin">
+          <div className="text-xs font-semibold absolute z-10 top-full mt-2 w-full flex flex-col bg-gray-800 rounded p-2 max-h-72 overflow-y-auto scrollbar-thin">
             {isGroupedOptions(filteredOptions)
               ? filteredOptions.map((group) => (
                   <div key={group.groupLabel}>
@@ -212,8 +255,8 @@ export default function Filter(props: FilterProps) {
                       <button
                         key={option.trpcInput}
                         onClick={() => handleSelectOption(option)}
-                        className={`w-full text-start p-2 rounded cursor-pointer hover:text-blue-400 hover:bg-gray-900 pl-5 ${
-                          String(state) === String(option.trpcInput)
+                        className={`w-full text-start p-2 rounded cursor-pointer hover:text-blue-400 hover:bg-gray-900 pl-3 ${
+                          String(urlValues) === String(option.trpcInput)
                             ? 'text-blue-400'
                             : ''
                         }`}
@@ -233,7 +276,7 @@ export default function Filter(props: FilterProps) {
                       // --- FIX FOR MULTI-SELECT ---
                       // Use .some() to check for inclusion with string comparison
                       mode === 'multi' &&
-                      state.some(
+                      urlValues.some(
                         (item) => String(item) === String(option.trpcInput)
                       )
                         ? 'text-blue-400'
@@ -243,7 +286,7 @@ export default function Filter(props: FilterProps) {
                       // --- FIX FOR SINGLE-SELECT ---
                       // Compare as strings
                       mode === 'single' &&
-                      String(state) === String(option.trpcInput)
+                      String(urlValues) === String(option.trpcInput)
                         ? 'text-blue-400'
                         : ''
                     }`}

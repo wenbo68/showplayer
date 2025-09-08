@@ -6,10 +6,9 @@ import { type Metadata } from 'next';
 import { Geist } from 'next/font/google';
 
 import { TRPCReactProvider } from '~/trpc/react';
-import { TopNav } from '~/app/_components/TopNav'; // ✨ Import the TopNav component
+import { TopNav } from '~/app/_components/TopNav';
 import { MediaPopupProvider } from './_contexts/MediaPopupContext';
 import { AuthProvider } from './_contexts/AuthContext';
-import { auth } from '~/server/auth';
 
 export const metadata: Metadata = {
   title: 'Create T3 App',
@@ -44,10 +43,11 @@ export default async function RootLayout({
   );
 }
 
-// add my list in login icon
-// add display modes to search page (grid, detailed grid, horizontal strips)
-// add popularity and score ordering to search page
+// change home page view all to link to search page
+// make media buttons display info according to the search filters
 // if media title isn't english -> don't add to db
+// update trpc procedure to update popularity, rating, vote count when fetching new media via tmdb api
+// allow user to request new media
 
 // for overview, add "show/hide backdrop" arrow.
 // allow 3 modes for season/episode selector: horizontal scrolling, grid, detailed vertical scrolling (show poster, title, description)
@@ -64,6 +64,7 @@ export default async function RootLayout({
 // media request function for users
 // way to stop an trpc procedure (eg src fetch) without shutting down the server
 
+// add display modes to search page (grid, detailed grid, horizontal strips)
 // add vidfast
 // add recapture/cloudflare at access/login
 

@@ -286,6 +286,27 @@ export async function batchProcess<T>(
   }
 }
 
+// Helper function to be placed outside the router
+export async function batchUpdatePopularity(
+  batch: { tmdbId: number; popularity: number }[]
+) {
+  if (batch.length === 0) return;
+  try {
+    await db.execute(sql`
+      UPDATE ${tmdbMedia} SET
+        popularity = ${sql.raw(`data.popularity::real`)}
+      FROM (VALUES ${sql.join(
+        batch.map((p) => sql`(${p.tmdbId}, ${p.popularity})`),
+        sql`, `
+      )}) AS data(tmdb_id, popularity)
+      WHERE ${tmdbMedia.tmdbId} = ${sql.raw(`data.tmdb_id::integer`)};
+    `);
+  } catch (error) {
+    console.error('[batchUpdatePopularity] DATABASE FAILED:', error);
+    throw error;
+  }
+}
+
 // async function fetchSrcFromProvidersFast(
 //   type: 'mv' | 'tv',
 //   path: string

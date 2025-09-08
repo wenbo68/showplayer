@@ -142,39 +142,46 @@ export const tmdbRecommendationRelations = relations(
 );
 
 // trending api doesn't return seasons, so we dont store them in media
-export const tmdbMedia = pgTable('tmdb_media', {
-  id: varchar({ length: 255 })
-    .notNull()
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  tmdbId: integer('tmdb_id').unique().notNull(),
-  type: tmdbTypeEnum('type').notNull(),
-  title: text('title').notNull(),
-  description: text('description'),
-  imageUrl: text('image_url'),
-  backdropUrl: text('backdrop_url'),
-  releaseDate: timestamp('release_date', {
-    mode: 'date',
-    withTimezone: true,
-  }),
-  popularity: real('popularity').default(0).notNull(),
-  voteAverage: real('vote_average').default(0).notNull(),
-  voteCount: integer('vote_count').default(0).notNull(),
-  ratingsUpdatedAt: timestamp('ratings_updated_at', {
-    mode: 'date',
-    withTimezone: true,
-  }),
-  createdAt: timestamp('created_at', {
-    mode: 'date',
-    withTimezone: true,
-  }).default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: timestamp('updated_at', {
-    mode: 'date',
-    withTimezone: true,
-  })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .$onUpdate(() => new Date()),
-});
+export const tmdbMedia = pgTable(
+  'tmdb_media',
+  {
+    id: varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    tmdbId: integer('tmdb_id').unique().notNull(),
+    type: tmdbTypeEnum('type').notNull(),
+    title: text('title').notNull(),
+    description: text('description'),
+    imageUrl: text('image_url'),
+    backdropUrl: text('backdrop_url'),
+    releaseDate: timestamp('release_date', {
+      mode: 'date',
+      withTimezone: true,
+    }),
+    popularity: real('popularity').default(0).notNull(),
+    voteAverage: real('vote_average').default(0).notNull(),
+    voteCount: integer('vote_count').default(0).notNull(),
+    ratingsUpdatedAt: timestamp('ratings_updated_at', {
+      mode: 'date',
+      withTimezone: true,
+    }),
+    createdAt: timestamp('created_at', {
+      mode: 'date',
+      withTimezone: true,
+    }).default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp('updated_at', {
+      mode: 'date',
+      withTimezone: true,
+    })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .$onUpdate(() => new Date()),
+  }, // --- ADD THIS INDEX BLOCK ---
+  (table) => [
+    index('popularity_idx').on(table.popularity),
+    index('ratings_updated_at_idx').on(table.ratingsUpdatedAt),
+  ]
+);
 
 export const tmdbMediaRelations = relations(tmdbMedia, ({ one, many }) => ({
   trending: one(tmdbTrending, {
@@ -203,7 +210,7 @@ export const tmdbTrending = pgTable('tmdb_trending', {
     .notNull()
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-  mediaId: varchar({ length: 255 })
+  mediaId: varchar('media_id', { length: 255 })
     .notNull()
     .references(() => tmdbMedia.id, { onDelete: 'cascade' })
     .unique(),
@@ -223,7 +230,7 @@ export const tmdbTopRated = pgTable('tmdb_top_rated', {
     .notNull()
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-  mediaId: varchar({ length: 255 })
+  mediaId: varchar('media_id', { length: 255 })
     .notNull()
     .references(() => tmdbMedia.id, { onDelete: 'cascade' })
     .unique(),
@@ -247,7 +254,7 @@ export const tmdbSeason = pgTable(
       .notNull()
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-    mediaId: varchar({ length: 255 })
+    mediaId: varchar('media_id', { length: 255 })
       .notNull()
       .references(() => tmdbMedia.id, { onDelete: 'cascade' }),
     seasonNumber: integer('season_number').notNull(),
@@ -275,7 +282,7 @@ export const tmdbEpisode = pgTable(
       .notNull()
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-    seasonId: varchar({ length: 255 })
+    seasonId: varchar('season_id', { length: 255 })
       .notNull()
       .references(() => tmdbSeason.id, { onDelete: 'cascade' }),
     episodeNumber: integer('episode_number').notNull(),
@@ -304,12 +311,18 @@ export const tmdbSource = pgTable(
       .notNull()
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-    mediaId: varchar({ length: 255 }).references(() => tmdbMedia.id, {
-      onDelete: 'cascade',
-    }),
-    episodeId: varchar({ length: 255 }).references(() => tmdbEpisode.id, {
-      onDelete: 'cascade',
-    }),
+    mediaId: varchar('media_id', { length: 255 }).references(
+      () => tmdbMedia.id,
+      {
+        onDelete: 'cascade',
+      }
+    ),
+    episodeId: varchar('episode_id', { length: 255 }).references(
+      () => tmdbEpisode.id,
+      {
+        onDelete: 'cascade',
+      }
+    ),
 
     // --- THIS IS THE CHANGE ---
     // Change the column type from varchar to integer.
@@ -346,7 +359,7 @@ export const tmdbSubtitle = pgTable(
       .notNull()
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-    sourceId: varchar({ length: 255 })
+    sourceId: varchar('source_id', { length: 255 })
       .notNull()
       .references(() => tmdbSource.id, {
         onDelete: 'cascade',

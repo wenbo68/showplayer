@@ -29,9 +29,10 @@ export default async function SearchPage({
   // --- 1. Check for missing required parameters ---
   const isOrderMissing = typeof params.order !== 'string';
   const isPageMissing = typeof params.page !== 'string';
+  const isCountMissing = typeof params.count !== 'string';
 
   // --- 2. If any parameter is missing, redirect to a complete URL ---
-  if (isOrderMissing || isPageMissing) {
+  if (isOrderMissing || isPageMissing || isCountMissing) {
     // Create a mutable copy of the current params
     const newParams = new URLSearchParams(params as Record<string, string>);
 
@@ -40,27 +41,40 @@ export default async function SearchPage({
       // 2. get user's last used order from cookie or use default
       const cookieStore = await cookies();
       const lastUsedOrder =
-        cookieStore.get('lastUsedOrder')?.value ?? 'date-desc';
+        cookieStore.get('lastUsedOrder')?.value ?? 'popularity-desc';
       newParams.set('order', lastUsedOrder);
     }
     if (isPageMissing) {
       newParams.set('page', '1');
     }
+    if (isCountMissing) {
+      newParams.set('count', '0');
+    }
 
     // Redirect to the same page but with the corrected query string
     return redirect(`/search?${newParams.toString()}`);
   }
+
   const trpcSearchAndFilterInput = {
     title: typeof params.title === 'string' ? params.title : undefined,
     year: ensureStringArray(params.year).map(Number),
     format: ensureStringArray(params.format) as ('movie' | 'tv')[],
     origin: ensureStringArray(params.origin),
     genre: ensureStringArray(params.genre).map(Number),
+    minVoteCount: Number(params.count),
     order: params.order as
-      | 'date-desc'
-      | 'date-asc'
       | 'title-desc'
-      | 'title-asc',
+      | 'title-asc'
+      | 'released-desc'
+      | 'released-asc'
+      | 'updated-desc'
+      | 'updated-asc'
+      | 'popularity-desc'
+      | 'popularity-asc'
+      | 'vote-avg-desc'
+      | 'vote-avg-asc'
+      | 'vote-count-desc'
+      | 'vote-count-asc',
     page: Number(params.page),
     list: ensureStringArray(params.list) as ('saved' | 'favorite' | 'later')[],
   };

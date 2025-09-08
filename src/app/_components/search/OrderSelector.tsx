@@ -40,13 +40,13 @@ export default function OrderSelector() {
   // --- STATE MANAGEMENT ---
   // Initialize state from the URL on the first render
   const [sortField, setSortField] = useState<SortField>(() => {
-    const sortValue = searchParams.get('sort') ?? 'date-desc';
+    const sortValue = searchParams.get('sort') ?? 'released-desc';
     const [field] = sortValue.split('-');
     return field === 'title' ? 'title' : 'date';
   });
 
   const [sortDirection, setSortDirection] = useState<SortDirection>(() => {
-    const sortValue = searchParams.get('sort') ?? 'date-desc';
+    const sortValue = searchParams.get('sort') ?? 'released-desc';
     const [, direction] = sortValue.split('-');
     return direction === 'asc' ? 'asc' : 'desc';
   });

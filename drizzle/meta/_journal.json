@@ -281,6 +281,20 @@
       "when": 1756978088958,
       "tag": "0039_unusual_cerise",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1757249797819,
+      "tag": "0040_moaning_human_robot",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1757327623442,
+      "tag": "0041_dusty_rockslide",
+      "breakpoints": true
     }
   ]
 }

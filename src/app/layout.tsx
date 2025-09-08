@@ -43,7 +43,6 @@ export default async function RootLayout({
   );
 }
 
-// change home page view all to link to search page
 // make media buttons display info according to the search filters
 // if media title isn't english -> don't add to db
 // update trpc procedure to update popularity, rating, vote count when fetching new media via tmdb api

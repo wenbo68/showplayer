@@ -9,13 +9,14 @@ import type { FilterOptions } from '~/type';
 type Pill = {
   key: string;
   label: string;
-  type: 'year' | 'format' | 'origin' | 'genre' | 'list';
+  type: 'title' | 'year' | 'format' | 'origin' | 'genre' | 'list';
   onRemove: () => void;
 };
 
 const pillColors = {
-  year: 'bg-red-500/20 text-red-300 ring-red-500/30',
-  format: 'bg-orange-500/20 text-orange-300 ring-orange-500/30',
+  title: 'bg-red-500/20 text-red-300 ring-red-500/30',
+  year: 'bg-orange-500/20 text-orange-300 ring-orange-500/30',
+  format: 'bg-lime-500/20 text-lime-300 ring-lime-500/30',
   origin: 'bg-cyan-500/20 text-cyan-300 ring-cyan-500/30',
   genre: 'bg-blue-500/20 text-blue-300 ring-blue-500/30',
   list: 'bg-violet-500/20 text-violet-300 ring-violet-500/30', // 2. Add a new color
@@ -44,6 +45,17 @@ export default function ActiveFilters({
       params.set('page', '1');
       router.push(`${pathname}?${params.toString()}`);
     };
+
+    // 1. Years
+    const titles = searchParams.getAll('title');
+    titles.forEach((title) => {
+      pills.push({
+        key: `title-${title}`,
+        label: `Title: ${title}`,
+        type: 'title',
+        onRemove: createRemoveHandler('title', title),
+      });
+    });
 
     // 1. Years
     const years = searchParams.getAll('year');
@@ -119,7 +131,7 @@ export default function ActiveFilters({
   }
 
   return (
-    <div className="flex w-full flex-wrap gap-2 text-xs font-semibold justify-center">
+    <div className="flex w-full flex-wrap gap-2 text-xs font-semibold items-center">
       {/* <span className="text-sm font-semibold">Active Filters:</span> */}
       {activePills.map((pill) => (
         <button

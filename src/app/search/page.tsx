@@ -29,23 +29,27 @@ export default async function SearchPage({
   // --- 1. Check for missing required parameters ---
   const isOrderMissing = typeof params.order !== 'string';
   const isPageMissing = typeof params.page !== 'string';
+  const isAvgMissing = typeof params.avg !== 'string';
   const isCountMissing = typeof params.count !== 'string';
 
   // --- 2. If any parameter is missing, redirect to a complete URL ---
-  if (isOrderMissing || isPageMissing || isCountMissing) {
+  if (isAvgMissing || isCountMissing || isOrderMissing || isPageMissing) {
     // Create a mutable copy of the current params
     const newParams = new URLSearchParams(params as Record<string, string>);
 
     // Add the defaults if they are missing
+    if (isAvgMissing) {
+      newParams.set('avg', '0');
+    }
+    if (isCountMissing) {
+      newParams.set('count', '0');
+    }
     if (isOrderMissing) {
       // 2. get user's last used order from cookie or use default
       const cookieStore = await cookies();
       const lastUsedOrder =
         cookieStore.get('lastUsedOrder')?.value ?? 'popularity-desc';
       newParams.set('order', lastUsedOrder);
-    }
-    if (isCountMissing) {
-      newParams.set('count', '0');
     }
     if (isPageMissing) {
       newParams.set('page', '1');
@@ -61,20 +65,21 @@ export default async function SearchPage({
     format: ensureStringArray(params.format) as ('movie' | 'tv')[],
     origin: ensureStringArray(params.origin),
     genre: ensureStringArray(params.genre).map(Number),
+    minVoteAvg: Number(params.avg),
     minVoteCount: Number(params.count),
     order: params.order as
-      | 'title-desc'
-      | 'title-asc'
-      | 'released-desc'
-      | 'released-asc'
-      | 'updated-desc'
-      | 'updated-asc'
       | 'popularity-desc'
       | 'popularity-asc'
       | 'vote-avg-desc'
       | 'vote-avg-asc'
       | 'vote-count-desc'
-      | 'vote-count-asc',
+      | 'vote-count-asc'
+      | 'released-desc'
+      | 'released-asc'
+      | 'updated-desc'
+      | 'updated-asc'
+      | 'title-desc'
+      | 'title-asc',
     page: Number(params.page),
     pageSize: 30,
     list: ensureStringArray(params.list) as ('saved' | 'favorite' | 'later')[],
@@ -97,15 +102,15 @@ export default async function SearchPage({
 
   // just use traditional pagination instead of infinite scrolling (harder to use go back/forward in browser)
   return (
-    <div className="flex flex-col gap-10 p-4">
+    <div className="flex flex-col gap-12 p-4">
       <Suspense fallback={<SearchBarFallback />}>
         <SearchBar filterOptions={filterOptions} />
       </Suspense>
 
       <ActiveFilters filterOptions={filterOptions} />
 
-      <HydrateClient>
-        {pageMedia && pageMedia.length > 0 ? (
+      {pageMedia.length > 0 && (
+        <HydrateClient>
           <div className="flex flex-col gap-8">
             <MediaList
               viewMode="full"
@@ -118,12 +123,8 @@ export default async function SearchPage({
               totalPages={totalPages}
             />
           </div>
-        ) : (
-          <div className="flex h-64 w-full items-center justify-center rounded-lg bg-gray-800">
-            <p className="text-gray-400">No results found for your query.</p>
-          </div>
-        )}
-      </HydrateClient>
+        </HydrateClient>
+      )}
     </div>
   );
 }

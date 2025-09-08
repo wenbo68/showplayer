@@ -3,7 +3,6 @@
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
-import { X } from 'lucide-react';
 import { IoIosArrowDown } from 'react-icons/io';
 
 // --- Define the shape of our options ---
@@ -199,7 +198,7 @@ export default function Filter(props: FilterProps) {
   const selectedOptions = getSelectedOptions();
 
   return (
-    <div className="relative flex flex-col w-[170px] lg:w-[194px] gap-3">
+    <div className="relative flex flex-col w-full gap-3">
       <div className="flex w-full gap-2 items-baseline">
         {/** filter label */}
         <label className="font-semibold">{label}</label>
@@ -255,7 +254,7 @@ export default function Filter(props: FilterProps) {
                       <button
                         key={option.trpcInput}
                         onClick={() => handleSelectOption(option)}
-                        className={`w-full text-start p-2 rounded cursor-pointer hover:text-blue-400 hover:bg-gray-900 pl-3 ${
+                        className={`w-full text-start p-2 rounded cursor-pointer hover:text-blue-400 hover:bg-gray-900 pl-4 ${
                           String(urlValues) === String(option.trpcInput)
                             ? 'text-blue-400'
                             : ''

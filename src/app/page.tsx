@@ -14,31 +14,35 @@ export default async function Home() {
     await Promise.all([
       api.media.searchAndFilter({
         format: ['movie'],
+        minVoteAvg: 0,
+        minVoteCount: 0,
         order: 'popularity-desc',
         page: 1,
         pageSize: 15,
-        minVoteCount: 0,
       }),
       api.media.searchAndFilter({
         format: ['tv'],
+        minVoteAvg: 0,
+        minVoteCount: 0,
         order: 'popularity-desc',
         page: 1,
         pageSize: 15,
-        minVoteCount: 0,
       }),
       api.media.searchAndFilter({
         format: ['movie'],
+        minVoteAvg: 0,
+        minVoteCount: 300,
         order: 'vote-avg-desc',
         page: 1,
         pageSize: 15,
-        minVoteCount: 300,
       }),
       api.media.searchAndFilter({
         format: ['tv'],
+        minVoteAvg: 0,
+        minVoteCount: 300,
         order: 'vote-avg-desc',
         page: 1,
         pageSize: 15,
-        minVoteCount: 300,
       }),
       api.media.getFilterOptions(),
     ]);
@@ -82,28 +86,28 @@ export default async function Home() {
             mediaList={popularMvList}
             viewMode="preview"
             label="POPULAR MOVIES"
-            link="/search?format=movie&order=popularity-desc&count=0&page=1"
+            link="/search?format=movie&avg=0&count=0&order=popularity-desc&page=1"
           />
           <MediaList
             pageMediaIds={uniquePageMediaIds}
             mediaList={popularTvList}
             viewMode="preview"
             label="POPULAR SHOWS"
-            link="/search?format=tv&order=popularity-desc&count=0&page=1"
+            link="/search?format=tv&avg=0&count=0&order=popularity-desc&page=1"
           />
           <MediaList
             pageMediaIds={uniquePageMediaIds}
             mediaList={topMvList}
             viewMode="preview"
             label="TOP MOVIES"
-            link="/search?format=movie&order=vote-avg-desc&count=300&page=1"
+            link="/search?format=movie&avg=0&count=300&order=vote-avg-desc&page=1"
           />
           <MediaList
             pageMediaIds={uniquePageMediaIds}
             mediaList={topTvList}
             viewMode="preview"
             label="TOP SHOWS"
-            link="/search?format=tv&order=vote-avg-desc&count=300&page=1"
+            link="/search?format=tv&avg=0&count=300&order=vote-avg-desc&page=1"
           />
         </div>
       </div>

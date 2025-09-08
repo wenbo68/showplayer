@@ -17,6 +17,7 @@ import {
   gt,
   countDistinct,
   count,
+  gte,
 } from 'drizzle-orm';
 
 import {
@@ -175,6 +176,7 @@ export const mediaRouter = createTRPCRouter({
         genre: z.array(z.number()).optional(),
         origin: z.array(z.string()).optional(),
         year: z.array(z.number()).optional(),
+        minVoteAvg: z.number().min(0),
         minVoteCount: z.number().min(0),
         order: z.enum([
           'released-desc',
@@ -204,6 +206,7 @@ export const mediaRouter = createTRPCRouter({
         genre,
         origin,
         year,
+        minVoteAvg,
         minVoteCount,
         page,
         pageSize,
@@ -362,8 +365,11 @@ export const mediaRouter = createTRPCRouter({
       if (origin && origin.length > 0) {
         conditions.push(inArray(tmdbMediaToTmdbOrigin.originId, origin));
       }
+      if (minVoteAvg > 0) {
+        conditions.push(gte(tmdbMedia.voteAverage, minVoteAvg));
+      }
       if (minVoteCount > 0) {
-        conditions.push(gt(tmdbMedia.voteCount, minVoteCount));
+        conditions.push(gte(tmdbMedia.voteCount, minVoteCount));
       }
 
       if (conditions.length > 0) {

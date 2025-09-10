@@ -6,9 +6,9 @@ export const MediaBadge = ({
   children: React.ReactNode;
   className?: string;
 }) => (
-  <span
-    className={`inline-block text-xs font-semibold px-[8px] py rounded-full ${className}`}
+  <div
+    className={`text-xs font-semibold rounded px-[9px] py-0.5 ring-1 ring-inset ${className}`}
   >
     {children}
-  </span>
+  </div>
 );

@@ -534,10 +534,17 @@ export async function fetchAndUpsertMvSrc(
   }
   // 3. upsert sources and subtitles
   await upsertSrcAndSubtitle('mv', mediaData.id, results);
+
+  // // 4. flag media as needing denorm field update
+  // await db
+  //   .update(tmdbMedia)
+  //   .set({ denormFieldsUpdatedAt: null })
+  //   .where(eq(tmdbMedia.id, mediaData.id));
 }
 
 export async function fetchAndUpsertTvSrc(
   // spd: 'fast' | 'slow',
+  mediaId: string,
   tmdbId: number,
   season: number,
   episode: number,
@@ -596,6 +603,12 @@ export async function fetchAndUpsertTvSrc(
   }
   // 3. upsert sources and subtitles
   await upsertSrcAndSubtitle('tv', episodeData.id, results);
+
+  // 4. flag media as needing denorm field update
+  await db
+    .update(tmdbMedia)
+    .set({ denormFieldsUpdatedAt: null })
+    .where(eq(tmdbMedia.id, mediaId));
 }
 
 export async function upsertSeasonsAndEpisodes(details: any, mediaId: string) {
@@ -680,5 +693,11 @@ export async function upsertSeasonsAndEpisodes(details: any, mediaId: string) {
       });
 
     console.log(`[upsertSeasonsAndEpisodes] ${details.id}: Done.`);
+
+    // 7. flag media as needing denorm field update
+    await tx
+      .update(tmdbMedia)
+      .set({ denormFieldsUpdatedAt: null })
+      .where(eq(tmdbMedia.id, mediaId));
   });
 }

@@ -295,6 +295,20 @@
       "when": 1757327623442,
       "tag": "0041_dusty_rockslide",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1757424795249,
+      "tag": "0042_brave_kylun",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1757425589270,
+      "tag": "0043_strong_celestials",
+      "breakpoints": true
     }
   ]
 }

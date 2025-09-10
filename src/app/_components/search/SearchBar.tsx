@@ -39,7 +39,8 @@ export default function SearchBar({
     router.push(`/search?${params.toString()}`);
   }, 500); // 500ms delay
 
-  const year = searchParams.getAll('year').map(Number);
+  const releaseYear = searchParams.getAll('released').map(Number);
+  const updatedYear = searchParams.getAll('updated').map(Number);
   const format = searchParams.getAll('format');
   const origin = searchParams.getAll('origin');
   const genre = searchParams.getAll('genre').map(Number);
@@ -95,8 +96,13 @@ export default function SearchBar({
   );
 
   // dropdown options from db
-  const yearOptions =
-    filterOptions.years.map((year) => ({
+  const releaseYearOptions =
+    filterOptions.releaseYears.map((year) => ({
+      trpcInput: year,
+      label: String(year),
+    })) ?? [];
+  const updatedYearOptions =
+    filterOptions.updatedYears.map((year) => ({
       trpcInput: year,
       label: String(year),
     })) ?? [];
@@ -115,79 +121,79 @@ export default function SearchBar({
       label: genre.name,
     })) ?? [];
   const voteAvgOptions = [
-    { label: '0+', trpcInput: 0 },
-    { label: '10+', trpcInput: 1 },
-    { label: '20+', trpcInput: 2 },
-    { label: '30+', trpcInput: 3 },
-    { label: '40+', trpcInput: 4 },
-    { label: '50+', trpcInput: 5 },
-    { label: '60+', trpcInput: 6 },
-    { label: '70+', trpcInput: 7 },
-    { label: '80+', trpcInput: 8 },
-    { label: '90+', trpcInput: 9 },
+    // { label: '0+', trpcInput: 0 },
+    { label: '> 10%', trpcInput: 1 },
+    { label: '> 20%', trpcInput: 2 },
+    { label: '> 30%', trpcInput: 3 },
+    { label: '> 40%', trpcInput: 4 },
+    { label: '> 50%', trpcInput: 5 },
+    { label: '> 60%', trpcInput: 6 },
+    { label: '> 70%', trpcInput: 7 },
+    { label: '> 80%', trpcInput: 8 },
+    { label: '> 90%', trpcInput: 9 },
   ];
   const voteCountOptions = [
-    { label: '0+', trpcInput: 0 },
-    { label: '100+', trpcInput: 100 },
-    { label: '200+', trpcInput: 200 },
-    { label: '300+', trpcInput: 300 },
-    { label: '400+', trpcInput: 400 },
-    { label: '500+', trpcInput: 500 },
-    { label: '600+', trpcInput: 600 },
-    { label: '700+', trpcInput: 700 },
-    { label: '800+', trpcInput: 800 },
-    { label: '900+', trpcInput: 900 },
-    { label: '1000+', trpcInput: 1000 },
+    // { label: '0+', trpcInput: 0 },
+    { label: '> 100', trpcInput: 100 },
+    { label: '> 200', trpcInput: 200 },
+    { label: '> 300', trpcInput: 300 },
+    { label: '> 400', trpcInput: 400 },
+    { label: '> 500', trpcInput: 500 },
+    { label: '> 600', trpcInput: 600 },
+    { label: '> 700', trpcInput: 700 },
+    { label: '> 800', trpcInput: 800 },
+    { label: '> 900', trpcInput: 900 },
+    { label: '> 1000', trpcInput: 1000 },
   ];
-  const orderOptions = [
-    {
-      groupLabel: 'Popularity',
-      options: [
-        { label: 'Most → Least', trpcInput: 'popularity-desc' },
-        { label: 'Least → Most', trpcInput: 'popularity-asc' },
-      ],
-    },
-    {
-      groupLabel: 'Rating Avg',
-      options: [
-        { label: 'High → Low', trpcInput: 'vote-avg-desc' },
-        { label: 'Low → High', trpcInput: 'vote-avg-asc' },
-      ],
-    },
-    {
-      groupLabel: 'Rating Count',
-      options: [
-        { label: 'Most → Fewest', trpcInput: 'vote-count-desc' },
-        { label: 'Fewest → Most', trpcInput: 'vote-count-asc' },
-      ],
-    },
-    {
-      groupLabel: 'Release Date',
-      options: [
-        { label: 'New → Old', trpcInput: 'released-desc' },
-        { label: 'Old → New', trpcInput: 'released-asc' },
-      ],
-    },
-    {
-      groupLabel: 'Updated Date',
-      options: [
-        { label: 'Recent → Old', trpcInput: 'updated-desc' },
-        { label: 'Old → Recent', trpcInput: 'updated-asc' },
-      ],
-    },
-    {
-      groupLabel: 'Title',
-      options: [
-        { label: 'A → Z', trpcInput: 'title-asc' },
-        { label: 'Z → A', trpcInput: 'title-desc' },
-      ],
-    },
-  ];
+  // const orderOptions = [
+  //   {
+  //     groupLabel: 'Popularity',
+  //     options: [
+  //       { label: 'Most → Least', trpcInput: 'popularity-desc' },
+  //       { label: 'Least → Most', trpcInput: 'popularity-asc' },
+  //     ],
+  //   },
+  //   {
+  //     groupLabel: 'Rating Avg',
+  //     options: [
+  //       { label: 'High → Low', trpcInput: 'vote-avg-desc' },
+  //       { label: 'Low → High', trpcInput: 'vote-avg-asc' },
+  //     ],
+  //   },
+  //   {
+  //     groupLabel: 'Rating Count',
+  //     options: [
+  //       { label: 'Most → Fewest', trpcInput: 'vote-count-desc' },
+  //       { label: 'Fewest → Most', trpcInput: 'vote-count-asc' },
+  //     ],
+  //   },
+  //   {
+  //     groupLabel: 'Release Date',
+  //     options: [
+  //       { label: 'New → Old', trpcInput: 'released-desc' },
+  //       { label: 'Old → New', trpcInput: 'released-asc' },
+  //     ],
+  //   },
+  //   {
+  //     groupLabel: 'Updated Date',
+  //     options: [
+  //       { label: 'Recent → Old', trpcInput: 'updated-desc' },
+  //       { label: 'Old → Recent', trpcInput: 'updated-asc' },
+  //     ],
+  //   },
+  //   {
+  //     groupLabel: 'Title',
+  //     options: [
+  //       { label: 'A → Z', trpcInput: 'title-asc' },
+  //       { label: 'Z → A', trpcInput: 'title-desc' },
+  //     ],
+  //   },
+  // ];
 
   return (
-    <div className="text-sm w-full grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] justify-center gap-4">
+    <div className="text-sm w-full grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] lg:grid-cols-[repeat(auto-fit,minmax(240px,1fr))] justify-center gap-4">
       <div className="w-full flex flex-col gap-3">
-        <span className="w-full font-semibold">Title</span>
+        <span className="w-full font-semibold"> Title</span>
         <div className="w-full flex bg-gray-800 items-center rounded">
           <div className="p-2">
             <IoSearchSharp size={20} />
@@ -214,13 +220,6 @@ export default function SearchBar({
         </div>
       </div>
       <Filter
-        label="Year"
-        options={yearOptions}
-        urlValues={year}
-        setUrlValues={(v) => handleMultiFilterChange('year', v as number[])}
-        mode="multi"
-      />
-      <Filter
         label="Format"
         options={formatOptions}
         urlValues={format}
@@ -241,6 +240,21 @@ export default function SearchBar({
         setUrlValues={(v) => handleMultiFilterChange('genre', v as number[])}
         mode="multi"
       />
+
+      <Filter
+        label="Release Year"
+        options={releaseYearOptions}
+        urlValues={releaseYear}
+        setUrlValues={(v) => handleMultiFilterChange('released', v as number[])}
+        mode="multi"
+      />
+      <Filter
+        label="Updated Year"
+        options={updatedYearOptions}
+        urlValues={updatedYear}
+        setUrlValues={(v) => handleMultiFilterChange('updated', v as number[])}
+        mode="multi"
+      />
       <Filter
         label="Rating Avg"
         options={voteAvgOptions}
@@ -255,13 +269,13 @@ export default function SearchBar({
         setUrlValues={(v) => handleSingleFilterChange('count', v as string)}
         mode="single"
       />
-      <Filter
+      {/* <Filter
         label="Order"
         options={orderOptions}
         urlValues={order}
         setUrlValues={(v) => handleSingleFilterChange('order', v as string)}
         mode="single"
-      />
+      /> */}
     </div>
   );
 }

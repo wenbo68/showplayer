@@ -28,11 +28,16 @@ export type ListMedia = {
   media: Media;
   origins: string[];
   genres: string[];
-  availabilityCount: number;
-  totalEpisodeCount: number;
-  averageRating?: number;
-  voteCount?: number;
+  // availabilityCount: number;
+  // totalEpisodeCount: number;
+  // latestEpisodeInfo: LatestEpisodeInfo;
 };
+
+export type LatestEpisodeInfo = {
+  airDate: Date;
+  seasonNumber: number;
+  episodeNumber: number;
+} | null; // It will be null for movies
 
 export type FilterOptions = {
   genres: {
@@ -43,7 +48,8 @@ export type FilterOptions = {
     id: string;
     name: string;
   }[];
-  years: number[];
+  releaseYears: number[];
+  updatedYears: number[];
 };
 
 export type UserList = 'saved' | 'favorite' | 'later';

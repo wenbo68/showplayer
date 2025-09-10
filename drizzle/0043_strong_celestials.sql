@@ -1,0 +1,2 @@
+ALTER TABLE "tmdb_media" RENAME COLUMN "latest_season_number" TO "updated_season_number";--> statement-breakpoint
+ALTER TABLE "tmdb_media" RENAME COLUMN "latest_episode_number" TO "updated_episode_number";

@@ -30,7 +30,9 @@ export default function TmdbAdmin() {
 
   const fetchMvSrcMutation = api.media.fetchAndInsertMvSrc.useMutation();
   const insertEpisodeMutation = api.media.insertSeasonAndEpisode.useMutation();
-  const fetchTvSrcMutation = api.media.fetchAndInsertTvSrc.useMutation();
+  // const fetchTvSrcMutation = api.media.fetchAndInsertTvSrc.useMutation();
+
+  const updateDenormFieldsMutation = api.cron.updateDenormFields.useMutation();
 
   const handleFetchOrigins = () => {
     fetchOriginsMutation.mutate(undefined, {
@@ -127,16 +129,33 @@ export default function TmdbAdmin() {
       }
     );
   };
-  const handleFetchTvSrc = () => {
-    fetchTvSrcMutation.mutate(
+  // const handleFetchTvSrc = () => {
+  //   fetchTvSrcMutation.mutate(
+  //     {
+  //       tmdbId: Number(tvTmdbId),
+  //       season: Number(season),
+  //       episode: Number(episode),
+  //     },
+  //     {
+  //       onSuccess: (data) => console.log('Fetched TV source:', data),
+  //       onError: (err) => console.error('Error fetching TV source:', err),
+  //     }
+  //   );
+  // };
+
+  // --- 2. Add the new handler function ---
+  const handleUpdateDenormFields = () => {
+    // NOTE: This is a very long-running job!
+    updateDenormFieldsMutation.mutate(
       {
-        tmdbId: Number(tvTmdbId),
-        season: Number(season),
-        episode: Number(episode),
+        cronSecret:
+          'd23b4a9f9d009dcf28bd69cdbb2815819379db2702dc96251bd72f2dfa1c9d4e',
       },
       {
-        onSuccess: (data) => console.log('Fetched TV source:', data),
-        onError: (err) => console.error('Error fetching TV source:', err),
+        onSuccess: (data) =>
+          console.log('Update denormalized fields complete:', data),
+        onError: (err) =>
+          console.error('Error updating denormalized fields:', err),
       }
     );
   };
@@ -268,6 +287,21 @@ export default function TmdbAdmin() {
               Error: {updateRatingsMutation.error.message}
             </p>
           )}
+
+          <button
+            onClick={handleUpdateDenormFields}
+            disabled={updateDenormFieldsMutation.isPending}
+            className="px-4 py-2 bg-orange-600 text-white rounded w-60 hover:bg-orange-700 disabled:opacity-50"
+          >
+            {updateDenormFieldsMutation.isPending
+              ? 'Updating All Metrics...'
+              : 'Update Denormalized Fields'}
+          </button>
+          {updateDenormFieldsMutation.error && (
+            <p className="text-red-400 mt-2">
+              Error: {updateDenormFieldsMutation.error.message}
+            </p>
+          )}
         </div>
 
         <hr className="w-full my-4 border-gray-300 dark:border-gray-700" />
@@ -360,7 +394,7 @@ export default function TmdbAdmin() {
               ? 'Inserting...'
               : 'Insert Episode'}
           </button>
-          <button
+          {/* <button
             onClick={handleFetchTvSrc}
             disabled={fetchTvSrcMutation.isPending}
             className="px-4 py-2 bg-green-600 text-white rounded flex-1 hover:bg-green-700 dark:hover:bg-green-500"
@@ -368,18 +402,18 @@ export default function TmdbAdmin() {
             {fetchTvSrcMutation.isPending
               ? 'Fetching Source...'
               : 'Fetch TV Source'}
-          </button>
+          </button> */}
         </div>
         {insertEpisodeMutation.error && (
           <p className="text-red-600 dark:text-red-400 mt-2">
             Error: {insertEpisodeMutation.error.message}
           </p>
         )}
-        {fetchTvSrcMutation.error && (
+        {/* {fetchTvSrcMutation.error && (
           <p className="text-red-600 dark:text-red-400 mt-2">
             Error: {fetchTvSrcMutation.error.message}
           </p>
-        )}
+        )} */}
       </div>
     </section>
   );

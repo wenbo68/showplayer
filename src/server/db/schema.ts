@@ -159,6 +159,7 @@ export const tmdbMedia = pgTable(
       mode: 'date',
       withTimezone: true,
     }),
+    // metrics
     popularity: real('popularity').default(0).notNull(),
     voteAverage: real('vote_average').default(0).notNull(),
     voteCount: integer('vote_count').default(0).notNull(),
@@ -166,6 +167,21 @@ export const tmdbMedia = pgTable(
       mode: 'date',
       withTimezone: true,
     }),
+    // denormalized fields for faster filtering/sorting
+    availabilityCount: integer('availability_count').default(0).notNull(),
+    totalEpisodeCount: integer('total_episode_count').default(0).notNull(),
+    updatedDate: timestamp('updated_date', {
+      mode: 'date',
+      withTimezone: true,
+    }),
+    updatedSeasonNumber: integer('updated_season_number'),
+    updatedEpisodeNumber: integer('updated_episode_number'),
+    // 2. Add the new "dirty flag" timestamp. It's NULL if an update is needed.
+    denormFieldsUpdatedAt: timestamp('denorm_fields_updated_at', {
+      mode: 'date',
+      withTimezone: true,
+    }),
+
     createdAt: timestamp('created_at', {
       mode: 'date',
       withTimezone: true,
@@ -176,10 +192,17 @@ export const tmdbMedia = pgTable(
     })
       .default(sql`CURRENT_TIMESTAMP`)
       .$onUpdate(() => new Date()),
-  }, // --- ADD THIS INDEX BLOCK ---
+  },
   (table) => [
+    index('type_idx').on(table.type),
+    index('title_idx').on(table.title), // Note: For advanced text search, consider a GIN index.
+    index('release_date_idx').on(table.releaseDate),
     index('popularity_idx').on(table.popularity),
+    index('vote_average_idx').on(table.voteAverage),
+    index('vote_count_idx').on(table.voteCount),
+    index('denorm_updated_at_idx').on(table.denormFieldsUpdatedAt),
     index('ratings_updated_at_idx').on(table.ratingsUpdatedAt),
+    index('updated_date_idx').on(table.updatedDate),
   ]
 );
 

@@ -43,7 +43,9 @@ export default async function RootLayout({
   );
 }
 
-// make media buttons display info according to the search filters
+// make media buttons display info according to the search filters (horizontal strips including or not including media description)
+// also should media buttons display availability, total episodes, missing episodes?
+
 // if media title isn't english -> don't add to db
 // update trpc procedure to update popularity, rating, vote count when fetching new media via tmdb api
 // allow user to request new media

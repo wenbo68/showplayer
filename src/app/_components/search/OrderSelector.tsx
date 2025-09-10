@@ -1,157 +1,114 @@
-// ~/app/_components/search/SortControl.tsx
-
 'use client';
 
+import { useRef, useState, useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
-import { IoIosArrowDown } from 'react-icons/io';
+import Cookies from 'js-cookie';
+import { CgArrowsExchangeV } from 'react-icons/cg';
 
-// 1. A new data structure to hold contextual direction labels
-const sortOptions = {
-  date: {
-    label: 'Release Date',
-    directions: {
-      desc: 'New → Old',
-      asc: 'Old → New',
-    },
-  },
-  title: {
-    label: 'Title',
-    directions: {
-      asc: 'A → Z',
-      desc: 'Z → A',
-    },
-  },
-};
+// Assuming you create a shared types file or define these here
+type FilterOption = { trpcInput: string; label: string };
+type OptionGroup = { groupLabel: string; options: FilterOption[] };
 
-type SortField = keyof typeof sortOptions;
-type SortDirection = keyof (typeof sortOptions)[SortField]['directions'];
+// --- Helper function to find the details of the currently selected option ---
+function findOrderLabels(
+  orderOptions: OptionGroup[],
+  currentOption: string
+): { groupLabel: string; optionLabel: string } {
+  for (const group of orderOptions) {
+    const foundOption = group.options.find(
+      (opt) => opt.trpcInput === currentOption
+    );
+    if (foundOption) {
+      return {
+        groupLabel: group.groupLabel,
+        optionLabel: foundOption.label,
+      };
+    }
+  }
+  return { groupLabel: 'Unknown', optionLabel: 'Unknown' };
+}
 
-export default function OrderSelector() {
+//
+export default function OrderSelector({ options }: { options: OptionGroup[] }) {
+  // 1. Add client-side hooks for URL interaction
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // State for each dropdown's visibility
-  const [isFieldDropdownOpen, setIsFieldDropdownOpen] = useState(false);
-  const [isDirectionDropdownOpen, setIsDirectionDropdownOpen] = useState(false);
+  // 2. Derive the current value directly from the URL
+  const orderFromUrl = searchParams.get('order') ?? 'popularity-desc';
 
-  // --- STATE MANAGEMENT ---
-  // Initialize state from the URL on the first render
-  const [sortField, setSortField] = useState<SortField>(() => {
-    const sortValue = searchParams.get('sort') ?? 'released-desc';
-    const [field] = sortValue.split('-');
-    return field === 'title' ? 'title' : 'date';
-  });
-
-  const [sortDirection, setSortDirection] = useState<SortDirection>(() => {
-    const sortValue = searchParams.get('sort') ?? 'released-desc';
-    const [, direction] = sortValue.split('-');
-    return direction === 'asc' ? 'asc' : 'desc';
-  });
-
-  // useEffect to update the URL whenever the state changes
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('sort', `${sortField}-${sortDirection}`);
-    router.replace(`${pathname}?${params.toString()}`);
-  }, [sortField, sortDirection, router, pathname, searchParams]);
-
-  // Effect to handle "clicking away" for both dropdowns
+  // Effect to handle "clicking away"
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
         containerRef.current &&
         !containerRef.current.contains(event.target as Node)
       ) {
-        setIsFieldDropdownOpen(false);
-        setIsDirectionDropdownOpen(false);
+        setIsDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // --- HANDLERS ---
-  const handleFieldChange = (newField: SortField) => {
-    setSortField(newField);
-    setIsFieldDropdownOpen(false);
+  // 3. Create a handler that updates the URL
+  const handleOrderChange = (newSortValue: string) => {
+    setIsDropdownOpen(false);
+    const params = new URLSearchParams(searchParams.toString());
+
+    // Update the order and reset the page to 1
+    params.set('order', newSortValue);
+    params.set('page', '1');
+
+    // Persist the choice for other pages
+    // sessionStorage.setItem('lastUsedOrder', newSortValue);
+    Cookies.set('lastUsedOrder', newSortValue, { expires: 7 });
+
+    router.push(`${pathname}?${params.toString()}`);
   };
 
-  const handleDirectionChange = (newDirection: SortDirection) => {
-    setSortDirection(newDirection);
-    setIsDirectionDropdownOpen(false);
-  };
+  const { groupLabel, optionLabel } = findOrderLabels(options, orderFromUrl);
 
   return (
     <div
-      className="flex items-center gap-2 text-sm font-semibold"
+      className="relative min-w-[200px] flex items-center justify-end text-xs font-semibold"
       ref={containerRef}
     >
-      <label className="text-gray-400 font-normal">Sort by</label>
+      <button
+        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+        className="flex gap-0 cursor-pointer hover:text-blue-400 transition"
+      >
+        <CgArrowsExchangeV size={16} />
+        {`${groupLabel}: ${optionLabel}`}
+      </button>
 
-      {/* --- UI Part 1: Field Selector Dropdown --- */}
-      <div className="relative">
-        <button
-          onClick={() => setIsFieldDropdownOpen(!isFieldDropdownOpen)}
-          className="flex items-center gap-2 rounded-md border border-gray-600 bg-gray-700 p-2 text-white hover:border-gray-500"
-        >
-          {sortOptions[sortField].label}
-          <IoIosArrowDown
-            className={`transition-transform ${
-              isFieldDropdownOpen ? 'rotate-180' : ''
-            }`}
-          />
-        </button>
-        {isFieldDropdownOpen && (
-          <div className="absolute left-0 top-full z-10 mt-2 flex w-36 flex-col rounded bg-gray-800 p-2 shadow-lg">
-            {(Object.keys(sortOptions) as SortField[]).map((fieldKey) => (
-              <button
-                key={fieldKey}
-                onClick={() => handleFieldChange(fieldKey)}
-                className={`w-full rounded p-2 text-left hover:bg-gray-900 hover:text-blue-400 ${
-                  sortField === fieldKey ? 'text-blue-400' : ''
-                }`}
-              >
-                {sortOptions[fieldKey].label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* --- UI Part 2: Direction Selector Dropdown --- */}
-      <div className="relative">
-        <button
-          onClick={() => setIsDirectionDropdownOpen(!isDirectionDropdownOpen)}
-          className="flex items-center gap-2 rounded-md border border-gray-600 bg-gray-700 p-2 text-white hover:border-gray-500"
-        >
-          {sortOptions[sortField].directions[sortDirection]}
-          <IoIosArrowDown
-            className={`transition-transform ${
-              isDirectionDropdownOpen ? 'rotate-180' : ''
-            }`}
-          />
-        </button>
-        {isDirectionDropdownOpen && (
-          <div className="absolute left-0 top-full z-10 mt-2 flex w-36 flex-col rounded bg-gray-800 p-2 shadow-lg">
-            {(
-              Object.keys(sortOptions[sortField].directions) as SortDirection[]
-            ).map((dirKey) => (
-              <button
-                key={dirKey}
-                onClick={() => handleDirectionChange(dirKey)}
-                className={`w-full rounded p-2 text-left hover:bg-gray-900 hover:text-blue-400 ${
-                  sortDirection === dirKey ? 'text-blue-400' : ''
-                }`}
-              >
-                {sortOptions[sortField].directions[dirKey]}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      {isDropdownOpen && (
+        <div className="absolute z-10 top-full mt-2 w-48 flex flex-col bg-gray-800 rounded p-2 max-h-96 overflow-y-auto scrollbar-thin">
+          {options.map((group) => (
+            <div key={group.groupLabel}>
+              <div className="p-1 text-xs text-gray-500 uppercase">
+                {group.groupLabel}
+              </div>
+              {group.options.map((option) => (
+                <button
+                  key={option.trpcInput}
+                  // 4. Call the new internal handler
+                  onClick={() => handleOrderChange(option.trpcInput)}
+                  className={`w-full text-start p-2 rounded cursor-pointer hover:text-blue-400 hover:bg-gray-900 pl-5 ${
+                    orderFromUrl === option.trpcInput ? 'text-blue-400' : ''
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

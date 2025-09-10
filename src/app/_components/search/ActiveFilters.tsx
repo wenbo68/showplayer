@@ -5,21 +5,33 @@
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
 import type { FilterOptions } from '~/type';
+import { tagClassMap } from '../media/MediaPopup';
 
 type Pill = {
   key: string;
   label: string;
-  type: 'title' | 'year' | 'format' | 'origin' | 'genre' | 'list';
+  type: // | 'title'
+  | 'format'
+    | 'origin'
+    | 'genre'
+    | 'released'
+    | 'updated'
+    | 'avg'
+    | 'count'
+    | 'list';
   onRemove: () => void;
 };
 
 const pillColors = {
-  title: 'bg-red-500/20 text-red-300 ring-red-500/30',
-  year: 'bg-orange-500/20 text-orange-300 ring-orange-500/30',
-  format: 'bg-lime-500/20 text-lime-300 ring-lime-500/30',
-  origin: 'bg-cyan-500/20 text-cyan-300 ring-cyan-500/30',
-  genre: 'bg-blue-500/20 text-blue-300 ring-blue-500/30',
-  list: 'bg-violet-500/20 text-violet-300 ring-violet-500/30', // 2. Add a new color
+  // title: tagClassMap['title'],
+  format: tagClassMap['format'],
+  origin: tagClassMap['origin'],
+  genre: tagClassMap['genre'],
+  released: tagClassMap['released'],
+  updated: tagClassMap['updated'],
+  avg: tagClassMap['avg'],
+  count: tagClassMap['count'],
+  list: tagClassMap['list'],
 };
 
 export default function ActiveFilters({
@@ -46,27 +58,16 @@ export default function ActiveFilters({
       router.push(`${pathname}?${params.toString()}`);
     };
 
-    // 1. Years
-    const titles = searchParams.getAll('title');
-    titles.forEach((title) => {
-      pills.push({
-        key: `title-${title}`,
-        label: `Title: ${title}`,
-        type: 'title',
-        onRemove: createRemoveHandler('title', title),
-      });
-    });
-
-    // 1. Years
-    const years = searchParams.getAll('year');
-    years.forEach((year) => {
-      pills.push({
-        key: `year-${year}`,
-        label: year,
-        type: 'year',
-        onRemove: createRemoveHandler('year', year),
-      });
-    });
+    // // 1. Title
+    // const titles = searchParams.getAll('title');
+    // titles.forEach((title) => {
+    //   pills.push({
+    //     key: `title-${title}`,
+    //     label: `Title: ${title}`,
+    //     type: 'title',
+    //     onRemove: createRemoveHandler('title', title),
+    //   });
+    // });
 
     // 2. Formats
     const formats = searchParams.getAll('format');
@@ -78,7 +79,6 @@ export default function ActiveFilters({
         onRemove: createRemoveHandler('format', format),
       });
     });
-
     // 3. Origins
     const origins = searchParams.getAll('origin');
     origins.forEach((originId) => {
@@ -92,7 +92,6 @@ export default function ActiveFilters({
         });
       }
     });
-
     // 4. Genres
     const genres = searchParams.getAll('genre');
     genres.forEach((genreId) => {
@@ -107,17 +106,63 @@ export default function ActiveFilters({
       }
     });
 
+    // 1. Released Years
+    const released = searchParams.getAll('released');
+    released.forEach((year) => {
+      pills.push({
+        key: `released-${year}`,
+        label: `Released: ${year}`,
+        type: 'released',
+        onRemove: createRemoveHandler('released', year),
+      });
+    });
+
+    // 1. Released Years
+    const updated = searchParams.getAll('updated');
+    updated.forEach((year) => {
+      pills.push({
+        key: `updated-${year}`,
+        label: `Updated: ${year}`,
+        type: 'updated',
+        onRemove: createRemoveHandler('updated', year),
+      });
+    });
+
+    // 1. Rating Avg
+    const avg = searchParams.getAll('avg');
+    avg.forEach((num) => {
+      pills.push({
+        key: `avg-${num}`,
+        label: `Rating Avg > ${Number(num) * 10}%`,
+        type: 'avg',
+        onRemove: createRemoveHandler('avg', num),
+      });
+    });
+
+    // 1. Rating Count
+    const count = searchParams.getAll('count');
+    count.forEach((num) => {
+      pills.push({
+        key: `count-${num}`,
+        label: `Rating Cnt > ${num}`,
+        type: 'count',
+        onRemove: createRemoveHandler('count', num),
+      });
+    });
+
     // 3. Add logic to create pills for the 'list' parameter
     const lists = searchParams.getAll('list');
     lists.forEach((listValue) => {
       const listLabels = {
-        saved: 'My List',
-        favorite: 'Favorites',
-        later: 'Watch Later',
+        saved: 'my list',
+        favorite: 'favorites',
+        later: 'watch later',
       };
       pills.push({
         key: `list-${listValue}`,
-        label: listLabels[listValue as keyof typeof listLabels] ?? listValue,
+        label: `List: ${
+          listLabels[listValue as keyof typeof listLabels] ?? listValue
+        }`,
         type: 'list',
         onRemove: createRemoveHandler('list', listValue),
       });
@@ -131,7 +176,7 @@ export default function ActiveFilters({
   }
 
   return (
-    <div className="flex w-full flex-wrap gap-2 text-xs font-semibold items-center">
+    <div className="flex flex-wrap gap-2 text-xs font-semibold items-center">
       {/* <span className="text-sm font-semibold">Active Filters:</span> */}
       {activePills.map((pill) => (
         <button

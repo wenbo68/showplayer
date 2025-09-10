@@ -10,22 +10,18 @@ import {
   ChevronsRight,
 } from 'lucide-react';
 
-type PaginationProps = {
-  pageSize: number;
+type PageSelectorProps = {
   currentPage: number;
   totalPages: number;
 };
 
-export default function Pagination({
-  pageSize,
+export default function PageSelector({
   currentPage,
   totalPages,
-}: PaginationProps) {
+}: PageSelectorProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-
-  // const totalPages = Math.ceil(totalCount / pageSize);
 
   // Don't render pagination if there's only one page or less
   if (totalPages <= 1) {
@@ -69,7 +65,7 @@ export default function Pagination({
       <button
         onClick={() => handlePageChange(1)}
         disabled={!hasPrevPage}
-        className={`hover:enabled:text-blue-400 hover:enabled:cursor-pointer h-${buttonSize} w-${buttonSize} flex items-center justify-center`}
+        className={`hover:text-blue-400 cursor-pointer h-${buttonSize} w-${buttonSize} flex items-center justify-center`}
         aria-label="Go to first page"
       >
         <ChevronsLeft size={16} />
@@ -79,7 +75,7 @@ export default function Pagination({
       <button
         onClick={() => handlePageChange(currentPage - 1)}
         disabled={!hasPrevPage}
-        className={`hover:enabled:text-blue-400 hover:enabled:cursor-pointer h-${buttonSize} w-${buttonSize} flex items-center justify-center`}
+        className={`hover:text-blue-400 cursor-pointer h-${buttonSize} w-${buttonSize} flex items-center justify-center`}
         aria-label="Go to previous page"
       >
         <ChevronLeft size={16} />
@@ -108,7 +104,7 @@ export default function Pagination({
       <button
         onClick={() => handlePageChange(currentPage + 1)}
         disabled={!hasNextPage}
-        className={`hover:enabled:text-blue-400 hover:enabled:cursor-pointer h-${buttonSize} w-${buttonSize} flex items-center justify-center`}
+        className={`hover:text-blue-400 cursor-pointer h-${buttonSize} w-${buttonSize} flex items-center justify-center`}
         aria-label="Go to next page"
       >
         <ChevronRight size={16} />
@@ -118,7 +114,7 @@ export default function Pagination({
       <button
         onClick={() => handlePageChange(totalPages)}
         disabled={!hasNextPage}
-        className={`hover:enabled:text-blue-400 hover:enabled:cursor-pointer h-${buttonSize} w-${buttonSize} flex items-center justify-center`}
+        className={`hover:text-blue-400 cursor-pointer h-${buttonSize} w-${buttonSize} flex items-center justify-center`}
         aria-label="Go to last page"
       >
         <ChevronsRight size={16} />

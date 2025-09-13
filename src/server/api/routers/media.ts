@@ -4,18 +4,10 @@ import {
   asc,
   desc,
   eq,
-  exists,
   ilike,
   inArray,
   isNotNull,
-  isNull,
-  like,
-  lte,
-  notExists,
-  or,
   sql,
-  gt,
-  countDistinct,
   count,
   gte,
 } from 'drizzle-orm';
@@ -26,114 +18,25 @@ import {
   publicProcedure,
 } from '~/server/api/trpc';
 import {
-  userListEnum,
-  tmdbEpisode,
   tmdbGenre,
   tmdbMedia,
   tmdbMediaToTmdbGenre,
   tmdbMediaToTmdbOrigin,
   tmdbOrigin,
-  tmdbSeason,
-  tmdbSource,
   tmdbTopRated,
-  tmdbTrending,
   userMediaList,
-  userSubmission,
-  userSubmissionStatusEnum,
 } from '~/server/db/schema';
+import { bulkUpsertNewMedia } from '~/server/utils/mediaUtils';
+import type { ListMedia } from '~/type';
+import { TRPCError } from '@trpc/server';
 import {
-  runItemsInEachBatchConcurrently,
-  fetchAndUpsertMvSrc,
-  fetchAndUpsertTvSrc,
-  fetchSrcForMediaList,
-  fetchTmdbDetailViaApi,
   fetchTmdbMvGenresViaApi,
   fetchTmdbOriginsViaApi,
   fetchTmdbTopRatedViaApi,
-  fetchTmdbTrendingViaApi,
   fetchTmdbTvGenresViaApi,
-  bulkUpsertNewMedia,
-  upsertSeasonsAndEpisodes,
-  populateMediaUsingTmdbTrending,
-  populateMediaUsingTmdbIds,
-  updateDenormFieldsForMediaList,
-  runItemsInEachBatchInBulk,
-  updateAllChangedMedia,
-} from '~/server/utils';
-import type { ListMedia } from '~/type';
-import { TRPCError } from '@trpc/server';
-import { startOfDay, subDays } from 'date-fns';
+} from '~/server/utils/tmdbApiUtils';
 
 export const mediaRouter = createTRPCRouter({
-  updateMediaInUserList: protectedProcedure
-    .input(
-      z.object({
-        mediaId: z.string(),
-        listType: z.enum(['saved', 'favorite', 'later']),
-        desiredState: z.boolean(), // The desired state (true for add, false for remove)
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const { db, session } = ctx;
-      const { mediaId, listType, desiredState } = input;
-
-      if (desiredState) {
-        // Add to list
-        await db
-          .insert(userMediaList)
-          .values({
-            userId: session.user.id,
-            mediaId: mediaId,
-            listType: listType,
-          })
-          .onConflictDoNothing();
-      } else {
-        // Remove from list
-        await db
-          .delete(userMediaList)
-          .where(
-            and(
-              eq(userMediaList.userId, session.user.id),
-              eq(userMediaList.mediaId, mediaId),
-              eq(userMediaList.listType, listType)
-            )
-          );
-      }
-      return { success: true };
-    }),
-
-  getUserDetailsForMediaList: protectedProcedure
-    .input(z.object({ mediaIds: z.array(z.string()) }))
-    .query(async ({ ctx, input }) => {
-      const { db, session } = ctx;
-      const userId = session.user.id;
-
-      const userDetails = await db
-        .select({
-          mediaId: userMediaList.mediaId,
-          listType: userMediaList.listType,
-        })
-        .from(userMediaList)
-        .where(
-          and(
-            eq(userMediaList.userId, userId),
-            inArray(userMediaList.mediaId, input.mediaIds)
-          )
-        );
-
-      const detailsMap = new Map<string, ('saved' | 'favorite' | 'later')[]>();
-      for (const detail of userDetails) {
-        const existingDetail = detailsMap.get(detail.mediaId);
-        if (existingDetail) {
-          existingDetail.push(detail.listType);
-        } else {
-          detailsMap.set(detail.mediaId, [detail.listType]);
-        }
-      }
-
-      return detailsMap;
-    }),
-
   getFilterOptions: publicProcedure.query(async ({ ctx }) => {
     const genres = await ctx.db
       .selectDistinct({
@@ -512,119 +415,127 @@ export const mediaRouter = createTRPCRouter({
       return { count: mediaOutput.length };
     }),
 
-  fetchTmdbTrending: protectedProcedure
-    .input(z.object({ limit: z.number() }))
-    .mutation(async ({ input }) => {
-      await populateMediaUsingTmdbTrending(input.limit);
-    }),
+  // fetchTmdbTrending: protectedProcedure
+  //   .input(z.object({ limit: z.number() }))
+  //   .mutation(async ({ input }) => {
+  //     await populateMediaUsingTmdbList('trending', input.limit);
+  //   }),
 
-  populateMissingMediaDetails: protectedProcedure.mutation(async ({ ctx }) => {
-    // 1. find all movie without origin
-    const moviesWithoutOrigin = await ctx.db
-      .select({
-        mediaId: tmdbMedia.id,
-        tmdbId: tmdbMedia.tmdbId,
-        title: tmdbMedia.title,
-      })
-      .from(tmdbMedia)
-      .leftJoin(
-        tmdbMediaToTmdbOrigin,
-        eq(tmdbMediaToTmdbOrigin.mediaId, tmdbMedia.id)
-      )
-      .where(
-        and(
-          eq(tmdbMedia.type, 'movie'),
-          isNull(tmdbMediaToTmdbOrigin.mediaId) // Find movies where the join failed (i.e., no origin)
-        )
-      );
+  // fetchTmdbPopular: protectedProcedure
+  //   .input(z.object({ limit: z.number() }))
+  //   .mutation(async ({ input }) => {
+  //     await populateMediaUsingTmdbList('popular', input.limit);
+  //   }),
 
-    let movieCount = 0;
-    await runItemsInEachBatchConcurrently(
-      moviesWithoutOrigin,
-      10,
-      async (movie) => {
-        movieCount++;
-        console.log(
-          `[populateMediaDetails] mv progress: ${movieCount}/${moviesWithoutOrigin.length} (${movie.tmdbId}:${movie.title})`
-        );
-        // 2. for mv, fetch detail via api
-        const details = await fetchTmdbDetailViaApi('movie', movie.tmdbId);
-        // 3. for mv, upsert origin
-        const originInput = details.origin_country.map((originId: string) => ({
-          mediaId: movie.mediaId,
-          originId: originId,
-        }));
-        await ctx.db
-          .insert(tmdbMediaToTmdbOrigin)
-          .values(originInput)
-          .onConflictDoNothing();
-      }
-    );
+  // populateMissingMediaDetails: protectedProcedure.mutation(async ({ ctx }) => {
+  //   // 1. find all movie without origin
+  //   const moviesWithoutOrigin = await ctx.db
+  //     .select({
+  //       mediaId: tmdbMedia.id,
+  //       tmdbId: tmdbMedia.tmdbId,
+  //       title: tmdbMedia.title,
+  //     })
+  //     .from(tmdbMedia)
+  //     .leftJoin(
+  //       tmdbMediaToTmdbOrigin,
+  //       eq(tmdbMediaToTmdbOrigin.mediaId, tmdbMedia.id)
+  //     )
+  //     .where(
+  //       and(
+  //         eq(tmdbMedia.type, 'movie'),
+  //         isNull(tmdbMediaToTmdbOrigin.mediaId) // Find movies where the join failed (i.e., no origin)
+  //       )
+  //     );
 
-    // 1. find all tv
-    const allTv = await ctx.db.query.tmdbMedia.findMany({
-      where: eq(tmdbMedia.type, 'tv'),
-      with: { seasons: true, origins: true },
-    });
+  //   let movieCount = 0;
+  //   await runItemsInEachBatchConcurrently(
+  //     moviesWithoutOrigin,
+  //     10,
+  //     async (movie) => {
+  //       movieCount++;
+  //       console.log(
+  //         `[populateMediaDetails] mv progress: ${movieCount}/${moviesWithoutOrigin.length} (${movie.tmdbId}:${movie.title})`
+  //       );
+  //       // 2. for mv, fetch detail via api
+  //       const details = await fetchTmdbDetailViaApi('movie', movie.tmdbId);
+  //       // 3. for mv, upsert origin
+  //       const originInput = details.origin_country.map((originId: string) => ({
+  //         mediaId: movie.mediaId,
+  //         originId: originId,
+  //       }));
+  //       await ctx.db
+  //         .insert(tmdbMediaToTmdbOrigin)
+  //         .values(originInput)
+  //         .onConflictDoNothing();
+  //     }
+  //   );
 
-    let count = 0;
-    await runItemsInEachBatchConcurrently(allTv, 10, async (tv) => {
-      count++;
-      console.log(
-        `[populateMediaDetails] tv progress: ${count}/${allTv.length} (${tv.tmdbId}:${tv.title})`
-      );
+  //   // 1. find all tv
+  //   const allTv = await ctx.db.query.tmdbMedia.findMany({
+  //     where: eq(tmdbMedia.type, 'tv'),
+  //     with: { seasons: true, origins: true },
+  //   });
 
-      // 2. for tv...
-      const details = await fetchTmdbDetailViaApi('tv', tv.tmdbId);
+  //   let count = 0;
+  //   await runItemsInEachBatchConcurrently(allTv, 10, async (tv) => {
+  //     count++;
+  //     console.log(
+  //       `[populateMediaDetails] tv progress: ${count}/${allTv.length} (${tv.tmdbId}:${tv.title})`
+  //     );
 
-      // 3. if tv has no origin, upsert origin
-      if (tv.origins.length === 0) {
-        const originInput = details.origin_country.map((originId: string) => ({
-          mediaId: tv.id,
-          originId: originId,
-        }));
-        await ctx.db
-          .insert(tmdbMediaToTmdbOrigin)
-          .values(originInput)
-          .onConflictDoNothing();
-      }
+  //     // 2. for tv...
+  //     const details = await fetchTmdbDetailViaApi('tv', tv.tmdbId);
 
-      // 4. if tv is missing seasons, upsert seasons/episodes
-      if (!details.seasons) {
-        console.log(
-          `[populateMediaDetails] tv ${tv.title}: ${tv.seasons.length} vs No Seasons from API`
-        );
-        return;
-      }
-      const seasonNum = details.seasons.some(
-        (season: { season_number: number }) => season.season_number === 0
-      )
-        ? details.seasons.length - 1
-        : details.seasons.length;
-      console.log(
-        `[populateMediaDetails] tv ${tv.title}: ${tv.seasons.length} vs ${seasonNum}`
-      );
-      if (tv.seasons.length === seasonNum) return;
-      await upsertSeasonsAndEpisodes(details, {
-        mediaId: tv.id,
-        seasonCount: tv.seasons.length,
-      });
-    });
-  }),
+  //     // 3. if tv has no origin, upsert origin
+  //     if (tv.origins.length === 0) {
+  //       const originInput = details.origin_country.map((originId: string) => ({
+  //         mediaId: tv.id,
+  //         originId: originId,
+  //       }));
+  //       await ctx.db
+  //         .insert(tmdbMediaToTmdbOrigin)
+  //         .values(originInput)
+  //         .onConflictDoNothing();
+  //     }
+
+  //     // 4. if tv is missing seasons, upsert seasons/episodes
+  //     if (!details.seasons) {
+  //       console.log(
+  //         `[populateMediaDetails] tv ${tv.title}: ${tv.seasons.length} vs No Seasons from API`
+  //       );
+  //       return;
+  //     }
+  //     const seasonNum = details.seasons.some(
+  //       (season: { season_number: number }) => season.season_number === 0
+  //     )
+  //       ? details.seasons.length - 1
+  //       : details.seasons.length;
+  //     console.log(
+  //       `[populateMediaDetails] tv ${tv.title}: ${tv.seasons.length} vs ${seasonNum}`
+  //     );
+  //     if (tv.seasons.length === seasonNum) return;
+  //     await upsertSeasonsAndEpisodes(details, {
+  //       mediaId: tv.id,
+  //       tmdbId: tv.tmdbId,
+  //       title: tv.title,
+  //       seasonCount: tv.seasons.length,
+  //     });
+  //   });
+  // }),
 
   // fetchMediaSrc: protectedProcedure.mutation(async ({ ctx }) => {
   //   await fetchSrcForMediaList('all');
   // }),
 
-  fetchAndInsertMvSrc: publicProcedure
-    .input(
-      z.object({
-        tmdbId: z.number().int().min(1),
-      })
-    )
-    .mutation(async ({ input }) => {
-      return await fetchAndUpsertMvSrc(input.tmdbId);
-    }),
+  // fetchAndInsertMvSrc: publicProcedure
+  //   .input(
+  //     z.object({
+  //       tmdbId: z.number().int().min(1),
+  //     })
+  //   )
+  //   .mutation(async ({ input }) => {
+  //     return await fetchAndUpsertMvSrc(input.tmdbId);
+  //   }),
 
   // fetchAndInsertTvSrc: publicProcedure
   //   .input(
@@ -644,251 +555,72 @@ export const mediaRouter = createTRPCRouter({
   //     );
   //   }),
 
-  insertSeasonAndEpisode: publicProcedure
-    .input(
-      z.object({
-        tmdbId: z.number().int().min(1),
-        season: z.number().int().min(1),
-        episode: z.number().int().min(1),
-      })
-    )
-    .mutation(async ({ input, ctx }) => {
-      const { tmdbId, season, episode } = input;
+  // insertSeasonAndEpisode: publicProcedure
+  //   .input(
+  //     z.object({
+  //       tmdbId: z.number().int().min(1),
+  //       season: z.number().int().min(1),
+  //       episode: z.number().int().min(1),
+  //     })
+  //   )
+  //   .mutation(async ({ input, ctx }) => {
+  //     const { tmdbId, season, episode } = input;
 
-      // Use a transaction to ensure all operations succeed or fail together
-      return await ctx.db.transaction(async (tx) => {
-        // 1. Find the internal media ID from the public tmdbId
-        const media = await tx.query.tmdbMedia.findFirst({
-          where: eq(tmdbMedia.tmdbId, tmdbId),
-          columns: {
-            id: true, // We only need the ID
-          },
-        });
+  //     // Use a transaction to ensure all operations succeed or fail together
+  //     return await ctx.db.transaction(async (tx) => {
+  //       // 1. Find the internal media ID from the public tmdbId
+  //       const media = await tx.query.tmdbMedia.findFirst({
+  //         where: eq(tmdbMedia.tmdbId, tmdbId),
+  //         columns: {
+  //           id: true, // We only need the ID
+  //         },
+  //       });
 
-        if (!media) {
-          throw new Error(
-            `TV show with TMDB ID ${tmdbId} not found in database.`
-          );
-        }
+  //       if (!media) {
+  //         throw new Error(
+  //           `TV show with TMDB ID ${tmdbId} not found in database.`
+  //         );
+  //       }
 
-        // 2. Find or create the season to get its ID
-        let existingSeason = await tx.query.tmdbSeason.findFirst({
-          where: and(
-            eq(tmdbSeason.mediaId, media.id),
-            eq(tmdbSeason.seasonNumber, season)
-          ),
-        });
+  //       // 2. Find or create the season to get its ID
+  //       let existingSeason = await tx.query.tmdbSeason.findFirst({
+  //         where: and(
+  //           eq(tmdbSeason.mediaId, media.id),
+  //           eq(tmdbSeason.seasonNumber, season)
+  //         ),
+  //       });
 
-        // If the season doesn't exist, create it
-        if (!existingSeason) {
-          const newSeasonResult = await tx
-            .insert(tmdbSeason)
-            .values({
-              mediaId: media.id,
-              seasonNumber: season,
-            })
-            .returning(); // Get the newly created season back
+  //       // If the season doesn't exist, create it
+  //       if (!existingSeason) {
+  //         const newSeasonResult = await tx
+  //           .insert(tmdbSeason)
+  //           .values({
+  //             mediaId: media.id,
+  //             seasonNumber: season,
+  //           })
+  //           .returning(); // Get the newly created season back
 
-          existingSeason = newSeasonResult[0];
-        }
+  //         existingSeason = newSeasonResult[0];
+  //       }
 
-        if (!existingSeason) {
-          throw new Error(`Failed to find or create season ${season}.`);
-        }
+  //       if (!existingSeason) {
+  //         throw new Error(`Failed to find or create season ${season}.`);
+  //       }
 
-        // 3. Insert the episode, doing nothing if it already exists
-        await tx
-          .insert(tmdbEpisode)
-          .values({
-            seasonId: existingSeason.id,
-            episodeNumber: episode,
-            episodeIndex: episode,
-          })
-          .onConflictDoNothing(); // If the episode (seasonId, episodeNumber) exists, ignore the insert
+  //       // 3. Insert the episode, doing nothing if it already exists
+  //       await tx
+  //         .insert(tmdbEpisode)
+  //         .values({
+  //           seasonId: existingSeason.id,
+  //           episodeNumber: episode,
+  //           episodeIndex: episode,
+  //         })
+  //         .onConflictDoNothing(); // If the episode (seasonId, episodeNumber) exists, ignore the insert
 
-        return {
-          success: true,
-          message: `Ensured S${season}E${episode} exists for TMDB ID ${tmdbId}.`,
-        };
-      });
-    }),
-
-  // 1. Rate Limiting: Check if the user has submitted today yet (if yes, then cannot submit again)
-  // admin can bypass this limit
-  // 2. Check if the submitted already exists in tmdbMedia table
-  // if yes, return the releaseDate and availabilityCount and totalEpisodeCount
-  // 3. for admin, immediately, upsert media to tmdbMedia table -> fetch src for that media -> update denorm fields for that media
-  // 4. for regular users, add to the table for batch processing later (batch upsert user submitted media -> fetch src with all other media -> update denorm with all other media)
-  submitTmdbId: protectedProcedure
-    .input(
-      z.object({
-        tmdbId: z.number().min(1),
-        type: z.enum(['movie', 'tv']),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const { session, db } = ctx;
-      const { tmdbId, type } = input;
-      const userId = session.user.id;
-      const isAdmin = session.user.role === 'admin';
-
-      // 1. Rate Limiting: Check if a non-admin user has submitted in the last 24 hours.
-      if (!isAdmin) {
-        const startOfUtcToday = new Date(
-          Date.UTC(
-            new Date().getUTCFullYear(),
-            new Date().getUTCMonth(),
-            new Date().getUTCDate()
-          )
-        );
-
-        // 2. Change the query to COUNT submissions instead of finding the first one.
-        const submissionCountResult = await db
-          .select({ count: count() })
-          .from(userSubmission)
-          .where(
-            and(
-              eq(userSubmission.userId, userId),
-              gte(userSubmission.createdAt, startOfUtcToday)
-            )
-          );
-
-        const submissionCount = submissionCountResult[0]?.count ?? 0;
-
-        // 3. Check if the count has reached the new limit of 5.
-        if (submissionCount >= 5) {
-          throw new TRPCError({
-            code: 'TOO_MANY_REQUESTS',
-            message: 'You have reached your limit of 5 submissions per day.',
-          });
-        }
-        // --- END OF UPDATED LOGIC ---
-      }
-
-      // 2. Check if the media already exists in our main table.
-      const existingMedia = await db.query.tmdbMedia.findFirst({
-        where: eq(tmdbMedia.tmdbId, tmdbId),
-      });
-
-      if (existingMedia) {
-        // If it exists, return its current status.
-        return {
-          status: 'exists' as const,
-          mediaInfo: {
-            releaseDate: existingMedia.releaseDate,
-            availabilityCount: existingMedia.availabilityCount,
-            airedEpisodeCount: existingMedia.airedEpisodeCount,
-          },
-        };
-      }
-
-      // If media is new, handle based on user role.
-      const mediaToProcess = [{ tmdbId, type }];
-
-      if (isAdmin) {
-        // 3. Admin Flow: Process everything immediately.
-        // NOTE: This will be a long-running request for the admin.
-        console.log(
-          `[ADMIN SUBMISSION] Starting immediate processing for TMDB ID: ${tmdbId}`
-        );
-
-        // Step 3a: Populate the core media, season, and episode data.
-        const populateResult = await populateMediaUsingTmdbIds(mediaToProcess);
-        const newMediaId = populateResult[0]?.mediaId;
-
-        if (!newMediaId) {
-          throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'Failed to populate new media.',
-          });
-        }
-
-        // Step 3b: Fetch sources for the newly added media.
-        await fetchSrcForMediaList([newMediaId]);
-
-        // Step 3c: Update all the denormalized fields so it's ready for searching.
-        await updateDenormFieldsForMediaList([newMediaId]);
-
-        console.log(
-          `[ADMIN SUBMISSION] Finished processing for TMDB ID: ${tmdbId}`
-        );
-        return { status: 'processed' as const };
-      } else {
-        // 4. Regular User Flow: Add to the userSubmission table for a later cron job to process.
-        await db.insert(userSubmission).values({
-          userId,
-          tmdbId,
-          mediaType: type,
-          status: 'pending',
-        });
-        return { status: 'submitted' as const };
-      }
-    }),
-
-  upsertUserSubmittedIds: protectedProcedure.mutation(async ({ ctx }) => {
-    const { db } = ctx;
-    // 1. find pending submissions
-    const pendingSubmissions = await db.query.userSubmission.findMany({
-      where: eq(userSubmission.status, 'pending'),
-    });
-    if (pendingSubmissions.length === 0) {
-      console.log('[upsertUserSubmittedIds] No user submissions to process.');
-      return { processedCount: 0 };
-    }
-    const populateInput = pendingSubmissions.map((sub) => ({
-      tmdbId: sub.tmdbId,
-      type: sub.mediaType,
-    }));
-
-    // 2. populate media/seasons/episodes
-    const populateOutput = await populateMediaUsingTmdbIds(populateInput);
-    console.log(
-      `[upsertUserSubmittedIds] Populated ${populateOutput.length} media from user submissions.`
-    );
-
-    // 3. update userSubmission to 'succeeded' or 'failed' based on populateOutput
-    const succeededTmdbIds = new Set(populateOutput.map((item) => item.tmdbId));
-
-    const submissionResults = pendingSubmissions.map((submission) => ({
-      id: submission.id,
-      status: succeededTmdbIds.has(submission.tmdbId) ? 'succeeded' : 'failed',
-    }));
-
-    // Define the function that will process one batch
-    const bulkUpdateSubmissions = async (batch: typeof submissionResults) => {
-      if (batch.length === 0) return;
-
-      await db.execute(sql`
-        UPDATE ${userSubmission}
-        SET status = data.new_status::${userSubmissionStatusEnum}
-        FROM (VALUES ${sql.join(
-          batch.map((s) => sql`(${s.id}, ${s.status})`),
-          sql`, `
-        )}) AS data(id, new_status)
-        WHERE ${userSubmission.id} = data.id::varchar;
-      `);
-    };
-
-    // Call the helper to run the batch processing
-    await runItemsInEachBatchInBulk(
-      submissionResults,
-      10000,
-      bulkUpdateSubmissions
-    );
-
-    const succeededCount = submissionResults.filter(
-      (s) => s.status === 'succeeded'
-    ).length;
-    const failedCount = submissionResults.length - succeededCount;
-
-    console.log(
-      `[upsertUserSubmittedIds] db submission status updated: succeeded (${succeededCount}) | failed (${failedCount}).`
-    );
-
-    return { succeededCount: succeededCount, failedCount: failedCount };
-  }),
-
-  updateAllChangedMedia: protectedProcedure.mutation(async (ctx) => {
-    await updateAllChangedMedia();
-  }),
+  //       return {
+  //         success: true,
+  //         message: `Ensured S${season}E${episode} exists for TMDB ID ${tmdbId}.`,
+  //       };
+  //     });
+  //   }),
 });

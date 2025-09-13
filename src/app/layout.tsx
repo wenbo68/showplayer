@@ -43,8 +43,7 @@ export default async function RootLayout({
   );
 }
 
-// create fetch top 50 popular mv/tv and insert to db
-// remove cron router: we cannot use vercel cron (time limit not enough)
+// create a single cron procedure and test
 
 // make media buttons display info according to the search filters (horizontal strips including or not including media description)
 // also should media buttons display availability, total episodes, missing episodes?

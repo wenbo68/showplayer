@@ -5,12 +5,12 @@ import { useState } from 'react';
 import { api } from '~/trpc/react';
 
 export default function TmdbAdmin() {
-  const [trendingLimit, setTrendingLimit] = useState(50);
+  const [fetchLimit, setFetchLimit] = useState(50);
   const [topLimit, setTopLimit] = useState(100);
-  const [mvTmdbId, setMvTmdbId] = useState('');
-  const [tvTmdbId, setTvTmdbId] = useState('');
-  const [season, setSeason] = useState('');
-  const [episode, setEpisode] = useState('');
+  // const [mvTmdbId, setMvTmdbId] = useState('');
+  // const [tvTmdbId, setTvTmdbId] = useState('');
+  // const [season, setSeason] = useState('');
+  // const [episode, setEpisode] = useState('');
 
   // --- 1. Add new state for the ratings refresh limit ---
   const [ratingsLimit, setRatingsLimit] = useState(100);
@@ -23,32 +23,34 @@ export default function TmdbAdmin() {
   const fetchOriginsMutation = api.media.fetchOrigins.useMutation();
   const fetchGenresMutation = api.media.fetchGenres.useMutation();
 
-  const fetchTmdbTrendingMutation = api.media.fetchTmdbTrending.useMutation();
+  const fetchTmdbListsMutation = api.cron.fetchTmdbLists.useMutation();
   const fetchTmdbTopMutation = api.media.fetchTmdbTopRated.useMutation();
 
   // --- 2. Add new mutation hooks for the cron procedures ---
   const updatePopularityMutation = api.cron.updatePopularity.useMutation();
   const updateRatingsMutation = api.cron.updateRatings.useMutation();
 
-  const populateDetailsMutation =
-    api.media.populateMissingMediaDetails.useMutation();
+  // const populateDetailsMutation =
+  //   api.media.populateMissingMediaDetails.useMutation();
   const dailySrcFetchMutation = api.cron.fetchSrc.useMutation();
 
-  const fetchMvSrcMutation = api.media.fetchAndInsertMvSrc.useMutation();
-  const insertEpisodeMutation = api.media.insertSeasonAndEpisode.useMutation();
+  // const fetchMvSrcMutation = api.media.fetchAndInsertMvSrc.useMutation();
+  // const insertEpisodeMutation = api.media.insertSeasonAndEpisode.useMutation();
   // const fetchTvSrcMutation = api.media.fetchAndInsertTvSrc.useMutation();
 
   const updateDenormFieldsMutation = api.cron.updateDenormFields.useMutation();
 
   // --- 2. Add the new useMutation hook ---
-  const submitTmdbIdMutation = api.media.submitTmdbId.useMutation();
+  const submitTmdbIdMutation = api.user.submitTmdbId.useMutation();
 
   // --- 1. Add the new useMutation hook ---
   const upsertUserSubmittedIdsMutation =
-    api.media.upsertUserSubmittedIds.useMutation();
+    api.cron.processUserSubmissions.useMutation();
 
   const updateAllChangedMediaMutation =
-    api.media.updateAllChangedMedia.useMutation();
+    api.cron.updateAllChangedMedia.useMutation();
+
+  const runCronMutation = api.cron.runCron.useMutation();
 
   const handleFetchOrigins = () => {
     fetchOriginsMutation.mutate(undefined, {
@@ -62,9 +64,9 @@ export default function TmdbAdmin() {
       onError: (err) => console.error('Error:', err),
     });
   };
-  const handleFetchTmdbTrending = () => {
-    fetchTmdbTrendingMutation.mutate(
-      { limit: trendingLimit },
+  const handleFetchTmdbLists = () => {
+    fetchTmdbListsMutation.mutate(
+      { limit: fetchLimit },
       {
         onSuccess: (data) => console.log('Fetched:', data),
         onError: (err) => console.error('Error:', err),
@@ -85,8 +87,8 @@ export default function TmdbAdmin() {
     // NOTE: This can take a long time to run!
     updatePopularityMutation.mutate(
       {
-        cronSecret:
-          'd23b4a9f9d009dcf28bd69cdbb2815819379db2702dc96251bd72f2dfa1c9d4e',
+        // cronSecret:
+        //   'd23b4a9f9d009dcf28bd69cdbb2815819379db2702dc96251bd72f2dfa1c9d4e',
         mediaType: mediaType,
       },
       {
@@ -101,8 +103,8 @@ export default function TmdbAdmin() {
     // NOTE: This can also take a long time to run!
     updateRatingsMutation.mutate(
       {
-        cronSecret:
-          'd23b4a9f9d009dcf28bd69cdbb2815819379db2702dc96251bd72f2dfa1c9d4e',
+        // cronSecret:
+        //   'd23b4a9f9d009dcf28bd69cdbb2815819379db2702dc96251bd72f2dfa1c9d4e',
         limit: ratingsLimit,
       },
       {
@@ -111,17 +113,17 @@ export default function TmdbAdmin() {
       }
     );
   };
-  const handlePopulateDetails = () => {
-    populateDetailsMutation.mutate(undefined, {
-      onSuccess: () => console.log('Populated details'),
-      onError: (err) => console.error('Error populating details: ', err),
-    });
-  };
+  // const handlePopulateDetails = () => {
+  //   populateDetailsMutation.mutate(undefined, {
+  //     onSuccess: () => console.log('Populated details'),
+  //     onError: (err) => console.error('Error populating details: ', err),
+  //   });
+  // };
   const handleDailySrcFetch = () => {
     dailySrcFetchMutation.mutate(
       {
-        cronSecret:
-          'd23b4a9f9d009dcf28bd69cdbb2815819379db2702dc96251bd72f2dfa1c9d4e',
+        // cronSecret:
+        //   'd23b4a9f9d009dcf28bd69cdbb2815819379db2702dc96251bd72f2dfa1c9d4e',
       },
       {
         onSuccess: () => console.log('Daily src fetch finished'),
@@ -129,28 +131,28 @@ export default function TmdbAdmin() {
       }
     );
   };
-  const handleFetchMvSrc = () => {
-    fetchMvSrcMutation.mutate(
-      { tmdbId: Number(mvTmdbId) },
-      {
-        onSuccess: (data) => console.log('Fetched source:', data),
-        onError: (err) => console.error('Error fetching source:', err),
-      }
-    );
-  };
-  const handleInsertEpisode = () => {
-    insertEpisodeMutation.mutate(
-      {
-        tmdbId: Number(tvTmdbId),
-        season: Number(season),
-        episode: Number(episode),
-      },
-      {
-        onSuccess: (data) => console.log('Fetched TV source:', data),
-        onError: (err) => console.error('Error fetching TV source:', err),
-      }
-    );
-  };
+  // const handleFetchMvSrc = () => {
+  //   fetchMvSrcMutation.mutate(
+  //     { tmdbId: Number(mvTmdbId) },
+  //     {
+  //       onSuccess: (data) => console.log('Fetched source:', data),
+  //       onError: (err) => console.error('Error fetching source:', err),
+  //     }
+  //   );
+  // };
+  // const handleInsertEpisode = () => {
+  //   insertEpisodeMutation.mutate(
+  //     {
+  //       tmdbId: Number(tvTmdbId),
+  //       season: Number(season),
+  //       episode: Number(episode),
+  //     },
+  //     {
+  //       onSuccess: (data) => console.log('Fetched TV source:', data),
+  //       onError: (err) => console.error('Error fetching TV source:', err),
+  //     }
+  //   );
+  // };
   // const handleFetchTvSrc = () => {
   //   fetchTvSrcMutation.mutate(
   //     {
@@ -242,9 +244,7 @@ export default function TmdbAdmin() {
     // NOTE: This can be a very long-running job!
     upsertUserSubmittedIdsMutation.mutate(undefined, {
       onSuccess: (data) => {
-        console.log(
-          `${data.succeededCount} succeeded. ${data.failedCount} failed `
-        );
+        console.log(`upsert success`);
       },
       onError: (err) => {
         console.error('Error processing user submissions:', err);
@@ -261,6 +261,20 @@ export default function TmdbAdmin() {
         console.error(`[handleUpdateAllChangedMedia] error: `, err);
       },
     });
+  };
+
+  const handleRunCron = () => {
+    runCronMutation.mutate(
+      {},
+      {
+        onSuccess: (data) => {
+          console.log(`All cron job done`);
+        },
+        onError: (err) => {
+          console.error(err);
+        },
+      }
+    );
   };
 
   return (
@@ -299,23 +313,23 @@ export default function TmdbAdmin() {
 
         <input
           type="number"
-          placeholder="Trending Limit"
-          value={trendingLimit}
-          onChange={(e) => setTrendingLimit(Number(e.target.value))}
+          placeholder="Fetch Limit"
+          value={fetchLimit}
+          onChange={(e) => setFetchLimit(Number(e.target.value))}
           className="px-3 py-2 rounded w-60 text-gray-900 dark:text-gray-300 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
         />
         <button
-          onClick={handleFetchTmdbTrending}
-          disabled={fetchTmdbTrendingMutation.isPending}
+          onClick={handleFetchTmdbLists}
+          disabled={fetchTmdbListsMutation.isPending}
           className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 dark:hover:bg-green-500"
         >
-          {fetchTmdbTrendingMutation.isPending
+          {fetchTmdbListsMutation.isPending
             ? 'Fetching...'
-            : 'Fetch Trending'}
+            : 'Fetch tmdb lists'}
         </button>
-        {fetchTmdbTrendingMutation.error && (
+        {fetchTmdbListsMutation.error && (
           <p className="text-red-600 dark:text-red-400">
-            Error: {fetchTmdbTrendingMutation.error.message}
+            Error: {fetchTmdbListsMutation.error.message}
           </p>
         )}
         <input
@@ -424,7 +438,7 @@ export default function TmdbAdmin() {
 
         <hr className="w-full my-4 border-gray-300 dark:border-gray-700" />
 
-        <button
+        {/* <button
           onClick={handlePopulateDetails}
           disabled={populateDetailsMutation.isPending}
           className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 dark:hover:bg-red-500"
@@ -437,7 +451,7 @@ export default function TmdbAdmin() {
           <p className="text-red-600 dark:text-red-400 mt-2">
             Error: {populateDetailsMutation.error.message}
           </p>
-        )}
+        )} */}
         <button
           onClick={handleDailySrcFetch}
           disabled={dailySrcFetchMutation.isPending}
@@ -452,9 +466,9 @@ export default function TmdbAdmin() {
         )}
       </div>
 
-      <hr className="w-full my-4 border-gray-300 dark:border-gray-700" />
+      {/* <hr className="w-full my-4 border-gray-300 dark:border-gray-700" /> */}
 
-      <div className="flex flex-col items-center gap-2">
+      {/* <div className="flex flex-col items-center gap-2">
         <input
           type="number"
           placeholder="Movie TMDB ID"
@@ -476,9 +490,9 @@ export default function TmdbAdmin() {
             Error: {fetchMvSrcMutation.error.message}
           </p>
         )}
-      </div>
+      </div> */}
 
-      <hr className="w-full my-4 border-gray-300 dark:border-gray-700" />
+      {/* <hr className="w-full my-4 border-gray-300 dark:border-gray-700" />
 
       <div className="flex flex-col items-center gap-2">
         <input
@@ -512,27 +526,13 @@ export default function TmdbAdmin() {
               ? 'Inserting...'
               : 'Insert Episode'}
           </button>
-          {/* <button
-            onClick={handleFetchTvSrc}
-            disabled={fetchTvSrcMutation.isPending}
-            className="px-4 py-2 bg-green-600 text-white rounded flex-1 hover:bg-green-700 dark:hover:bg-green-500"
-          >
-            {fetchTvSrcMutation.isPending
-              ? 'Fetching Source...'
-              : 'Fetch TV Source'}
-          </button> */}
         </div>
         {insertEpisodeMutation.error && (
           <p className="text-red-600 dark:text-red-400 mt-2">
             Error: {insertEpisodeMutation.error.message}
           </p>
         )}
-        {/* {fetchTvSrcMutation.error && (
-          <p className="text-red-600 dark:text-red-400 mt-2">
-            Error: {fetchTvSrcMutation.error.message}
-          </p>
-        )} */}
-      </div>
+      </div> */}
 
       <hr className="w-full my-4 border-gray-300 dark:border-gray-700" />
 
@@ -588,6 +588,21 @@ export default function TmdbAdmin() {
           </p>
         )}
       </div>
+
+      <hr className="w-full my-4 border-gray-300 dark:border-gray-700" />
+
+      <button
+        onClick={handleRunCron}
+        disabled={runCronMutation.isPending}
+        className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded w-60 hover:bg-indigo-700 disabled:opacity-50"
+      >
+        {runCronMutation.isPending ? 'Running...' : 'Run all cron jobs'}
+      </button>
+      {runCronMutation.error && (
+        <p className="text-red-400 mt-2">
+          Error: {runCronMutation.error.message}
+        </p>
+      )}
     </section>
   );
 }

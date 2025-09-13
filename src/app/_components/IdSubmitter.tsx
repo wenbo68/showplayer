@@ -35,7 +35,7 @@ export default function IdSubmitter() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const submitTmdbIdMutation = api.media.submitTmdbId.useMutation({
+  const submitTmdbIdMutation = api.user.submitTmdbId.useMutation({
     onSuccess: (data) => {
       // Handle the different success statuses from your tRPC procedure
       switch (data.status) {
@@ -142,7 +142,7 @@ export default function IdSubmitter() {
             , the tmdb id is 1396.
           </p>
           <p className="">
-            4. You can request 5 new media per day. The timer resets at 12am
+            4. You can request 3 new media per day. The timer resets at 12am
             UTC.
           </p>
           <p className="">

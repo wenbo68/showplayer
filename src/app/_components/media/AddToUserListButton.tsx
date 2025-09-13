@@ -3,7 +3,7 @@
 import { api } from '~/trpc/react';
 import { FaHeart } from 'react-icons/fa6';
 import { useState } from 'react';
-import { useIsMediaInUserList } from '~/app/_utils/hooks';
+import { useIsMediaInUserList } from '~/app/_hooks/userMediaListHooks';
 import type { UserList } from '~/type';
 import { useSession } from 'next-auth/react';
 
@@ -21,15 +21,15 @@ export function AddToUserListButton({
   const [buttonDisabled, setButtonDisabled] = useState(false);
 
   const utils = api.useUtils();
-  const updateMediaInUserList = api.media.updateMediaInUserList.useMutation({
+  const updateMediaInUserList = api.user.updateMediaInUserList.useMutation({
     onMutate: async ({ mediaId, listType, desiredState }) => {
       // 1. Cancel ongoing refetches to prevent overwriting our optimistic update
-      await utils.media.getUserDetailsForMediaList.cancel({
+      await utils.user.getUserDetailsForMediaList.cancel({
         mediaIds: pageMediaIds,
       });
 
       // 2. Snapshot the previous data
-      const oldUserDetails = utils.media.getUserDetailsForMediaList.getData({
+      const oldUserDetails = utils.user.getUserDetailsForMediaList.getData({
         mediaIds: pageMediaIds,
       });
 
@@ -41,7 +41,7 @@ export function AddToUserListButton({
           ? [...new Set([...oldUserDetail, listType])] // Add to list
           : oldUserDetail.filter((list) => list !== listType); // Remove from list
         newUserDetails.set(mediaId, newUserDetail);
-        utils.media.getUserDetailsForMediaList.setData(
+        utils.user.getUserDetailsForMediaList.setData(
           { mediaIds: pageMediaIds },
           newUserDetails
         );
@@ -52,7 +52,7 @@ export function AddToUserListButton({
     // 4. On error, roll back to the previous data
     onError: (err, variables, context) => {
       if (context?.oldUserDetails) {
-        utils.media.getUserDetailsForMediaList.setData(
+        utils.user.getUserDetailsForMediaList.setData(
           { mediaIds: pageMediaIds },
           context.oldUserDetails
         );
@@ -60,7 +60,7 @@ export function AddToUserListButton({
     },
     // 5. After mutation settles, invalidate the cache to refetch from the server
     onSettled: () => {
-      utils.media.getUserDetailsForMediaList.invalidate({
+      utils.user.getUserDetailsForMediaList.invalidate({
         mediaIds: pageMediaIds,
       });
     },

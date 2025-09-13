@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withCors } from '~/app/_utils/api';
+import { withCors } from '~/server/utils/proxyUtils';
 
 //bunny caching behavior is weird: different comb of Smart Cache and Optimize for Video Delivery result in different caching behavior
 

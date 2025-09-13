@@ -16,7 +16,7 @@ import {
   timeoutPromise,
   getTime,
   providerIndexMap,
-} from './puppeteer'; // Assuming your helper functions and maps are in a utils file
+} from './puppeteerUtils'; // Assuming your helper functions and maps are in a utils file
 
 /**
  * This is the main task logic, extracted from your old API endpoint.

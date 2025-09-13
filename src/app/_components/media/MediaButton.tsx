@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'; // Import hooks
 import type { ListMedia } from '~/type';
 import { MediaBadge } from './MediaBadge';
 import { useMediaPopup } from '~/app/_contexts/MediaPopupContext';
-import { useIsMediaInUserList } from '~/app/_utils/hooks';
+import { useIsMediaInUserList } from '~/app/_hooks/userMediaListHooks';
 
 interface MediaButtonProps {
   pageMediaIds: string[];

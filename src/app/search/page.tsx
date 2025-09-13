@@ -96,7 +96,7 @@ export default async function SearchPage({
   // prefetch for client cache
   const pageMediaIds = pageMedia.map((m) => m.media.id);
   const uniquePageMediaIds = [...new Set(pageMediaIds)];
-  api.media.getUserDetailsForMediaList.prefetch({
+  api.user.getUserDetailsForMediaList.prefetch({
     mediaIds: uniquePageMediaIds,
   });
 

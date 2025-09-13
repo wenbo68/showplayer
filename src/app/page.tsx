@@ -1,11 +1,12 @@
 import { api, HydrateClient } from '~/trpc/server';
-import TmdbAdmin from './_components/auth/TmdbAdmin';
+import TmdbAdmin from './_components/auth/AdminTest';
 import SearchBar from './_components/search/SearchBar';
 import { Suspense } from 'react';
 import MediaList from './_components/media/MediaList';
 import SearchBarFallback from './_components/search/SearchBarFallback';
 import { auth } from '~/server/auth';
 import IdSubmitter from './_components/IdSubmitter';
+import AdminControl from './_components/auth/AdminControl';
 
 export default async function Home() {
   const session = await auth();
@@ -66,7 +67,7 @@ export default async function Home() {
 
   // Perform a SINGLE prefetch for the entire page (only if user logged in)
   if (session?.user) {
-    api.media.getUserDetailsForMediaList.prefetch({
+    api.user.getUserDetailsForMediaList.prefetch({
       mediaIds: uniquePageMediaIds,
     });
   }
@@ -74,8 +75,6 @@ export default async function Home() {
   return (
     <HydrateClient>
       <div className="flex flex-col justify-center p-4 gap-12">
-        {session?.user.role === 'admin' && <TmdbAdmin />}
-
         <Suspense fallback={<SearchBarFallback />}>
           <SearchBar filterOptions={filterOptions} />
         </Suspense>

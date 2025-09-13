@@ -9,7 +9,7 @@ import { eq, asc, sql } from 'drizzle-orm';
 import { notFound, redirect } from 'next/navigation';
 import { VideoPlayer } from '~/app/_components/player/VideoPlayer';
 import { TvSelector } from '~/app/_components/player/TvSelector';
-import { getProxiedSrcUrl } from '~/app/_utils/api';
+import { getProxiedSrcUrl } from '~/server/utils/proxyUtils';
 import { TvOverview } from '~/app/_components/player/TvOverview';
 
 interface PageProps {

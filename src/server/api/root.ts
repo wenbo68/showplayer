@@ -1,6 +1,7 @@
 import { createCallerFactory, createTRPCRouter } from '~/server/api/trpc';
 import { mediaRouter } from './routers/media';
 import { cronRouter } from './routers/cron';
+import { userRouter } from './routers/user';
 
 /**
  * This is the primary router for your server.
@@ -8,6 +9,7 @@ import { cronRouter } from './routers/cron';
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
+  user: userRouter,
   cron: cronRouter,
   media: mediaRouter,
 });

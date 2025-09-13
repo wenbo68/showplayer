@@ -18,7 +18,7 @@ export function useIsMediaInUserList(
     [pageMediaIds]
   );
 
-  const { data: result } = api.media.getUserDetailsForMediaList.useQuery(
+  const { data: result } = api.user.getUserDetailsForMediaList.useQuery(
     stableMediaIds,
     {
       // use select so that MediaButton will only rerender when the list status for this media changes

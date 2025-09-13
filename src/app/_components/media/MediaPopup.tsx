@@ -172,7 +172,7 @@ export function MediaPopup({
                 ? `Not Available`
                 : media.type === 'movie'
                 ? `Watch Now`
-                : `Added S${media.updatedSeasonNumber}E${media.updatedEpisodeNumber} on ${updatedDate}`}
+                : `${media.availabilityCount}/${media.airedEpisodeCount} Episodes`}
             </Link>
           </div>
         </div>

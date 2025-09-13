@@ -1,4 +1,4 @@
-import { getCluster } from '~/app/_utils/clusterManager';
+import { closeCluster, getCluster } from '~/app/_utils/clusterManager';
 import { db } from './db';
 import {
   tmdbEpisode,
@@ -8,14 +8,186 @@ import {
   tmdbSeason,
   tmdbSource,
   tmdbSubtitle,
+  tmdbTrending,
 } from './db/schema';
-import { and, eq, sql } from 'drizzle-orm';
-import type { PuppeteerResult } from '~/type';
+import {
+  and,
+  asc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  or,
+  sql,
+} from 'drizzle-orm';
+import type { LatestEpisodeInfo, PuppeteerResult } from '~/type';
 import {
   indexProviderMap,
   mvProvidersMap,
   tvProvidersMap,
 } from '~/app/_utils/puppeteer';
+
+import { env } from '~/env';
+
+const TMDB_API_HEADERS = {
+  accept: 'application/json',
+  Authorization: `Bearer ${env.TMDB_API_KEY}`,
+};
+
+type TmdbChangedItem = {
+  id: number;
+  adult: boolean;
+};
+
+type TmdbChangesApiResponse = {
+  results: TmdbChangedItem[];
+  page: number;
+  total_pages: number;
+  total_results: number;
+};
+
+type MediaTypeAndTmdbId = {
+  type: 'movie' | 'tv';
+  tmdbId: number;
+};
+
+type MediaTypeAndTmdbIdAndSeasonCount = {
+  type: 'movie' | 'tv';
+  tmdbId: number;
+  seasonCount: number;
+};
+
+/**
+ * Fetches all changed IDs for a specific media type (movie or tv)
+ * by handling the pagination concurrently.
+ * @param mediaType - The type of media to fetch ('movie' or 'tv').
+ * @returns An array of objects containing the type and tmdbId.
+ */
+
+async function fetchChangedTmdbIds(
+  mediaType: 'movie' | 'tv'
+): Promise<MediaTypeAndTmdbId[]> {
+  const baseUrl = `https://api.themoviedb.org/3/${mediaType}/changes`;
+
+  // 1. Make the first request to get the total number of pages
+  const initialResponse = await fetch(`${baseUrl}?page=1`, {
+    headers: TMDB_API_HEADERS,
+  });
+  if (!initialResponse.ok) {
+    throw new Error(`Failed to fetch initial page for ${mediaType} changes`);
+  }
+  const initialData: TmdbChangesApiResponse = await initialResponse.json();
+  const totalPages = initialData.total_pages;
+  let allResults = initialData.results;
+  if (totalPages <= 1) {
+    return allResults.map((item) => ({ type: mediaType, tmdbId: item.id }));
+  }
+
+  // --- REFACTORED BATCHING LOGIC ---
+
+  // 2. Create a list of all the remaining page numbers we need to fetch
+  const pagesToFetch: number[] = [];
+  for (let page = 2; page <= totalPages; page++) {
+    pagesToFetch.push(page);
+  }
+
+  const batchSize = 10;
+  // 3. Loop through the page numbers in batches
+  for (let i = 0; i < pagesToFetch.length; i += batchSize) {
+    const pageBatch = pagesToFetch.slice(i, i + batchSize);
+
+    // 4. Create fetch promises for the current batch
+    const batchFetchPromises = pageBatch.map((page) =>
+      fetch(`${baseUrl}?page=${page}`, { headers: TMDB_API_HEADERS })
+    );
+
+    // 5. Execute the current batch of 10 requests concurrently
+    const responses = await Promise.all(batchFetchPromises);
+
+    // 6. Process the results from the batch
+    for (const res of responses) {
+      if (res.ok) {
+        const pageData: TmdbChangesApiResponse = await res.json();
+        allResults = allResults.concat(pageData.results);
+      } else {
+        console.warn(
+          `[fetchChangedIdsForType] Failed to fetch a page for ${mediaType}. Status: ${res.status}`
+        );
+      }
+    }
+    console.log(
+      `[fetchChangedIdsForType] ${mediaType} progress: ${
+        i + 1
+      }/${totalPages} pages`
+    );
+  }
+
+  // 7. Map the final combined results to the desired format
+  return allResults.map((item) => ({ type: mediaType, tmdbId: item.id }));
+}
+/**
+ * Fetches all changed movie and TV show IDs from all pages of the TMDB Changes API.
+ * @returns A single array containing all changed movie and TV IDs.
+ */
+export async function fetchAllChangedTmdbIds(): Promise<MediaTypeAndTmdbId[]> {
+  try {
+    // Run the fetching for movies and TV shows in parallel
+    const [changedMvIds, changedTvIds] = await Promise.all([
+      fetchChangedTmdbIds('movie'),
+      fetchChangedTmdbIds('tv'),
+    ]);
+    console.log(`[fetchAllChangedTmdbIds] changed mv: ${changedMvIds.length}`);
+    console.log(`[fetchAllChangedTmdbIds] changed tv: ${changedTvIds.length}`);
+    const combinedIds = [...changedMvIds, ...changedTvIds];
+    return combinedIds;
+  } catch (error) {
+    console.error('[fetchAllChangedTmdbIds] An error occurred:', error);
+    return []; // Return an empty array on failure
+  }
+}
+
+/**
+ * Takes an array of media identifiers and returns a filtered list of only those
+ * that exist in the local database, along with their season count.
+ * @param input - An array of objects with tmdbId and type.
+ * @returns A promise that resolves to an array of existing media with their season count.
+ */
+export async function findExistingTmdbIds(
+  input: MediaTypeAndTmdbId[]
+): Promise<MediaTypeAndTmdbIdAndSeasonCount[]> {
+  if (input.length === 0) {
+    return [];
+  }
+
+  // 1. Create a composite WHERE clause to match pairs of (tmdbId, type).
+  //    This generates a query like:
+  //    WHERE (tmdbId = 123 AND type = 'tv') OR (tmdbId = 456 AND type = 'movie') ...
+  const compositeWhereClause = or(
+    ...input.map((id) =>
+      and(eq(tmdbMedia.tmdbId, id.tmdbId), eq(tmdbMedia.type, id.type))
+    )
+  );
+
+  if (!compositeWhereClause) {
+    return []; // Should not happen if changedIds is not empty, but good for type safety
+  }
+
+  // 2. Execute a single query to find matching media and count their seasons.
+  const existingMedia = await db
+    .select({
+      tmdbId: tmdbMedia.tmdbId,
+      type: tmdbMedia.type,
+      // We count the season IDs. A LEFT JOIN ensures this count is 0 for movies.
+      seasonCount: sql<number>`count(${tmdbSeason.id})`.mapWith(Number),
+    })
+    .from(tmdbMedia)
+    .leftJoin(tmdbSeason, eq(tmdbMedia.id, tmdbSeason.mediaId))
+    .where(compositeWhereClause)
+    .groupBy(tmdbMedia.id, tmdbMedia.tmdbId, tmdbMedia.type);
+
+  return existingMedia;
+}
 
 export async function fetchTmdbTopRatedViaApi(
   limit: number,
@@ -113,7 +285,7 @@ export async function fetchTmdbDetailViaApi(type: string, id: number) {
     }
   );
   const data = await resp.json();
-  return data;
+  return { ...data, media_type: type };
 }
 
 export async function fetchTmdbOriginsViaApi() {
@@ -175,7 +347,7 @@ export async function fetchTmdbSeasonDetailViaApi(
   return data;
 }
 
-export async function upsertNewMedia(fetchOutput: any[]) {
+export async function bulkUpsertNewMedia(fetchOutput: any[]) {
   // 2. Prepare db input from api fetch ouput (removes duplicates)
   const mediaInput = Array.from(
     new Map(
@@ -199,6 +371,10 @@ export async function upsertNewMedia(fetchOutput: any[]) {
               : null,
             genreIds: item.genre_ids || [],
             originIds: item.origin_country || [],
+            popularity: item.popularity,
+            voteAverage: item.vote_average,
+            voteCount: item.vote_count,
+            voteUpdatedAt: new Date(),
           },
         ])
     ).values()
@@ -218,11 +394,17 @@ export async function upsertNewMedia(fetchOutput: any[]) {
         imageUrl: sql`excluded.image_url`,
         backdropUrl: sql`excluded.backdrop_url`,
         releaseDate: sql`excluded.release_date`,
+        popularity: sql`excluded.popularity`,
+        voteAverage: sql`excluded.vote_average`,
+        voteCount: sql`excluded.vote_count`,
+        voteUpdatedAt: sql`excluded.vote_updated_at`,
       },
     })
     .returning({
       mediaId: tmdbMedia.id,
       tmdbId: tmdbMedia.tmdbId,
+      type: tmdbMedia.type,
+      title: tmdbMedia.title,
     })
     .execute();
 
@@ -274,8 +456,26 @@ export async function upsertNewMedia(fetchOutput: any[]) {
   return mediaOutput;
 }
 
-// Helper function to process arrays in batches
-export async function batchProcess<T>(
+// runs items in each batch together in a single bulk
+export async function runItemsInEachBatchInBulk<T>(
+  items: T[],
+  batchSize: number,
+  processFn: (batch: T[]) => Promise<void>
+): Promise<void> {
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    console.log(
+      `[runItemsInEachBatchInBulk] progress: ${i + batch.length}/${
+        items.length
+      }`
+    );
+    await processFn(batch);
+  }
+  // console.log('Finished processing all batches.');
+}
+
+// runs items in each batch concurrently
+export async function runItemsInEachBatchConcurrently<T>(
   items: T[],
   batchSize: number,
   processFn: (item: T) => Promise<void>
@@ -287,7 +487,7 @@ export async function batchProcess<T>(
 }
 
 // Helper function to be placed outside the router
-export async function batchUpdatePopularity(
+export async function bulkUpdatePopularity(
   batch: { tmdbId: number; popularity: number }[]
 ) {
   if (batch.length === 0) return;
@@ -302,7 +502,7 @@ export async function batchUpdatePopularity(
       WHERE ${tmdbMedia.tmdbId} = ${sql.raw(`data.tmdb_id::integer`)};
     `);
   } catch (error) {
-    console.error('[batchUpdatePopularity] DATABASE FAILED:', error);
+    console.error('[bulkUpdatePopularity] DATABASE FAILED:', error);
     throw error;
   }
 }
@@ -535,11 +735,11 @@ export async function fetchAndUpsertMvSrc(
   // 3. upsert sources and subtitles
   await upsertSrcAndSubtitle('mv', mediaData.id, results);
 
-  // // 4. flag media as needing denorm field update
-  // await db
-  //   .update(tmdbMedia)
-  //   .set({ denormFieldsUpdatedAt: null })
-  //   .where(eq(tmdbMedia.id, mediaData.id));
+  // 4. after successful src fetch -> flag media as needing denorm field update
+  await db
+    .update(tmdbMedia)
+    .set({ denormFieldsOutdated: true })
+    .where(eq(tmdbMedia.id, mediaData.id));
 }
 
 export async function fetchAndUpsertTvSrc(
@@ -604,32 +804,37 @@ export async function fetchAndUpsertTvSrc(
   // 3. upsert sources and subtitles
   await upsertSrcAndSubtitle('tv', episodeData.id, results);
 
-  // 4. flag media as needing denorm field update
+  // 4. after successful src fetch -> flag media as needing denorm field update
   await db
     .update(tmdbMedia)
-    .set({ denormFieldsUpdatedAt: null })
+    .set({ denormFieldsOutdated: true })
     .where(eq(tmdbMedia.id, mediaId));
 }
 
-export async function upsertSeasonsAndEpisodes(details: any, mediaId: string) {
-  const seasonsFromApi = details.seasons?.filter(
+export async function upsertSeasonsAndEpisodes(
+  detail: any,
+  media: {
+    mediaId: string;
+    seasonCount?: number;
+  }
+) {
+  const seasonsFromApi = detail.seasons?.filter(
     (s: { season_number: number }) => s.season_number !== 0
   );
-
   if (!seasonsFromApi || seasonsFromApi.length === 0) return;
 
-  // 1. Fetch all season details from the API in parallel
-  console.log(
-    `[upsertSeasonsAndEpisodes] Fetching season details via api: ${seasonsFromApi.length}`
-  );
+  // if no seasonCount -> new tv -> insert seasons/episodes
+  // if has seasonCount -> existing tv -> check if seasonCount is correct -> if not, refetch and upsert
+  if (media.seasonCount && media.seasonCount === seasonsFromApi.length) return;
+
   const seasonDetailsPromises = seasonsFromApi.map((season: any) =>
-    fetchTmdbSeasonDetailViaApi(details.id, season.season_number)
+    fetchTmdbSeasonDetailViaApi(detail.id, season.season_number)
   );
   const seasonDetails = await Promise.all(seasonDetailsPromises);
 
   // 2. Prepare all seasons for a single batch upsert
   const seasonInput = seasonsFromApi.map((season: any) => ({
-    mediaId: mediaId,
+    mediaId: media.mediaId,
     seasonNumber: season.season_number,
     title: season.name,
     description: season.overview,
@@ -692,12 +897,483 @@ export async function upsertSeasonsAndEpisodes(details: any, mediaId: string) {
         },
       });
 
-    console.log(`[upsertSeasonsAndEpisodes] ${details.id}: Done.`);
+    console.log(`[upsertSeasonsAndEpisodes] ${detail.id}: Done.`);
 
-    // 7. flag media as needing denorm field update
+    // 7. after updating seasons/episodes -> flag media as needing denorm field update
     await tx
       .update(tmdbMedia)
-      .set({ denormFieldsUpdatedAt: null })
-      .where(eq(tmdbMedia.id, mediaId));
+      .set({ denormFieldsOutdated: true })
+      .where(eq(tmdbMedia.id, media.mediaId));
   });
+}
+
+async function populateSeasonAndEpisodeForTvList(
+  tvInput: {
+    mediaId: string;
+    tmdbId: number;
+    type: 'movie' | 'tv';
+    title: string;
+    seasonCount?: number;
+  }[],
+  tvDetails: any[]
+) {
+  console.log(
+    `[populateSeasonAndEpisodeForTvList] input length: ${tvInput.length}`
+  );
+  if (tvInput.length === 0) return;
+
+  if (tvDetails.length === 0) {
+    // 1. fetch details from tmdb api and store details in one array
+    await runItemsInEachBatchConcurrently(tvInput, 10, async (tv) => {
+      console.log(
+        `[populateSeasonAndEpisodeForTvList] fetch tv detail: ${count}/${tvInput.length} (${tv.tmdbId}:${tv.title})`
+      );
+      try {
+        const detail = await fetchTmdbDetailViaApi(tv.type, tv.tmdbId);
+        tvDetails.push(detail);
+      } catch (err) {
+        console.error(
+          `[populateSeasonAndEpisodeForTvList] fetch tv detail failed: ${tv.tmdbId}`,
+          err
+        );
+      }
+    });
+    console.log(
+      `[populateSeasonAndEpisodeForTvList] fetched tv details: ${tvDetails.length}`
+    );
+  }
+
+  let count = 0;
+  await runItemsInEachBatchConcurrently(tvInput, 10, async (tv) => {
+    count++;
+    console.log(
+      `[populateSeasonAndEpisodeForTvList] upsert tv seasons/episodes: ${count}/${tvInput.length} (${tv.tmdbId}:${tv.title})`
+    );
+    // get details
+    const tvDetail = tvDetails.find((detail) => detail.id === tv.tmdbId);
+    if (!tvDetail) {
+      console.log(
+        `[populateSeasonAndEpisodeForTvList] tv ${tv.title}: no details`
+      );
+      return;
+    }
+    // upsert seasons/episodes
+    await upsertSeasonsAndEpisodes(tvDetail, tv);
+  });
+  console.log(
+    `[populateSeasonAndEpisodeForTvList] upsert tv seasons/episodes: done`
+  );
+}
+
+export async function populateMediaUsingTmdbTrending(limit: number) {
+  // 1. delete trending list first
+  await db.delete(tmdbTrending).execute();
+
+  // 2. fetch trending from api (mv will be missing origin, tv will be missing season/episode)
+  const fetchOutput = await fetchTmdbTrendingViaApi(limit);
+
+  // 3. insert fetched result to media/genre/origin tables
+  const mediaOutput = await bulkUpsertNewMedia(fetchOutput);
+
+  // 4. insert new media to trending table
+  const trendingInput = mediaOutput.map((item, index) => {
+    return {
+      mediaId: item.mediaId,
+      rank: index,
+    };
+  });
+  await db.insert(tmdbTrending).values(trendingInput).execute();
+
+  // 1. fill origin for trending mv
+  const trendingMv = mediaOutput.filter((media) => media.type === 'movie');
+
+  let movieCount = 0;
+  const mvOriginInput: { mediaId: string; originId: string }[] = [];
+  await runItemsInEachBatchConcurrently(trendingMv, 10, async (movie) => {
+    movieCount++;
+    console.log(
+      `[populateMediaUsingTmdbTrending] mv progress: ${movieCount}/${trendingMv.length} (${movie.tmdbId}:${movie.title})`
+    );
+    // 2. for mv, fetch detail via api
+    const details = await fetchTmdbDetailViaApi('movie', movie.tmdbId);
+    // 3. for mv, collect origin inputs
+    const originInput = details.origin_country.map((originId: string) => ({
+      mediaId: movie.mediaId,
+      originId: originId,
+    }));
+    mvOriginInput.push(...originInput);
+  });
+  // 4. bulk insert mv origin
+  if (mvOriginInput.length > 0) {
+    await db
+      .insert(tmdbMediaToTmdbOrigin)
+      .values(mvOriginInput)
+      .onConflictDoNothing();
+  }
+
+  // 1. fill season/episode for trending tv
+  const trendingTv = mediaOutput.filter((media) => media.type === 'tv');
+  await populateSeasonAndEpisodeForTvList(trendingTv, fetchOutput);
+
+  return mediaOutput;
+}
+
+// must insert all tmdbMedia fields (other than denormed)
+// And it must have origin and genre table filled.
+// Then it must have season and episode table filled as well.
+export async function populateMediaUsingTmdbIds(
+  input: { tmdbId: number; type: 'movie' | 'tv'; seasonCount?: number }[]
+) {
+  // 1. batch fetch details from tmdb api and store details in one array
+  console.log(
+    `[populateMediaUsingTmdbIds] fetching media details: ${input.length}`
+  );
+  const mediaDetails: any[] = [];
+  await runItemsInEachBatchConcurrently(input, 10, async (item) => {
+    try {
+      const detail = await fetchTmdbDetailViaApi(item.type, item.tmdbId);
+      mediaDetails.push(detail);
+    } catch (err) {
+      console.error(
+        `[populateMediaUsingTmdbIds] failed fetching detail: ${item.tmdbId}`,
+        err
+      );
+    }
+  });
+  console.log(
+    `[populateMediaUsingTmdbIds] done fetching media details: ${mediaDetails.length}`
+  );
+
+  // 2. upsert media, genre, origin
+  const mediaOutput = await bulkUpsertNewMedia(mediaDetails);
+  console.log(
+    `[populateMediaUsingTmdbIds] Upserted media/genre/origin: ${mediaOutput.length}`
+  );
+
+  // 3. for each tv media, fetch seasons/episodes and upsert them
+  const tvInput = mediaOutput
+    .filter((m) => m.type === 'tv')
+    .map((tv) => {
+      return {
+        ...tv,
+        seasonCount: input.find((i) => i.tmdbId === tv.tmdbId)?.seasonCount,
+      };
+    });
+  await populateSeasonAndEpisodeForTvList(tvInput, mediaDetails);
+
+  return mediaOutput;
+}
+
+// fetch src for an arbitrary list of media
+// mv: skip if it has source
+// tv: find srcless episodes and fetch src for them
+export async function fetchSrcForMediaList(input: string[]) {
+  if (input.length === 0) {
+    console.log('[fetchSrcForMediaList] empty input.');
+    return;
+  }
+  console.log(`[fetchSrcForMediaList] input length: ${input.length}`);
+
+  const yesterday = new Date();
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+
+  // --- 1. Find mv whose release date is older than today but have no src ---
+  const mvConditions = [
+    eq(tmdbMedia.type, 'movie'),
+    isNotNull(tmdbMedia.releaseDate),
+    lte(tmdbMedia.releaseDate, yesterday),
+    isNull(tmdbSource.id),
+    inArray(tmdbMedia.id, input),
+  ];
+  // if (input !== 'all') {
+  //   mvConditions.push(inArray(tmdbMedia.id, input));
+  // }
+
+  const srclessMv = await db
+    .select({
+      id: tmdbMedia.id,
+      tmdbId: tmdbMedia.tmdbId,
+      title: tmdbMedia.title,
+    })
+    .from(tmdbMedia)
+    .leftJoin(tmdbSource, eq(tmdbSource.mediaId, tmdbMedia.id))
+    .where(and(...mvConditions));
+
+  // --- 2. Find tv episodes whose air date is older than today but have no src ---
+  const tvConditions = [
+    isNotNull(tmdbEpisode.airDate),
+    lte(tmdbEpisode.airDate, yesterday),
+    isNull(tmdbSource.id),
+    inArray(tmdbMedia.id, input),
+  ];
+  // if (input !== 'all') {
+  //   tvConditions.push(inArray(tmdbMedia.id, input));
+  // }
+
+  // Create a subquery to count aired episodes for each media
+  // subqueries behave like tables for the duration of the query
+  const airedEpisodeSubquery = db
+    .select({
+      mediaId: tmdbSeason.mediaId,
+      // The .as('episode_count') is crucial for referencing this column later.
+      episodeCount: sql<number>`count(${tmdbEpisode.id})`.as('episode_count'),
+    })
+    .from(tmdbEpisode)
+    .innerJoin(tmdbSeason, eq(tmdbEpisode.seasonId, tmdbSeason.id))
+    .where(
+      and(isNotNull(tmdbEpisode.airDate), lte(tmdbEpisode.airDate, yesterday))
+    )
+    .groupBy(tmdbSeason.mediaId)
+    .as('aired_episode_subquery'); // We must alias the subquery to use it in a join.
+
+  const srclessEpisodes = await db
+    .select({
+      episode: tmdbEpisode,
+      season: tmdbSeason,
+      media: tmdbMedia,
+      airedEpisodeCount: airedEpisodeSubquery.episodeCount,
+    })
+    .from(tmdbEpisode)
+    .innerJoin(tmdbSeason, eq(tmdbEpisode.seasonId, tmdbSeason.id))
+    .innerJoin(tmdbMedia, eq(tmdbSeason.mediaId, tmdbMedia.id))
+    .innerJoin(
+      airedEpisodeSubquery,
+      eq(tmdbMedia.id, airedEpisodeSubquery.mediaId)
+    )
+    .leftJoin(tmdbSource, eq(tmdbSource.episodeId, tmdbEpisode.id))
+    .where(and(...tvConditions))
+    .orderBy(
+      asc(airedEpisodeSubquery.episodeCount),
+      asc(tmdbMedia.tmdbId),
+      asc(tmdbSeason.seasonNumber),
+      asc(tmdbEpisode.episodeNumber)
+    );
+
+  if (srclessMv.length === 0 && srclessEpisodes.length === 0) {
+    console.log('[fetchSrcForMediaList] all media have src already.');
+    return;
+  }
+
+  // --- 3. Process the findings using the Puppeteer cluster ---
+  const cluster = await getCluster();
+  try {
+    let processedMvCount = 0;
+    await runItemsInEachBatchConcurrently(srclessMv, 1, async (media) => {
+      processedMvCount++;
+      console.log(`=======`);
+      console.log(
+        `[fetchSrcForMediaList] mv progress: ${processedMvCount}/${srclessMv.length} (${media.tmdbId}: ${media.title})`
+      );
+      await fetchAndUpsertMvSrc(media.tmdbId);
+    });
+
+    let processedEpisodeCount = 0;
+    await runItemsInEachBatchConcurrently(srclessEpisodes, 1, async (item) => {
+      processedEpisodeCount++;
+      console.log(`=======`);
+      console.log(
+        `[fetchSrcForMediaList] tv progress: ${processedEpisodeCount}/${srclessEpisodes.length} (${item.media.tmdbId}/${item.season.seasonNumber}/${item.episode.episodeNumber}: ${item.media.title}) (${item.airedEpisodeCount})`
+      );
+      const { episode, season, media } = item;
+      await fetchAndUpsertTvSrc(
+        media.id,
+        media.tmdbId,
+        season.seasonNumber,
+        episode.episodeNumber,
+        episode.episodeIndex
+      );
+    });
+  } finally {
+    // CRITICAL: Close the cluster after ALL media items are processed.
+    await closeCluster();
+  }
+}
+
+// denorm fields include:
+// availability: mv = how many src, tv = how many episodes with src
+// total aired episodes: mv = 0, tv = how many episodes whose air date is before today
+// latestEpisodeInfo: season number, episode number, air date
+export async function updateDenormFieldsForMediaList(input: 'all' | string[]) {
+  if (input !== 'all' && input.length === 0) {
+    console.log('[updateDenormFieldsForMediaList] empty input.');
+    return { updatedMovies: 0, updatedTvShows: 0 };
+  }
+  console.log(
+    `[updateDenormFieldsForMediaList] input length: ${
+      input === 'all' ? 'all' : input.length
+    }`
+  );
+
+  // 1. Update mv
+  const mvConditions =
+    input === 'all'
+      ? sql`WHERE m.type = 'movie' AND m.denorm_fields_outdated IS TRUE`
+      : sql`WHERE m.type = 'movie' AND m.denorm_fields_outdated IS TRUE AND m.id IN ${input}`;
+
+  const mvOutput = await db.execute(sql`
+    WITH movie_calcs AS (
+      SELECT
+        m.id,
+        (SELECT COUNT(*) FROM ${tmdbSource} src WHERE src.media_id = m.id) as "availabilityCount"
+      FROM ${tmdbMedia} m
+      ${mvConditions}
+    )
+    UPDATE ${tmdbMedia} m SET
+      availability_count = mc."availabilityCount",
+      aired_episode_count = 0,
+      updated_date = m.release_date,
+      updated_season_number = NULL,
+      updated_episode_number = NULL,
+      denorm_fields_outdated = FALSE
+    FROM movie_calcs mc
+    WHERE m.id = mc.id
+    RETURNING m.id;
+  `);
+  console.log(
+    `[updateDenormFieldsForMediaList] Updated ${mvOutput.length} movies`
+  );
+
+  // 2. get tv
+  const tvConditions = [
+    eq(tmdbMedia.type, 'tv'),
+    eq(tmdbMedia.denormFieldsOutdated, true),
+  ];
+  if (input !== 'all') {
+    tvConditions.push(inArray(tmdbMedia.id, input));
+  }
+
+  const tvIds = await db
+    .select({ id: tmdbMedia.id })
+    .from(tmdbMedia)
+    .where(and(...tvConditions));
+
+  if (tvIds.length === 0) {
+    console.log('[updateDenormFieldsForMediaList] No tv to update.');
+    return { updatedMv: mvOutput.length, updatedTv: 0 };
+  }
+
+  // collect tv denorm fields in batch
+  // 3. Perform a SINGLE, efficient bulk update for all dirty TV shows.
+  //    The loop and batchProcess are now REMOVED.
+  const tvOutput = await db.execute(sql`
+    WITH tv_calcs AS (
+      SELECT
+        m.id,
+        (SELECT COUNT(DISTINCT src.episode_id) FROM ${tmdbSource} src JOIN ${tmdbEpisode} e ON src.episode_id = e.id JOIN ${tmdbSeason} s ON e.season_id = s.id WHERE s.media_id = m.id) as "availabilityCount",
+        (SELECT COUNT(*) FROM ${tmdbEpisode} e JOIN ${tmdbSeason} s ON e.season_id = s.id WHERE s.media_id = m.id AND e.air_date < CURRENT_DATE) as "airedEpisodeCount",
+        (
+          SELECT json_build_object('seasonNumber', s.season_number, 'episodeNumber', e.episode_number, 'airDate', e.air_date)
+          FROM ${tmdbEpisode} e JOIN ${tmdbSeason} s ON e.season_id = s.id
+          WHERE s.media_id = m.id AND EXISTS (SELECT 1 FROM ${tmdbSource} src WHERE src.episode_id = e.id)
+          ORDER BY e.air_date DESC
+          LIMIT 1
+        ) as "latestEpisode"
+      FROM ${tmdbMedia} m
+      WHERE m.id IN ${tvIds.map((tv) => tv.id)}
+    )
+    UPDATE ${tmdbMedia} m SET
+      availability_count = tc."availabilityCount",
+      aired_episode_count = tc."airedEpisodeCount",
+      updated_date = (tc."latestEpisode"->>'airDate')::timestamp,
+      updated_season_number = (tc."latestEpisode"->>'seasonNumber')::integer,
+      updated_episode_number = (tc."latestEpisode"->>'episodeNumber')::integer,
+      denorm_fields_outdated = FALSE
+    FROM tv_calcs tc
+    WHERE m.id = tc.id
+    RETURNING m.id;
+  `);
+
+  console.log(
+    `[updateDenormFieldsForMediaList] Updated ${tvOutput.length} tv.`
+  );
+
+  return {
+    updatedMovies: mvOutput.length,
+    updatedTvShows: tvOutput.length,
+  };
+}
+
+export async function updateRatingsForMediaList(
+  input: {
+    id: string;
+    tmdbId: number;
+    title: string;
+    type: 'movie' | 'tv';
+  }[]
+) {
+  // 1. Collect all the new rating details in an array first.
+  const newRatings: {
+    id: string;
+    voteAverage: number;
+    voteCount: number;
+  }[] = [];
+
+  await runItemsInEachBatchConcurrently(input, 10, async (media) => {
+    const details = await fetchTmdbDetailViaApi(media.type, media.tmdbId);
+    if (details?.vote_average && details?.vote_count) {
+      newRatings.push({
+        id: media.id,
+        voteAverage: details.vote_average,
+        voteCount: details.vote_count,
+      });
+    } else {
+      console.log(
+        `[updateRatingsForMediaList] ${media.type} (${media.title}): Missing ${
+          details?.vote_average
+            ? `vote vount`
+            : details?.vote_count
+            ? `vote avg`
+            : `both count and avg`
+        }`
+      );
+    }
+  });
+  if (newRatings.length === 0) {
+    console.log('[updateRatingsForMediaList] No media from API had ratings.');
+    return { success: true, count: 0 };
+  }
+  console.log(
+    `[updateRatingsForMediaList] API returned ${newRatings.length} ratings for media. Starting bulk db insert...`
+  );
+
+  // 2. bulk update new ratings
+  try {
+    await db.execute(sql`
+      UPDATE ${tmdbMedia} SET
+        vote_average = ${sql.raw(`data.vote_average::real`)},
+        vote_count = ${sql.raw(`data.vote_count::integer`)},
+        vote_updated_at = NOW()
+      FROM (VALUES ${sql.join(
+        newRatings.map((r) => sql`(${r.id}, ${r.voteAverage}, ${r.voteCount})`),
+        sql`, `
+      )}) AS data(id, vote_average, vote_count)
+      WHERE ${tmdbMedia.id} = ${sql.raw(`data.id::varchar`)};
+    `);
+  } catch (error) {
+    console.error('[updateRatingsForMediaList] DATABASE UPDATE FAILED:', error);
+    throw error;
+  }
+
+  console.log(
+    `[updateRatingsForMediaList] Done: db updated ${newRatings.length} media ratings.`
+  );
+  return newRatings.length;
+}
+
+export async function updateAllChangedMedia() {
+  // 1. Get ALL changed IDs from the TMDB API
+  const allChangedIds = await fetchAllChangedTmdbIds();
+  console.log(
+    `[updateMediaUsingTmdbChangedApi] number of changed media in tmdb: ${allChangedIds.length}`
+  );
+
+  // 2. Filter that list to find only the ones that are in YOUR database
+  const changedIdsInMyDb = await findExistingTmdbIds(allChangedIds);
+  console.log(
+    `[updateMediaUsingTmdbChangedApi] number of changed media in db: ${changedIdsInMyDb.length}`
+  );
+  // console.log(changedIdsInMyDb);
+
+  // 3. run update on the changed media list
+  await populateMediaUsingTmdbIds(changedIdsInMyDb);
 }

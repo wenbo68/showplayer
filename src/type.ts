@@ -28,9 +28,6 @@ export type ListMedia = {
   media: Media;
   origins: string[];
   genres: string[];
-  // availabilityCount: number;
-  // totalEpisodeCount: number;
-  // latestEpisodeInfo: LatestEpisodeInfo;
 };
 
 export type LatestEpisodeInfo = {

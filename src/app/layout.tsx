@@ -43,8 +43,13 @@ export default async function RootLayout({
   );
 }
 
+// create fetch top 50 popular mv/tv and insert to db
+// remove cron router: we cannot use vercel cron (time limit not enough)
+
 // make media buttons display info according to the search filters (horizontal strips including or not including media description)
 // also should media buttons display availability, total episodes, missing episodes?
+
+// use run time (only present in mv details) instead of updatedDate for mv
 
 // if media title isn't english -> don't add to db
 // update trpc procedure to update popularity, rating, vote count when fetching new media via tmdb api

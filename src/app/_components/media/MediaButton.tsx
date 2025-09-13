@@ -24,10 +24,6 @@ export default function MediaButton({
   }, []);
 
   const media = mediaDetail.media;
-  const isReleased = media.releaseDate
-    ? new Date(media.releaseDate) <= new Date()
-    : false;
-
   const isInUserList = useIsMediaInUserList(pageMediaIds, media.id, 'saved');
 
   return (

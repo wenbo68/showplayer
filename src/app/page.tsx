@@ -5,6 +5,7 @@ import { Suspense } from 'react';
 import MediaList from './_components/media/MediaList';
 import SearchBarFallback from './_components/search/SearchBarFallback';
 import { auth } from '~/server/auth';
+import IdSubmitter from './_components/IdSubmitter';
 
 export default async function Home() {
   const session = await auth();
@@ -72,7 +73,7 @@ export default async function Home() {
 
   return (
     <HydrateClient>
-      <div className="flex flex-col items-center justify-center p-4 gap-12">
+      <div className="flex flex-col justify-center p-4 gap-12">
         {session?.user.role === 'admin' && <TmdbAdmin />}
 
         <Suspense fallback={<SearchBarFallback />}>
@@ -110,6 +111,8 @@ export default async function Home() {
             link="/search?format=tv&avg=0&count=300&order=vote-avg-desc&page=1"
           />
         </div>
+
+        <IdSubmitter />
       </div>
     </HydrateClient>
   );

@@ -38,23 +38,31 @@ import {
   tmdbTopRated,
   tmdbTrending,
   userMediaList,
+  userSubmission,
+  userSubmissionStatusEnum,
 } from '~/server/db/schema';
 import {
-  batchProcess,
+  runItemsInEachBatchConcurrently,
   fetchAndUpsertMvSrc,
   fetchAndUpsertTvSrc,
+  fetchSrcForMediaList,
   fetchTmdbDetailViaApi,
   fetchTmdbMvGenresViaApi,
   fetchTmdbOriginsViaApi,
   fetchTmdbTopRatedViaApi,
   fetchTmdbTrendingViaApi,
   fetchTmdbTvGenresViaApi,
-  upsertNewMedia,
+  bulkUpsertNewMedia,
   upsertSeasonsAndEpisodes,
+  populateMediaUsingTmdbTrending,
+  populateMediaUsingTmdbIds,
+  updateDenormFieldsForMediaList,
+  runItemsInEachBatchInBulk,
+  updateAllChangedMedia,
 } from '~/server/utils';
-import type { LatestEpisodeInfo, ListMedia } from '~/type';
-import { closeCluster, getCluster } from '~/app/_utils/clusterManager';
+import type { ListMedia } from '~/type';
 import { TRPCError } from '@trpc/server';
+import { startOfDay, subDays } from 'date-fns';
 
 export const mediaRouter = createTRPCRouter({
   updateMediaInUserList: protectedProcedure
@@ -126,7 +134,7 @@ export const mediaRouter = createTRPCRouter({
       return detailsMap;
     }),
 
-  getFilterOptions: protectedProcedure.query(async ({ ctx }) => {
+  getFilterOptions: publicProcedure.query(async ({ ctx }) => {
     const genres = await ctx.db
       .selectDistinct({
         id: tmdbGenre.id,
@@ -182,288 +190,6 @@ export const mediaRouter = createTRPCRouter({
     // --- Add the new array to the return object ---
     return { genres, origins, releaseYears, updatedYears };
   }),
-
-  // searchAndFilter: publicProcedure
-  //   .input(
-  //     z.object({
-  //       title: z.string().optional(),
-  //       format: z.array(z.enum(['movie', 'tv'])).optional(),
-  //       genre: z.array(z.number()).optional(),
-  //       origin: z.array(z.string()).optional(),
-  //       year: z.array(z.number()).optional(),
-  //       updatedYear: z.array(z.number()).optional(), // Add the new filter
-  //       minVoteAvg: z.number().min(0),
-  //       minVoteCount: z.number().min(0),
-  //       order: z.enum([
-  //         'released-desc',
-  //         'released-asc',
-  //         'title-desc',
-  //         'title-asc',
-  //         'popularity-desc',
-  //         'popularity-asc',
-  //         'vote-avg-desc',
-  //         'vote-avg-asc',
-  //         'vote-count-desc',
-  //         'vote-count-asc',
-  //         'updated-desc',
-  //         'updated-asc',
-  //       ]),
-  //       page: z.number().min(1),
-  //       pageSize: z.number().min(1),
-  //       list: z.array(z.enum(['saved', 'favorite', 'later'])).optional(),
-  //     })
-  //   )
-  //   .query(async ({ ctx, input }) => {
-  //     // In a publicProcedure, ctx.session is available but can be null.
-  //     const { session } = ctx;
-  //     const {
-  //       title,
-  //       format,
-  //       genre,
-  //       origin,
-  //       year,
-  //       updatedYear,
-  //       minVoteAvg,
-  //       minVoteCount,
-  //       page,
-  //       pageSize,
-  //       list,
-  //     } = input;
-
-  //     // 1. define columns in order to select them in the query
-  //     // aggregate means to combine all values from 1 column to 1 cell array (so that media won't be duplicated)
-  //     const aggregatedOrigins = sql<
-  //       string[]
-  //     >`array_agg(DISTINCT ${tmdbOrigin.name})`.as('origins');
-  //     const aggregatedGenres = sql<
-  //       string[]
-  //     >`array_agg(DISTINCT ${tmdbGenre.name})`.as('genres');
-  //     // mv: how many sources
-  //     // tv: how many episodes have source
-  //     const availabilityCountExpression = sql<number>`
-  //       CASE
-  //         WHEN ${tmdbMedia.type} = 'movie'
-  //         THEN (
-  //           SELECT COUNT(*) FROM ${tmdbSource}
-  //           WHERE ${tmdbSource.mediaId} = ${tmdbMedia.id}
-  //         )
-  //         WHEN ${tmdbMedia.type} = 'tv'
-  //         THEN (
-  //           SELECT COUNT(DISTINCT ${tmdbSource.episodeId})
-  //           FROM ${tmdbSource}
-  //           JOIN ${tmdbEpisode} ON ${tmdbSource.episodeId} = ${tmdbEpisode.id}
-  //           JOIN ${tmdbSeason} ON ${tmdbEpisode.seasonId} = ${tmdbSeason.id}
-  //           WHERE ${tmdbSeason.mediaId} = ${tmdbMedia.id}
-  //         )
-  //         ELSE 0
-  //       END`.mapWith(Number);
-  //     const availabilityCount =
-  //       availabilityCountExpression.as('availabilityCount');
-  //     // mv: 0
-  //     // tv: how many episodes with airDate before today
-  //     const totalEpisodeCount = sql<number>`
-  //       CASE
-  //         WHEN ${tmdbMedia.type} = 'tv'
-  //         THEN (
-  //           SELECT COUNT(*)
-  //           FROM ${tmdbEpisode}
-  //           INNER JOIN ${tmdbSeason} ON ${tmdbEpisode.seasonId} = ${tmdbSeason.id}
-  //           WHERE ${tmdbSeason.mediaId} = ${tmdbMedia.id}
-  //             AND ${tmdbEpisode.airDate} < CURRENT_DATE
-  //         )
-  //         ELSE 0
-  //       END`
-  //       .mapWith(Number)
-  //       .as('totalEpisodeCount');
-  //     // mv: releaseDate
-  //     // tv: airDate of most recent episode that has source
-  //     const latestEpisodeInfoExpression = sql<LatestEpisodeInfo>`
-  //       CASE
-  //         WHEN ${tmdbMedia.type} = 'tv' THEN (
-  //           SELECT json_build_object(
-  //             'airDate', e.air_date,
-  //             'seasonNumber', s.season_number,
-  //             'episodeNumber', e.episode_number
-  //           )
-  //           FROM ${tmdbEpisode} e
-  //           JOIN ${tmdbSeason} s ON e.season_id = s.id
-  //           WHERE s.media_id = ${tmdbMedia.id}
-  //             AND EXISTS (
-  //               SELECT 1 FROM ${tmdbSource} src WHERE src.episode_id = e.id
-  //             )
-  //           ORDER BY e.air_date DESC
-  //           LIMIT 1
-  //         )
-  //         ELSE NULL
-  //       END`;
-  //     const latestEpisodeInfo =
-  //       latestEpisodeInfoExpression.as('latestEpisodeInfo');
-
-  //     // 2. create subquery for getting how many total media there are
-  //     const countSubquery = ctx.db
-  //       .select({
-  //         id: tmdbMedia.id, // Only need ID for counting
-  //         releaseDate: tmdbMedia.releaseDate,
-  //         title: tmdbMedia.title,
-  //       })
-  //       .from(tmdbMedia)
-  //       .leftJoin(
-  //         tmdbMediaToTmdbOrigin,
-  //         eq(tmdbMedia.id, tmdbMediaToTmdbOrigin.mediaId)
-  //       )
-  //       .leftJoin(tmdbOrigin, eq(tmdbMediaToTmdbOrigin.originId, tmdbOrigin.id))
-  //       .leftJoin(
-  //         tmdbMediaToTmdbGenre,
-  //         eq(tmdbMedia.id, tmdbMediaToTmdbGenre.mediaId)
-  //       )
-  //       .leftJoin(tmdbGenre, eq(tmdbMediaToTmdbGenre.genreId, tmdbGenre.id))
-  //       // We must group by media to deduplicate media and aggregate origins/genres
-  //       .groupBy(tmdbMedia.id)
-  //       .$dynamic(); // Use $dynamic to apply WHERE clause next
-
-  //     // --- 3. Build the Data Query ---
-  //     // select all needed fields
-  //     const dataQueryBuilder = ctx.db
-  //       .select({
-  //         media: tmdbMedia,
-  //         origins: aggregatedOrigins,
-  //         genres: aggregatedGenres,
-  //         availabilityCount: availabilityCount,
-  //         totalEpisodeCount: totalEpisodeCount,
-  //         latestEpisodeInfo: latestEpisodeInfo,
-  //       })
-  //       .from(tmdbMedia)
-  //       .leftJoin(
-  //         tmdbMediaToTmdbOrigin,
-  //         eq(tmdbMedia.id, tmdbMediaToTmdbOrigin.mediaId)
-  //       )
-  //       .leftJoin(tmdbOrigin, eq(tmdbMediaToTmdbOrigin.originId, tmdbOrigin.id))
-  //       .leftJoin(
-  //         tmdbMediaToTmdbGenre,
-  //         eq(tmdbMedia.id, tmdbMediaToTmdbGenre.mediaId)
-  //       )
-  //       .leftJoin(tmdbGenre, eq(tmdbMediaToTmdbGenre.genreId, tmdbGenre.id))
-  //       // We must group by media to deduplicate media and aggregate origins/genres
-  //       .groupBy(tmdbMedia.id)
-  //       .$dynamic();
-
-  //     // 4. apply all conditions to count and data query
-  //     const conditions = [];
-  //     // if list exists, check if user is logged in
-  //     if (list && list.length > 0) {
-  //       if (!session?.user?.id) {
-  //         // If not, throw an error. This protects the endpoint.
-  //         throw new TRPCError({ code: 'UNAUTHORIZED' });
-  //       }
-  //       const userId = session.user.id;
-  //       conditions.push(eq(userMediaList.userId, userId));
-  //       conditions.push(inArray(userMediaList.listType, list));
-  //       // add inner join
-  //       countSubquery.innerJoin(
-  //         userMediaList,
-  //         eq(tmdbMedia.id, userMediaList.mediaId)
-  //       );
-  //       dataQueryBuilder.innerJoin(
-  //         userMediaList,
-  //         eq(tmdbMedia.id, userMediaList.mediaId)
-  //       );
-  //     }
-  //     if (title) {
-  //       conditions.push(ilike(tmdbMedia.title, `%${title}%`));
-  //     }
-  //     if (format && format.length > 0) {
-  //       conditions.push(inArray(tmdbMedia.type, format));
-  //     }
-  //     if (year && year.length > 0) {
-  //       // Use a SQL function to extract the year from the release_date column
-  //       conditions.push(
-  //         inArray(sql`extract(year from ${tmdbMedia.releaseDate})`, year)
-  //       );
-  //     }
-  //     // Handle genres filter (acts on the joined tmdbMediaToTmdbGenre table)
-  //     if (genre && genre.length > 0) {
-  //       conditions.push(inArray(tmdbMediaToTmdbGenre.genreId, genre));
-  //     }
-  //     // Handle origins filter (acts on the joined tmdbMediaToTmdbOrigin table)
-  //     if (origin && origin.length > 0) {
-  //       conditions.push(inArray(tmdbMediaToTmdbOrigin.originId, origin));
-  //     }
-  //     if (minVoteAvg > 0) {
-  //       conditions.push(gte(tmdbMedia.voteAverage, minVoteAvg));
-  //     }
-  //     if (minVoteCount > 0) {
-  //       conditions.push(gte(tmdbMedia.voteCount, minVoteCount));
-  //     }
-
-  //     if (conditions.length > 0) {
-  //       countSubquery.where(and(...conditions));
-  //       dataQueryBuilder.where(and(...conditions));
-  //     }
-  //     countSubquery.having(gt(availabilityCountExpression, 0));
-  //     dataQueryBuilder.having(gt(availabilityCountExpression, 0));
-
-  //     // 5. Get the Total Count from the Subquery
-  //     // This is now very efficient. The database does all the hard work and returns one row.
-  //     const countResult = await ctx.db
-  //       .select({ count: count() })
-  //       .from(countSubquery.as('sq'));
-  //     const totalMediaCount = countResult[0]?.count ?? 0;
-  //     const totalPages = Math.ceil(totalMediaCount / pageSize);
-
-  //     // 6. add order by to data query
-  //     let orderByClause;
-  //     switch (input.order) {
-  //       case 'title-desc':
-  //         orderByClause = desc(tmdbMedia.title);
-  //         break;
-  //       case 'title-asc':
-  //         orderByClause = asc(tmdbMedia.title);
-  //         break;
-  //       case 'released-desc':
-  //         orderByClause = desc(tmdbMedia.releaseDate);
-  //         break;
-  //       case 'released-asc':
-  //         orderByClause = asc(tmdbMedia.releaseDate);
-  //         break;
-  //       case 'updated-desc':
-  //         orderByClause = sql`(${latestEpisodeInfoExpression}->>'airDate')::timestamp DESC NULLS LAST`;
-  //         break;
-  //       case 'updated-asc':
-  //         orderByClause = sql`(${latestEpisodeInfoExpression}->>'airDate')::timestamp ASC NULLS FIRST`;
-  //         break;
-  //       case 'popularity-desc':
-  //         orderByClause = desc(tmdbMedia.popularity);
-  //         break;
-  //       case 'popularity-asc':
-  //         orderByClause = asc(tmdbMedia.popularity);
-  //         break;
-  //       case 'vote-avg-desc':
-  //         orderByClause = desc(tmdbMedia.voteAverage);
-  //         break;
-  //       case 'vote-avg-asc':
-  //         orderByClause = asc(tmdbMedia.voteAverage);
-  //         break;
-  //       case 'vote-count-desc':
-  //         orderByClause = desc(tmdbMedia.voteCount);
-  //         break;
-  //       case 'vote-count-asc':
-  //         orderByClause = asc(tmdbMedia.voteCount);
-  //         break;
-  //     }
-  //     if (orderByClause) dataQueryBuilder.orderBy(orderByClause);
-
-  //     // 6. get all media for chosen page
-  //     // const pageSize = 30;
-  //     const pageMedia = await dataQueryBuilder
-  //       .limit(pageSize)
-  //       .offset((page - 1) * pageSize);
-
-  //     return {
-  //       // pageSize,
-  //       pageMedia,
-  //       totalPages,
-  //     };
-  //   }),
 
   searchAndFilter: publicProcedure
     .input(
@@ -675,172 +401,6 @@ export const mediaRouter = createTRPCRouter({
       };
     }),
 
-  // getTmdbTrending: protectedProcedure.query(async ({ ctx }) => {
-  //   const trending: ListMedia[] = await ctx.db
-  //     .select({
-  //       // rank: tmdbTrending.rank,
-  //       media: tmdbMedia,
-  //       origins: sql<string[]>`(
-  //         SELECT array_agg(${tmdbOrigin.name})
-  //         FROM ${tmdbMediaToTmdbOrigin}
-  //         INNER JOIN ${tmdbOrigin} ON ${tmdbMediaToTmdbOrigin.originId} = ${tmdbOrigin.id}
-  //         WHERE ${tmdbMediaToTmdbOrigin.mediaId} = ${tmdbMedia.id}
-  //       )`,
-  //       genres: sql<string[]>`(
-  //         SELECT array_agg(${tmdbGenre.name})
-  //         FROM ${tmdbMediaToTmdbGenre}
-  //         INNER JOIN ${tmdbGenre} ON ${tmdbMediaToTmdbGenre.genreId} = ${tmdbGenre.id}
-  //         WHERE ${tmdbMediaToTmdbGenre.mediaId} = ${tmdbMedia.id}
-  //       )`,
-  //       availabilityCount: sql<number>`
-  //         CASE
-  //           WHEN ${tmdbMedia.type} = 'movie'
-  //           THEN (
-  //             SELECT COUNT(*)
-  //             FROM ${tmdbSource}
-  //             WHERE ${tmdbSource.mediaId} = ${tmdbMedia.id}
-  //           )
-  //           WHEN ${tmdbMedia.type} = 'tv'
-  //           THEN (
-  //             SELECT COUNT(DISTINCT ${tmdbEpisode}.id)
-  //             FROM ${tmdbSource}
-  //             JOIN ${tmdbEpisode} ON ${tmdbSource.episodeId} = ${tmdbEpisode.id}
-  //             JOIN ${tmdbSeason} ON ${tmdbEpisode.seasonId} = ${tmdbSeason.id}
-  //             WHERE ${tmdbSeason.mediaId} = ${tmdbMedia.id}
-  //           )
-  //           ELSE 0
-  //         END
-  //       `.mapWith(Number),
-  //       totalEpisodeCount: sql<number>`
-  //         CASE
-  //           WHEN ${tmdbMedia.type} = 'tv'
-  //           THEN (
-  //             SELECT COUNT(*)
-  //             FROM ${tmdbEpisode}
-  //             INNER JOIN ${tmdbSeason} ON ${tmdbEpisode.seasonId} = ${tmdbSeason.id}
-  //             WHERE ${tmdbSeason.mediaId} = ${tmdbMedia.id}
-  //               AND ${tmdbEpisode.airDate} <= (CURRENT_DATE - INTERVAL '1 day')
-  //           )
-  //           ELSE 0
-  //         END
-  //       `.mapWith(Number),
-  //     })
-  //     .from(tmdbTrending)
-  //     .innerJoin(tmdbMedia, eq(tmdbTrending.mediaId, tmdbMedia.id))
-  //     .orderBy(tmdbTrending.rank)
-  //     .execute();
-
-  //   return trending;
-  // }),
-
-  // getTmdbTopRatedMv: protectedProcedure.query(async ({ ctx }) => {
-  //   const topRatedMovies: ListMedia[] = await ctx.db
-  //     .select({
-  //       // rank: tmdbTopRated.rank,
-  //       avergeRating: tmdbTopRated.voteAverage,
-  //       voteCount: tmdbTopRated.voteCount,
-  //       media: tmdbMedia,
-  //       genres: sql<string[]>`(
-  //         SELECT array_agg(${tmdbGenre.name})
-  //         FROM ${tmdbMediaToTmdbGenre}
-  //         INNER JOIN ${tmdbGenre} ON ${tmdbMediaToTmdbGenre.genreId} = ${tmdbGenre.id}
-  //         WHERE ${tmdbMediaToTmdbGenre.mediaId} = ${tmdbMedia.id}
-  //       )`,
-  //       origins: sql<string[]>`(
-  //         SELECT array_agg(${tmdbOrigin.name})
-  //         FROM ${tmdbMediaToTmdbOrigin}
-  //         INNER JOIN ${tmdbOrigin} ON ${tmdbMediaToTmdbOrigin.originId} = ${tmdbOrigin.id}
-  //         WHERE ${tmdbMediaToTmdbOrigin.mediaId} = ${tmdbMedia.id}
-  //       )`,
-  //       availabilityCount: sql<number>`
-  //         CASE
-  //           WHEN ${tmdbMedia.type} = 'movie'
-  //           THEN (
-  //             SELECT COUNT(*)
-  //             FROM ${tmdbSource}
-  //             WHERE ${tmdbSource.mediaId} = ${tmdbMedia.id}
-  //           )
-  //           ELSE 0
-  //         END
-  //       `.mapWith(Number),
-  //       totalEpisodeCount: sql<number>`
-  //         CASE
-  //           WHEN ${tmdbMedia.type} = 'tv'
-  //           THEN (
-  //             SELECT COUNT(*)
-  //             FROM ${tmdbEpisode}
-  //             INNER JOIN ${tmdbSeason} ON ${tmdbEpisode.seasonId} = ${tmdbSeason.id}
-  //             WHERE ${tmdbSeason.mediaId} = ${tmdbMedia.id}
-  //               AND ${tmdbEpisode.airDate} <= (CURRENT_DATE - INTERVAL '1 day')
-  //           )
-  //           ELSE 0
-  //         END
-  //       `.mapWith(Number),
-  //     })
-  //     .from(tmdbTopRated) // 👈 Start from the top-rated table
-  //     .innerJoin(tmdbMedia, eq(tmdbTopRated.mediaId, tmdbMedia.id))
-  //     .where(eq(tmdbMedia.type, 'movie')) // 👈 Filter for movies
-  //     .orderBy(tmdbTopRated.rank) // 👈 Order by top-rated rank
-  //     .execute();
-
-  //   return topRatedMovies;
-  // }),
-
-  // getTmdbTopRatedTv: protectedProcedure.query(async ({ ctx }) => {
-  //   const topRatedTv: ListMedia[] = await ctx.db
-  //     .select({
-  //       // rank: tmdbTopRated.rank,
-  //       avergeRating: tmdbTopRated.voteAverage,
-  //       voteCount: tmdbTopRated.voteCount,
-  //       media: tmdbMedia,
-  //       genres: sql<string[]>`(
-  //         SELECT array_agg(${tmdbGenre.name})
-  //         FROM ${tmdbMediaToTmdbGenre}
-  //         INNER JOIN ${tmdbGenre} ON ${tmdbMediaToTmdbGenre.genreId} = ${tmdbGenre.id}
-  //         WHERE ${tmdbMediaToTmdbGenre.mediaId} = ${tmdbMedia.id}
-  //       )`,
-  //       origins: sql<string[]>`(
-  //         SELECT array_agg(${tmdbOrigin.name})
-  //         FROM ${tmdbMediaToTmdbOrigin}
-  //         INNER JOIN ${tmdbOrigin} ON ${tmdbMediaToTmdbOrigin.originId} = ${tmdbOrigin.id}
-  //         WHERE ${tmdbMediaToTmdbOrigin.mediaId} = ${tmdbMedia.id}
-  //       )`,
-  //       availabilityCount: sql<number>`
-  //         CASE
-  //           WHEN ${tmdbMedia.type} = 'tv'
-  //           THEN (
-  //             SELECT COUNT(DISTINCT ${tmdbEpisode}.id)
-  //             FROM ${tmdbSource}
-  //             JOIN ${tmdbEpisode} ON ${tmdbSource.episodeId} = ${tmdbEpisode.id}
-  //             JOIN ${tmdbSeason} ON ${tmdbEpisode.seasonId} = ${tmdbSeason.id}
-  //             WHERE ${tmdbSeason.mediaId} = ${tmdbMedia.id}
-  //           )
-  //           ELSE 0
-  //         END
-  //       `.mapWith(Number),
-  //       totalEpisodeCount: sql<number>`
-  //         CASE
-  //           WHEN ${tmdbMedia.type} = 'tv'
-  //           THEN (
-  //             SELECT COUNT(*)
-  //             FROM ${tmdbEpisode}
-  //             INNER JOIN ${tmdbSeason} ON ${tmdbEpisode.seasonId} = ${tmdbSeason.id}
-  //             WHERE ${tmdbSeason.mediaId} = ${tmdbMedia.id}
-  //               AND ${tmdbEpisode.airDate} <= (CURRENT_DATE - INTERVAL '1 day')
-  //           )
-  //           ELSE 0
-  //         END
-  //       `.mapWith(Number),
-  //     })
-  //     .from(tmdbTopRated) // 👈 Start from the top-rated table
-  //     .innerJoin(tmdbMedia, eq(tmdbTopRated.mediaId, tmdbMedia.id))
-  //     .where(eq(tmdbMedia.type, 'tv')) // 👈 Filter for TV shows
-  //     .orderBy(tmdbTopRated.rank) // 👈 Order by top-rated rank
-  //     .execute();
-
-  //   return topRatedTv;
-  // }),
-
   fetchOrigins: protectedProcedure.mutation(async ({ ctx }) => {
     // 1. Fetch the origins from the TMDB API
     const origins = await fetchTmdbOriginsViaApi();
@@ -933,7 +493,7 @@ export const mediaRouter = createTRPCRouter({
       });
 
       // 4. Upsert fetched result to media/genre tables
-      const mediaOutput = await upsertNewMedia(fetchOutput);
+      const mediaOutput = await bulkUpsertNewMedia(fetchOutput);
       console.log(`mediaOutput: `, mediaOutput.length);
 
       // 5. upsert ratings info to top rated table
@@ -954,63 +514,52 @@ export const mediaRouter = createTRPCRouter({
 
   fetchTmdbTrending: protectedProcedure
     .input(z.object({ limit: z.number() }))
-    .mutation(async ({ input, ctx }) => {
-      // 1. delete trending list first
-      await ctx.db.delete(tmdbTrending).execute();
-
-      // 2. fetch trending from api
-      const fetchOutput = await fetchTmdbTrendingViaApi(input.limit);
-
-      // 3. insert fetched result to media/genre/origin tables
-      const mediaOutput = await upsertNewMedia(fetchOutput);
-
-      // 4. insert new media to trending table
-      const trendingInput = mediaOutput.map((item: any, index: number) => {
-        return {
-          mediaId: item.mediaId,
-          rank: index,
-        };
-      });
-      await ctx.db.insert(tmdbTrending).values(trendingInput).execute();
-
-      return { count: mediaOutput.length };
+    .mutation(async ({ input }) => {
+      await populateMediaUsingTmdbTrending(input.limit);
     }),
 
-  populateMediaDetails: protectedProcedure.mutation(async ({ ctx }) => {
+  populateMissingMediaDetails: protectedProcedure.mutation(async ({ ctx }) => {
     // 1. find all movie without origin
     const moviesWithoutOrigin = await ctx.db
-      .select()
+      .select({
+        mediaId: tmdbMedia.id,
+        tmdbId: tmdbMedia.tmdbId,
+        title: tmdbMedia.title,
+      })
       .from(tmdbMedia)
+      .leftJoin(
+        tmdbMediaToTmdbOrigin,
+        eq(tmdbMediaToTmdbOrigin.mediaId, tmdbMedia.id)
+      )
       .where(
         and(
           eq(tmdbMedia.type, 'movie'),
-          notExists(
-            ctx.db
-              .select()
-              .from(tmdbMediaToTmdbOrigin)
-              .where(eq(tmdbMediaToTmdbOrigin.mediaId, tmdbMedia.id))
-          )
+          isNull(tmdbMediaToTmdbOrigin.mediaId) // Find movies where the join failed (i.e., no origin)
         )
       );
 
     let movieCount = 0;
-    await batchProcess(moviesWithoutOrigin, 10, async (movie) => {
-      movieCount++;
-      console.log(
-        `[populateMediaDetails] mv progress: ${movieCount}/${moviesWithoutOrigin.length} (${movie.tmdbId}:${movie.title})`
-      );
-      // 2. for mv, fetch detail via api
-      const details = await fetchTmdbDetailViaApi('movie', movie.tmdbId);
-      // 3. for mv, upsert origin
-      const originInput = details.origin_country.map((originId: string) => ({
-        mediaId: movie.id,
-        originId: originId,
-      }));
-      await ctx.db
-        .insert(tmdbMediaToTmdbOrigin)
-        .values(originInput)
-        .onConflictDoNothing();
-    });
+    await runItemsInEachBatchConcurrently(
+      moviesWithoutOrigin,
+      10,
+      async (movie) => {
+        movieCount++;
+        console.log(
+          `[populateMediaDetails] mv progress: ${movieCount}/${moviesWithoutOrigin.length} (${movie.tmdbId}:${movie.title})`
+        );
+        // 2. for mv, fetch detail via api
+        const details = await fetchTmdbDetailViaApi('movie', movie.tmdbId);
+        // 3. for mv, upsert origin
+        const originInput = details.origin_country.map((originId: string) => ({
+          mediaId: movie.mediaId,
+          originId: originId,
+        }));
+        await ctx.db
+          .insert(tmdbMediaToTmdbOrigin)
+          .values(originInput)
+          .onConflictDoNothing();
+      }
+    );
 
     // 1. find all tv
     const allTv = await ctx.db.query.tmdbMedia.findMany({
@@ -1019,7 +568,7 @@ export const mediaRouter = createTRPCRouter({
     });
 
     let count = 0;
-    await batchProcess(allTv, 10, async (tv) => {
+    await runItemsInEachBatchConcurrently(allTv, 10, async (tv) => {
       count++;
       console.log(
         `[populateMediaDetails] tv progress: ${count}/${allTv.length} (${tv.tmdbId}:${tv.title})`
@@ -1056,135 +605,16 @@ export const mediaRouter = createTRPCRouter({
         `[populateMediaDetails] tv ${tv.title}: ${tv.seasons.length} vs ${seasonNum}`
       );
       if (tv.seasons.length === seasonNum) return;
-      await upsertSeasonsAndEpisodes(details, tv.id);
+      await upsertSeasonsAndEpisodes(details, {
+        mediaId: tv.id,
+        seasonCount: tv.seasons.length,
+      });
     });
   }),
 
-  fetchMediaSrc: protectedProcedure.mutation(async ({ ctx }) => {
-    const yesterday = new Date();
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-
-    // 1. find mv whose releaseDate is older than yesterday but have no src
-    const srclessMv = await ctx.db
-      .select({
-        id: tmdbMedia.id,
-        tmdbId: tmdbMedia.tmdbId,
-        type: tmdbMedia.type,
-        title: tmdbMedia.title,
-      })
-      .from(tmdbMedia)
-      .where(
-        and(
-          eq(tmdbMedia.type, 'movie'),
-          isNotNull(tmdbMedia.releaseDate),
-          lte(tmdbMedia.releaseDate, yesterday),
-          notExists(
-            ctx.db
-              .select()
-              .from(tmdbSource)
-              .where(eq(tmdbSource.mediaId, tmdbMedia.id))
-          )
-        )
-      )
-      .execute();
-
-    // 2. find episodes whose airDate is older than yesterday but have no src
-
-    // 1. Create a subquery to count aired episodes for each media.
-    // This subquery calculates the total number of episodes for each `mediaId`
-    // where the airDate is valid and in the past.
-    const episodeCounts = ctx.db
-      .select({
-        mediaId: tmdbSeason.mediaId,
-        // We use sql`count(...)` to perform the aggregation and cast it to a number.
-        // The .as('episode_count') is crucial for referencing this column later.
-        episodeCount: sql<number>`count(${tmdbEpisode.id})`.as('episode_count'),
-      })
-      .from(tmdbEpisode)
-      .innerJoin(tmdbSeason, eq(tmdbEpisode.seasonId, tmdbSeason.id))
-      .where(
-        and(isNotNull(tmdbEpisode.airDate), lte(tmdbEpisode.airDate, yesterday))
-      )
-      .groupBy(tmdbSeason.mediaId)
-      .as('episode_counts'); // We must alias the subquery to use it in a join.
-
-    // 2. Use the subquery in your main query to order the results.
-    const srclessEpisodes = await ctx.db
-      .select({
-        episode: tmdbEpisode,
-        season: tmdbSeason,
-        media: tmdbMedia,
-        // You can optionally select the count to see it in the results
-        episodeCount: episodeCounts.episodeCount,
-      })
-      .from(tmdbEpisode)
-      .innerJoin(tmdbSeason, eq(tmdbEpisode.seasonId, tmdbSeason.id))
-      .innerJoin(tmdbMedia, eq(tmdbSeason.mediaId, tmdbMedia.id))
-      // Join our episode count subquery on the media ID.
-      .innerJoin(episodeCounts, eq(tmdbMedia.id, episodeCounts.mediaId))
-      .where(
-        and(
-          // The conditions from your original query remain the same.
-          isNotNull(tmdbEpisode.airDate),
-          lte(tmdbEpisode.airDate, yesterday),
-          notExists(
-            ctx.db
-              .select({ one: sql`1` })
-              .from(tmdbSource)
-              .where(eq(tmdbSource.episodeId, tmdbEpisode.id))
-          )
-        )
-      )
-      // 3. Update the orderBy clause.
-      // We now order by our calculated episodeCount first (ascending).
-      // The original ordering is kept as a secondary sort criterion.
-      .orderBy(
-        asc(episodeCounts.episodeCount),
-        asc(tmdbMedia.tmdbId),
-        asc(tmdbSeason.seasonNumber),
-        asc(tmdbEpisode.episodeNumber)
-      )
-      .execute();
-
-    // Get the cluster instance. It will be created on the first call.
-    const cluster = await getCluster();
-    try {
-      let mvCount = 0;
-      await batchProcess(srclessMv, 1, async (media) => {
-        mvCount++;
-        console.log(`=======`);
-        console.log(
-          `[mediaSrcFetch] mv progress: ${mvCount}/${srclessMv.length} (${media.tmdbId}: ${media.title})`
-        );
-
-        // 1. for mv, fetch src
-        await fetchAndUpsertMvSrc(media.tmdbId);
-      });
-
-      let episodeCount = 0;
-      await batchProcess(srclessEpisodes, 1, async (item) => {
-        episodeCount++;
-        console.log(`=======`);
-        console.log(
-          `[mediaSrcFetch] tv progress: ${episodeCount}/${srclessEpisodes.length} (${item.media.tmdbId}/${item.season.seasonNumber}/${item.episode.episodeNumber}: ${item.media.title}) (${item.episodeCount})`
-        );
-
-        // 2. for episode, fetch src
-        const { episode, season, media } = item;
-        await fetchAndUpsertTvSrc(
-          // 'fast',
-          media.id,
-          media.tmdbId,
-          season.seasonNumber,
-          episode.episodeNumber,
-          episode.episodeIndex
-        );
-      });
-    } finally {
-      // CRITICAL: Close the cluster after ALL media items are processed.
-      await closeCluster();
-    }
-  }),
+  // fetchMediaSrc: protectedProcedure.mutation(async ({ ctx }) => {
+  //   await fetchSrcForMediaList('all');
+  // }),
 
   fetchAndInsertMvSrc: publicProcedure
     .input(
@@ -1282,4 +712,183 @@ export const mediaRouter = createTRPCRouter({
         };
       });
     }),
+
+  // 1. Rate Limiting: Check if the user has submitted today yet (if yes, then cannot submit again)
+  // admin can bypass this limit
+  // 2. Check if the submitted already exists in tmdbMedia table
+  // if yes, return the releaseDate and availabilityCount and totalEpisodeCount
+  // 3. for admin, immediately, upsert media to tmdbMedia table -> fetch src for that media -> update denorm fields for that media
+  // 4. for regular users, add to the table for batch processing later (batch upsert user submitted media -> fetch src with all other media -> update denorm with all other media)
+  submitTmdbId: protectedProcedure
+    .input(
+      z.object({
+        tmdbId: z.number().min(1),
+        type: z.enum(['movie', 'tv']),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { session, db } = ctx;
+      const { tmdbId, type } = input;
+      const userId = session.user.id;
+      const isAdmin = session.user.role === 'admin';
+
+      // 1. Rate Limiting: Check if a non-admin user has submitted in the last 24 hours.
+      if (!isAdmin) {
+        const startOfUtcToday = new Date(
+          Date.UTC(
+            new Date().getUTCFullYear(),
+            new Date().getUTCMonth(),
+            new Date().getUTCDate()
+          )
+        );
+
+        // 2. Change the query to COUNT submissions instead of finding the first one.
+        const submissionCountResult = await db
+          .select({ count: count() })
+          .from(userSubmission)
+          .where(
+            and(
+              eq(userSubmission.userId, userId),
+              gte(userSubmission.createdAt, startOfUtcToday)
+            )
+          );
+
+        const submissionCount = submissionCountResult[0]?.count ?? 0;
+
+        // 3. Check if the count has reached the new limit of 5.
+        if (submissionCount >= 5) {
+          throw new TRPCError({
+            code: 'TOO_MANY_REQUESTS',
+            message: 'You have reached your limit of 5 submissions per day.',
+          });
+        }
+        // --- END OF UPDATED LOGIC ---
+      }
+
+      // 2. Check if the media already exists in our main table.
+      const existingMedia = await db.query.tmdbMedia.findFirst({
+        where: eq(tmdbMedia.tmdbId, tmdbId),
+      });
+
+      if (existingMedia) {
+        // If it exists, return its current status.
+        return {
+          status: 'exists' as const,
+          mediaInfo: {
+            releaseDate: existingMedia.releaseDate,
+            availabilityCount: existingMedia.availabilityCount,
+            airedEpisodeCount: existingMedia.airedEpisodeCount,
+          },
+        };
+      }
+
+      // If media is new, handle based on user role.
+      const mediaToProcess = [{ tmdbId, type }];
+
+      if (isAdmin) {
+        // 3. Admin Flow: Process everything immediately.
+        // NOTE: This will be a long-running request for the admin.
+        console.log(
+          `[ADMIN SUBMISSION] Starting immediate processing for TMDB ID: ${tmdbId}`
+        );
+
+        // Step 3a: Populate the core media, season, and episode data.
+        const populateResult = await populateMediaUsingTmdbIds(mediaToProcess);
+        const newMediaId = populateResult[0]?.mediaId;
+
+        if (!newMediaId) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Failed to populate new media.',
+          });
+        }
+
+        // Step 3b: Fetch sources for the newly added media.
+        await fetchSrcForMediaList([newMediaId]);
+
+        // Step 3c: Update all the denormalized fields so it's ready for searching.
+        await updateDenormFieldsForMediaList([newMediaId]);
+
+        console.log(
+          `[ADMIN SUBMISSION] Finished processing for TMDB ID: ${tmdbId}`
+        );
+        return { status: 'processed' as const };
+      } else {
+        // 4. Regular User Flow: Add to the userSubmission table for a later cron job to process.
+        await db.insert(userSubmission).values({
+          userId,
+          tmdbId,
+          mediaType: type,
+          status: 'pending',
+        });
+        return { status: 'submitted' as const };
+      }
+    }),
+
+  upsertUserSubmittedIds: protectedProcedure.mutation(async ({ ctx }) => {
+    const { db } = ctx;
+    // 1. find pending submissions
+    const pendingSubmissions = await db.query.userSubmission.findMany({
+      where: eq(userSubmission.status, 'pending'),
+    });
+    if (pendingSubmissions.length === 0) {
+      console.log('[upsertUserSubmittedIds] No user submissions to process.');
+      return { processedCount: 0 };
+    }
+    const populateInput = pendingSubmissions.map((sub) => ({
+      tmdbId: sub.tmdbId,
+      type: sub.mediaType,
+    }));
+
+    // 2. populate media/seasons/episodes
+    const populateOutput = await populateMediaUsingTmdbIds(populateInput);
+    console.log(
+      `[upsertUserSubmittedIds] Populated ${populateOutput.length} media from user submissions.`
+    );
+
+    // 3. update userSubmission to 'succeeded' or 'failed' based on populateOutput
+    const succeededTmdbIds = new Set(populateOutput.map((item) => item.tmdbId));
+
+    const submissionResults = pendingSubmissions.map((submission) => ({
+      id: submission.id,
+      status: succeededTmdbIds.has(submission.tmdbId) ? 'succeeded' : 'failed',
+    }));
+
+    // Define the function that will process one batch
+    const bulkUpdateSubmissions = async (batch: typeof submissionResults) => {
+      if (batch.length === 0) return;
+
+      await db.execute(sql`
+        UPDATE ${userSubmission}
+        SET status = data.new_status::${userSubmissionStatusEnum}
+        FROM (VALUES ${sql.join(
+          batch.map((s) => sql`(${s.id}, ${s.status})`),
+          sql`, `
+        )}) AS data(id, new_status)
+        WHERE ${userSubmission.id} = data.id::varchar;
+      `);
+    };
+
+    // Call the helper to run the batch processing
+    await runItemsInEachBatchInBulk(
+      submissionResults,
+      10000,
+      bulkUpdateSubmissions
+    );
+
+    const succeededCount = submissionResults.filter(
+      (s) => s.status === 'succeeded'
+    ).length;
+    const failedCount = submissionResults.length - succeededCount;
+
+    console.log(
+      `[upsertUserSubmittedIds] db submission status updated: succeeded (${succeededCount}) | failed (${failedCount}).`
+    );
+
+    return { succeededCount: succeededCount, failedCount: failedCount };
+  }),
+
+  updateAllChangedMedia: protectedProcedure.mutation(async (ctx) => {
+    await updateAllChangedMedia();
+  }),
 });

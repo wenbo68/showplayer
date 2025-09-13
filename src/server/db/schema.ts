@@ -11,6 +11,7 @@ import {
   timestamp,
   uniqueIndex,
   varchar,
+  boolean,
 } from 'drizzle-orm/pg-core';
 import { type AdapterAccount } from 'next-auth/adapters';
 
@@ -26,6 +27,11 @@ export const tmdbTypeEnum = pgEnum('tmdb_type', ['movie', 'tv']);
 export const m3u8TypeEnum = pgEnum('m3u8_type', ['master', 'media']);
 export const userListEnum = pgEnum('list_type', ['saved', 'favorite', 'later']);
 export const userRoleEnum = pgEnum('user_role', ['user', 'admin']);
+export const userSubmissionStatusEnum = pgEnum('user_submission_status', [
+  'pending',
+  'succeeded',
+  'failed',
+]);
 
 export const tmdbOrigin = pgTable('tmdb_origin', {
   id: varchar('id', { length: 2 }).primaryKey(),
@@ -141,7 +147,6 @@ export const tmdbRecommendationRelations = relations(
   })
 );
 
-// trending api doesn't return seasons, so we dont store them in media
 export const tmdbMedia = pgTable(
   'tmdb_media',
   {
@@ -159,28 +164,30 @@ export const tmdbMedia = pgTable(
       mode: 'date',
       withTimezone: true,
     }),
+    srcFetchedAt: timestamp('src_fetched_at', {
+      mode: 'date',
+      withTimezone: true,
+    }),
     // metrics
     popularity: real('popularity').default(0).notNull(),
     voteAverage: real('vote_average').default(0).notNull(),
     voteCount: integer('vote_count').default(0).notNull(),
-    ratingsUpdatedAt: timestamp('ratings_updated_at', {
+    voteUpdatedAt: timestamp('vote_updated_at', {
       mode: 'date',
       withTimezone: true,
     }),
     // denormalized fields for faster filtering/sorting
     availabilityCount: integer('availability_count').default(0).notNull(),
-    totalEpisodeCount: integer('total_episode_count').default(0).notNull(),
+    airedEpisodeCount: integer('aired_episode_count').default(0).notNull(),
     updatedDate: timestamp('updated_date', {
       mode: 'date',
       withTimezone: true,
     }),
     updatedSeasonNumber: integer('updated_season_number'),
     updatedEpisodeNumber: integer('updated_episode_number'),
-    // 2. Add the new "dirty flag" timestamp. It's NULL if an update is needed.
-    denormFieldsUpdatedAt: timestamp('denorm_fields_updated_at', {
-      mode: 'date',
-      withTimezone: true,
-    }),
+    denormFieldsOutdated: boolean('denorm_fields_outdated')
+      .default(true)
+      .notNull(),
 
     createdAt: timestamp('created_at', {
       mode: 'date',
@@ -200,8 +207,8 @@ export const tmdbMedia = pgTable(
     index('popularity_idx').on(table.popularity),
     index('vote_average_idx').on(table.voteAverage),
     index('vote_count_idx').on(table.voteCount),
-    index('denorm_updated_at_idx').on(table.denormFieldsUpdatedAt),
-    index('ratings_updated_at_idx').on(table.ratingsUpdatedAt),
+    index('denorm_updated_at_idx').on(table.denormFieldsOutdated),
+    index('vote_updated_at_idx').on(table.voteUpdatedAt),
     index('updated_date_idx').on(table.updatedDate),
   ]
 );
@@ -247,7 +254,6 @@ export const tmdbTrendingRelations = relations(tmdbTrending, ({ one }) => ({
   }),
 }));
 
-// NEW: Add this table for the top-rated list
 export const tmdbTopRated = pgTable('tmdb_top_rated', {
   id: varchar({ length: 255 })
     .notNull()
@@ -420,6 +426,7 @@ export const users = pgTable('user', {
 export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
   lists: many(userMediaList), // ✨ Add this line
+  submissions: many(userSubmission),
 }));
 
 export const accounts = pgTable(
@@ -496,7 +503,7 @@ export const userMediaList = pgTable(
 );
 
 // Define the relations for the new join table
-export const userMediaListsRelations = relations(userMediaList, ({ one }) => ({
+export const userMediaListRelations = relations(userMediaList, ({ one }) => ({
   user: one(users, {
     fields: [userMediaList.userId],
     references: [users.id],
@@ -504,5 +511,29 @@ export const userMediaListsRelations = relations(userMediaList, ({ one }) => ({
   media: one(tmdbMedia, {
     fields: [userMediaList.mediaId],
     references: [tmdbMedia.id],
+  }),
+}));
+
+export const userSubmission = pgTable('user_submission', {
+  id: varchar('id', { length: 255 })
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: varchar('user_id', { length: 255 })
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  mediaType: tmdbTypeEnum('media_type').notNull(),
+  tmdbId: integer('tmdb_id').notNull(),
+  status: userSubmissionStatusEnum('status').default('pending').notNull(),
+  createdAt: timestamp('created_at', {
+    mode: 'date',
+    withTimezone: true,
+  }).default(sql`CURRENT_TIMESTAMP`),
+});
+
+// This defines the "many-to-one" relationship
+export const userSubmissionRelations = relations(userSubmission, ({ one }) => ({
+  user: one(users, {
+    fields: [userSubmission.userId],
+    references: [users.id],
   }),
 }));

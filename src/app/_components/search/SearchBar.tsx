@@ -139,11 +139,11 @@ export default function SearchBar({
     { label: '> 300', trpcInput: 300 },
     { label: '> 400', trpcInput: 400 },
     { label: '> 500', trpcInput: 500 },
-    { label: '> 600', trpcInput: 600 },
-    { label: '> 700', trpcInput: 700 },
-    { label: '> 800', trpcInput: 800 },
-    { label: '> 900', trpcInput: 900 },
-    { label: '> 1000', trpcInput: 1000 },
+    // { label: '> 600', trpcInput: 600 },
+    // { label: '> 700', trpcInput: 700 },
+    // { label: '> 800', trpcInput: 800 },
+    // { label: '> 900', trpcInput: 900 },
+    // { label: '> 1000', trpcInput: 1000 },
   ];
   // const orderOptions = [
   //   {

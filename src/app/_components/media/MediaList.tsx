@@ -5,6 +5,7 @@ import MediaButton from './MediaButton';
 interface MediaListProps {
   pageMediaIds: string[];
   viewMode: 'preview' | 'full';
+  displayMode?: 'grid' | 'list';
   mediaList: ListMedia[];
   label?: string;
   link?: string;
@@ -13,6 +14,7 @@ interface MediaListProps {
 export default function MediaList({
   pageMediaIds,
   viewMode,
+  displayMode,
   mediaList,
   label,
   link,

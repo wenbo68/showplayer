@@ -1,0 +1,1 @@
+ALTER TABLE "tmdb_media" RENAME COLUMN "total_episode_count" TO "aired_episode_count";

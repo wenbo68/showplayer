@@ -15,6 +15,11 @@ export default function TmdbAdmin() {
   // --- 1. Add new state for the ratings refresh limit ---
   const [ratingsLimit, setRatingsLimit] = useState(100);
 
+  // --- 1. Add new state for the submission form ---
+  const [submissionTmdbId, setSubmissionTmdbId] = useState('');
+  const [submissionType, setSubmissionType] = useState<'movie' | 'tv'>('movie');
+  const [submissionResult, setSubmissionResult] = useState('');
+
   const fetchOriginsMutation = api.media.fetchOrigins.useMutation();
   const fetchGenresMutation = api.media.fetchGenres.useMutation();
 
@@ -25,14 +30,25 @@ export default function TmdbAdmin() {
   const updatePopularityMutation = api.cron.updatePopularity.useMutation();
   const updateRatingsMutation = api.cron.updateRatings.useMutation();
 
-  const populateDetailsMutation = api.media.populateMediaDetails.useMutation();
-  const dailySrcFetchMutation = api.media.fetchMediaSrc.useMutation();
+  const populateDetailsMutation =
+    api.media.populateMissingMediaDetails.useMutation();
+  const dailySrcFetchMutation = api.cron.fetchSrc.useMutation();
 
   const fetchMvSrcMutation = api.media.fetchAndInsertMvSrc.useMutation();
   const insertEpisodeMutation = api.media.insertSeasonAndEpisode.useMutation();
   // const fetchTvSrcMutation = api.media.fetchAndInsertTvSrc.useMutation();
 
   const updateDenormFieldsMutation = api.cron.updateDenormFields.useMutation();
+
+  // --- 2. Add the new useMutation hook ---
+  const submitTmdbIdMutation = api.media.submitTmdbId.useMutation();
+
+  // --- 1. Add the new useMutation hook ---
+  const upsertUserSubmittedIdsMutation =
+    api.media.upsertUserSubmittedIds.useMutation();
+
+  const updateAllChangedMediaMutation =
+    api.media.updateAllChangedMedia.useMutation();
 
   const handleFetchOrigins = () => {
     fetchOriginsMutation.mutate(undefined, {
@@ -102,10 +118,16 @@ export default function TmdbAdmin() {
     });
   };
   const handleDailySrcFetch = () => {
-    dailySrcFetchMutation.mutate(undefined, {
-      onSuccess: () => console.log('Daily src fetch finished'),
-      onError: (err) => console.error('Error fetching daily src: ', err),
-    });
+    dailySrcFetchMutation.mutate(
+      {
+        cronSecret:
+          'd23b4a9f9d009dcf28bd69cdbb2815819379db2702dc96251bd72f2dfa1c9d4e',
+      },
+      {
+        onSuccess: () => console.log('Daily src fetch finished'),
+        onError: (err) => console.error('Error fetching daily src: ', err),
+      }
+    );
   };
   const handleFetchMvSrc = () => {
     fetchMvSrcMutation.mutate(
@@ -158,6 +180,87 @@ export default function TmdbAdmin() {
           console.error('Error updating denormalized fields:', err),
       }
     );
+  };
+
+  // --- 3. Add the new handler function ---
+  const handleSubmitTmdbId = () => {
+    if (!submissionTmdbId) return;
+    setSubmissionResult(''); // Clear previous results
+
+    submitTmdbIdMutation.mutate(
+      {
+        tmdbId: Number(submissionTmdbId),
+        type: submissionType,
+      },
+      {
+        onSuccess: (data) => {
+          console.log('Submission successful:', data);
+          // Provide detailed feedback in the UI
+          if (data.status === 'exists') {
+            setSubmissionResult(
+              `Media already exists. Release date: ${
+                data.mediaInfo.releaseDate
+                  ? new Date(data.mediaInfo.releaseDate).toLocaleDateString(
+                      'ja-JP',
+                      {
+                        year: 'numeric',
+                        month: 'numeric',
+                        day: 'numeric',
+                      }
+                    )
+                  : 'N/A'
+              }. Availability: ${
+                submissionType === 'movie'
+                  ? `${
+                      data.mediaInfo.availabilityCount > 0
+                        ? 'Available'
+                        : 'Not Available'
+                    }`
+                  : `${data.mediaInfo.availabilityCount}/${data.mediaInfo.airedEpisodeCount}`
+              }`
+            );
+          } else if (data.status === 'processed') {
+            setSubmissionResult(
+              'Admin submission successful. Media is being processed now.'
+            );
+          } else if (data.status === 'submitted') {
+            setSubmissionResult(
+              'Submission successful. It will be processed by the next daily cron job.'
+            );
+          }
+        },
+        onError: (err) => {
+          console.error('Submission error:', err);
+          setSubmissionResult(`Error: ${err.message}`);
+        },
+      }
+    );
+  };
+
+  // --- 2. Add the new handler function ---
+  const handleUpsertUserSubmittedIds = () => {
+    // NOTE: This can be a very long-running job!
+    upsertUserSubmittedIdsMutation.mutate(undefined, {
+      onSuccess: (data) => {
+        console.log(
+          `${data.succeededCount} succeeded. ${data.failedCount} failed `
+        );
+      },
+      onError: (err) => {
+        console.error('Error processing user submissions:', err);
+      },
+    });
+  };
+
+  const handleUpdateAllChangedMedia = () => {
+    updateAllChangedMediaMutation.mutate(undefined, {
+      onSuccess: (data) => {
+        console.log(`[handleUpdateAllChangedMedia] update done.`);
+      },
+      onError: (err) => {
+        console.error(`[handleUpdateAllChangedMedia] error: `, err);
+      },
+    });
   };
 
   return (
@@ -302,6 +405,21 @@ export default function TmdbAdmin() {
               Error: {updateDenormFieldsMutation.error.message}
             </p>
           )}
+
+          <button
+            onClick={handleUpdateAllChangedMedia}
+            disabled={updateAllChangedMediaMutation.isPending}
+            className="px-4 py-2 bg-orange-600 text-white rounded w-60 hover:bg-orange-700 disabled:opacity-50"
+          >
+            {updateAllChangedMediaMutation.isPending
+              ? 'Updating changed media...'
+              : 'Update all changed media'}
+          </button>
+          {updateAllChangedMediaMutation.error && (
+            <p className="text-red-400 mt-2">
+              Error: {updateAllChangedMediaMutation.error.message}
+            </p>
+          )}
         </div>
 
         <hr className="w-full my-4 border-gray-300 dark:border-gray-700" />
@@ -414,6 +532,61 @@ export default function TmdbAdmin() {
             Error: {fetchTvSrcMutation.error.message}
           </p>
         )} */}
+      </div>
+
+      <hr className="w-full my-4 border-gray-300 dark:border-gray-700" />
+
+      {/* --- 4. Add the new JSX section for User Submissions --- */}
+      <div className="flex flex-col items-center gap-2 w-full">
+        <h3 className="font-semibold text-gray-400">User Submission</h3>
+        <input
+          type="number"
+          placeholder="TMDB ID to Submit"
+          value={submissionTmdbId}
+          onChange={(e) => setSubmissionTmdbId(e.target.value)}
+          className="px-3 py-2 rounded w-60 text-gray-900 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-700"
+        />
+        <select
+          value={submissionType}
+          onChange={(e) => setSubmissionType(e.target.value as 'movie' | 'tv')}
+          className="px-3 py-2 rounded w-60 text-gray-900 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-700"
+        >
+          <option value="movie">Movie</option>
+          <option value="tv">TV Show</option>
+        </select>
+        <button
+          onClick={handleSubmitTmdbId}
+          disabled={submitTmdbIdMutation.isPending}
+          className="px-4 py-2 bg-blue-600 text-white rounded w-60 hover:bg-blue-700 disabled:opacity-50"
+        >
+          {submitTmdbIdMutation.isPending ? 'Submitting...' : 'Submit ID'}
+        </button>
+
+        {/* Display success or error messages */}
+        {submitTmdbIdMutation.error && (
+          <p className="text-red-400 mt-2">
+            Error: {submitTmdbIdMutation.error.message}
+          </p>
+        )}
+        {submissionResult && (
+          <p className="text-green-400 mt-2 text-center">{submissionResult}</p>
+        )}
+
+        {/* --- 3. Add the new button to the JSX --- */}
+        <button
+          onClick={handleUpsertUserSubmittedIds}
+          disabled={upsertUserSubmittedIdsMutation.isPending}
+          className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded w-60 hover:bg-indigo-700 disabled:opacity-50"
+        >
+          {upsertUserSubmittedIdsMutation.isPending
+            ? 'Processing...'
+            : 'Process User Submissions'}
+        </button>
+        {upsertUserSubmittedIdsMutation.error && (
+          <p className="text-red-400 mt-2">
+            Error: {upsertUserSubmittedIdsMutation.error.message}
+          </p>
+        )}
       </div>
     </section>
   );

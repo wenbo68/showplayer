@@ -191,12 +191,12 @@ export async function processUserSubmissions() {
     `[upsertUserSubmittedIds] Populated ${populateOutput.length} media from user submissions.`
   );
 
-  // 3. update userSubmission to 'succeeded' or 'failed' based on populateOutput
-  const succeededTmdbIds = new Set(populateOutput.map((item) => item.tmdbId));
+  // 3. update userSubmission to 'success' or 'failure' based on populateOutput
+  const successTmdbIds = new Set(populateOutput.map((item) => item.tmdbId));
 
   const submissionResults = pendingSubmissions.map((submission) => ({
     id: submission.id,
-    status: succeededTmdbIds.has(submission.tmdbId) ? 'succeeded' : 'failed',
+    status: successTmdbIds.has(submission.tmdbId) ? 'success' : 'failure',
   }));
 
   // Define the function that will process one batch
@@ -205,7 +205,9 @@ export async function processUserSubmissions() {
 
     await db.execute(sql`
         UPDATE ${userSubmission}
-        SET status = data.new_status::${userSubmissionStatusEnum}
+        SET 
+          status = data.new_status::${userSubmissionStatusEnum}
+          processed_at = NOW()
         FROM (VALUES ${sql.join(
           batch.map((s) => sql`(${s.id}, ${s.status})`),
           sql`, `
@@ -221,13 +223,13 @@ export async function processUserSubmissions() {
     bulkUpdateSubmissions
   );
 
-  const succeededCount = submissionResults.filter(
-    (s) => s.status === 'succeeded'
+  const successCount = submissionResults.filter(
+    (s) => s.status === 'success'
   ).length;
-  const failedCount = submissionResults.length - succeededCount;
+  const failureCount = submissionResults.length - successCount;
 
   console.log(
-    `[upsertUserSubmittedIds] db submission status updated: succeeded (${succeededCount}) | failed (${failedCount}).`
+    `[upsertUserSubmittedIds] db submission status updated: success (${successCount}) | failure (${failureCount}).`
   );
 }
 

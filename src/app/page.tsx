@@ -1,12 +1,11 @@
 import { api, HydrateClient } from '~/trpc/server';
-import TmdbAdmin from './_components/auth/AdminTest';
 import SearchBar from './_components/search/SearchBar';
 import { Suspense } from 'react';
 import MediaList from './_components/media/MediaList';
 import SearchBarFallback from './_components/search/SearchBarFallback';
 import { auth } from '~/server/auth';
 import IdSubmitter from './_components/IdSubmitter';
-import AdminControl from './_components/auth/AdminControl';
+import SubmissionHistory from './_components/SubmissionHistory';
 
 export default async function Home() {
   const session = await auth();
@@ -65,11 +64,14 @@ export default async function Home() {
   ];
   const uniquePageMediaIds = [...new Set(pageMediaIds)];
 
-  // Perform a SINGLE prefetch for the entire page (only if user logged in)
+  // if user is logged in
+  // prefetch user list status for all media in the page
+  // prefetch user submission history
   if (session?.user) {
     api.user.getUserDetailsForMediaList.prefetch({
       mediaIds: uniquePageMediaIds,
     });
+    api.user.getUserSubmissions.prefetch();
   }
 
   return (
@@ -111,7 +113,10 @@ export default async function Home() {
           />
         </div>
 
-        <IdSubmitter />
+        <div className="w-full flex flex-col gap-10">
+          <IdSubmitter />
+          <SubmissionHistory />
+        </div>
       </div>
     </HydrateClient>
   );

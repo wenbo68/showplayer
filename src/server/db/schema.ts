@@ -29,8 +29,8 @@ export const userListEnum = pgEnum('list_type', ['saved', 'favorite', 'later']);
 export const userRoleEnum = pgEnum('user_role', ['user', 'admin']);
 export const userSubmissionStatusEnum = pgEnum('user_submission_status', [
   'pending',
-  'succeeded',
-  'failed',
+  'success',
+  'failure',
 ]);
 
 export const tmdbOrigin = pgTable('tmdb_origin', {
@@ -527,7 +527,13 @@ export const userSubmission = pgTable('user_submission', {
   createdAt: timestamp('created_at', {
     mode: 'date',
     withTimezone: true,
-  }).default(sql`CURRENT_TIMESTAMP`),
+  })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  processedAt: timestamp('processed_at', {
+    mode: 'date',
+    withTimezone: true,
+  }),
 });
 
 // This defines the "many-to-one" relationship

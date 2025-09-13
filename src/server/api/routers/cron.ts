@@ -107,7 +107,7 @@ export const cronRouter = createTRPCRouter({
   /**
    * finds all pending submissions
    * populate media for all those submissions
-   * mark each submission as succeeded or failed based on above step
+   * mark each submission as success or failure based on above step
    */
   processUserSubmissions: protectedProcedure.mutation(async ({}) => {
     await processUserSubmissions();

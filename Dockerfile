@@ -48,12 +48,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set working directory
 WORKDIR /app
 
-# Copy package files and install deps
+# may look redundant but package.json and pnpm-lock.yaml are copied 1st to a separate layer for caching reasons
+# Copy package files and install dependencies
 COPY package.json pnpm-lock.yaml ./
 RUN npm install -g pnpm && pnpm install
 
+# everything in project file (/showplayer) is copied to working dir (excluding files specified in .dockerignore)
 # Copy all project files
 COPY . .
+
+# possibly redundant (unless tsconfig.scripts.json is in .dockerignore)
+# Also copy the new tsconfig file for scripts
+COPY tsconfig.scripts.json ./
 
 # Set environment variable for Puppeteer to find Chromium 
 # don't use secret env vars here bc they are visible in the image on docker hub
@@ -61,8 +67,9 @@ COPY . .
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
-# Build Next.js app
+# Build Next.js app && the cron script
 RUN pnpm build
+RUN pnpm run build:scripts
 
 # Let the container expose whatever port nextjs occupies (default is 3000)
 EXPOSE 3000

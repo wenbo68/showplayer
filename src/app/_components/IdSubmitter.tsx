@@ -11,8 +11,10 @@ import { IoIosArrowDown } from 'react-icons/io';
 
 export default function IdSubmitter() {
   const { data: session } = useSession();
+
   const [tmdbIdInput, setTmdbIdInput] = useState('');
   const [mediaType, setMediaType] = useState<'movie' | 'tv'>('movie');
+  const [showInfo, setShowInfo] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [message, setMessage] = useState<{
     text: string;
@@ -35,8 +37,11 @@ export default function IdSubmitter() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const utils = api.useUtils();
   const submitTmdbIdMutation = api.user.submitTmdbId.useMutation({
     onSuccess: (data) => {
+      // fetch client cache to update submissionHistory
+      utils.user.getUserSubmissions.invalidate();
       // Handle the different success statuses from your tRPC procedure
       switch (data.status) {
         case 'exists':
@@ -65,13 +70,13 @@ export default function IdSubmitter() {
           break;
         case 'processed':
           setMessage({
-            text: 'Admin submission successful. Media is being processed now.',
+            text: 'Admin submission processed.',
             isError: false,
           });
           break;
         case 'submitted':
           setMessage({
-            text: 'Submission successful! Submissions will be processed overnight.',
+            text: 'Submission successful! All submissions will be processed overnight.',
             isError: false,
           });
           break;
@@ -113,44 +118,62 @@ export default function IdSubmitter() {
   ];
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <span className="font-bold">REQUEST NEW MEDIA</span>
-      <div className="flex flex-col gap-3 max-w-xl text-sm">
-        <div className="flex flex-col p-4 bg-gray-800 rounded">
-          <p className="">
-            1. To request a new media, please select its type (movie or tv) and
-            enter its tmdb id.
-          </p>
-          <p className="">
-            2. To find the tmdb id, search the media in{' '}
-            <Link
-              href="https://www.themoviedb.org"
-              className="text-blue-400 cursor-pointer underline"
-            >
-              tmdb
-            </Link>
-            . The tmdb id is in the url.
-          </p>
-          <p className="">
-            3. For example, if the tmdb url is{' '}
-            <Link
-              href="https://www.themoviedb.org/tv/1396-breaking-bad"
-              className="text-blue-400 cursor-pointer underline"
-            >
-              www.themoviedb.org/tv/1396-breaking-bad
-            </Link>
-            , the tmdb id is 1396.
-          </p>
-          <p className="">
-            4. You can request 3 new media per day. The timer resets at 12am
-            UTC.
-          </p>
-          <p className="">
-            5. All user requests are processed together overnight.
-          </p>
+    <form
+      onSubmit={handleSubmit}
+      className="basis-0 flex-grow flex flex-col gap-4"
+    >
+      <div
+        onClick={() => setShowInfo(!showInfo)}
+        className={`flex cursor-pointer gap-2 transition ${
+          showInfo ? `text-blue-400` : `hover:text-blue-400`
+        }`}
+      >
+        <div className="flex items-center justify-center font-bold">
+          REQUEST NEW MEDIA
         </div>
-        <div className="flex flex-col gap-3">
-          <div className="flex gap-3">
+        <div className="flex items-center justify-center">
+          <IoIosArrowDown size={20} />
+        </div>
+      </div>
+      <div className="flex flex-col gap-4 text-sm">
+        {/** fyi */}
+        {showInfo && (
+          <div className="p-4 bg-gray-800 rounded">
+            <p className="">
+              - To request a new media, please select its type (movie or tv) and
+              enter its tmdb id.
+            </p>
+            <p className="">
+              - To find the tmdb id, search the media in{' '}
+              <Link
+                href="https://www.themoviedb.org"
+                className="text-blue-400 cursor-pointer underline"
+              >
+                tmdb
+              </Link>
+              . The tmdb id is in the url.
+            </p>
+            <p className="">
+              - For example, if the tmdb url is{' '}
+              <Link
+                href="https://www.themoviedb.org/tv/1396-breaking-bad"
+                className="text-blue-400 cursor-pointer underline"
+              >
+                www.themoviedb.org/tv/1396-breaking-bad
+              </Link>
+              , the tmdb id is 1396, and the media type is tv.
+            </p>
+            <p className="">
+              - You can request 3 new media per day. The timer resets at 12am
+              UTC.
+            </p>
+            <p className="">
+              - All user requests are processed together overnight.
+            </p>
+          </div>
+        )}
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex gap-4 flex-grow">
             {/** media type selector */}
             <div
               ref={containerRef}
@@ -189,10 +212,11 @@ export default function IdSubmitter() {
               className="flex-grow rounded bg-gray-800 px-3 py-2 outline-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
           </div>
+          {/** submit button */}
           <button
             type="submit"
             disabled={submitTmdbIdMutation.isPending}
-            className="rounded bg-blue-600 px-4 py-2 font-semibold text-gray-300 transition hover:bg-blue-500"
+            className="min-w-32 rounded bg-blue-600 px-4 py-2 font-semibold text-gray-300 transition hover:bg-blue-500"
           >
             {submitTmdbIdMutation.isPending ? 'Submitting...' : 'Submit'}
           </button>

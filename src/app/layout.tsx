@@ -43,6 +43,8 @@ export default async function RootLayout({
   );
 }
 
+// update watch page visuals
+
 // create a single cron procedure and test
 
 // make media buttons display info according to the search filters (horizontal strips including or not including media description)

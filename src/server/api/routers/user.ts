@@ -1,4 +1,4 @@
-import { eq, and, count, gte, inArray } from 'drizzle-orm';
+import { eq, and, count, gte, inArray, desc } from 'drizzle-orm';
 import { createTRPCRouter, protectedProcedure } from '../trpc';
 import { tmdbMedia, userMediaList, userSubmission } from '~/server/db/schema';
 import { TRPCError } from '@trpc/server';
@@ -6,6 +6,7 @@ import { populateMediaUsingTmdbIds } from '~/server/utils/mediaUtils';
 import { fetchSrcForMediaIds } from '~/server/utils/srcUtils';
 import { updateDenormFieldsForMediaList } from '~/server/utils/cronUtils';
 import z from 'zod';
+import { subDays } from 'date-fns';
 
 export const userRouter = createTRPCRouter({
   // 1. Rate Limiting: Check if the user has submitted today yet (if yes, then cannot submit again)
@@ -119,6 +120,21 @@ export const userRouter = createTRPCRouter({
         return { status: 'submitted' as const };
       }
     }),
+
+  getUserSubmissions: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const sevenDaysAgo = subDays(new Date(), 7);
+
+    const submissions = await ctx.db.query.userSubmission.findMany({
+      where: and(
+        eq(userSubmission.userId, userId),
+        gte(userSubmission.createdAt, sevenDaysAgo)
+      ),
+      orderBy: [desc(userSubmission.createdAt)],
+    });
+
+    return submissions;
+  }),
 
   /**
    * save to or remove from user list

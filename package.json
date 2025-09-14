@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "next build",
-    "build:scripts": "tsc --project tsconfig.scripts.json",
+    "build:scripts": "tsc --project tsconfig.scripts.json && tsc-alias -p tsconfig.scripts.json",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
@@ -51,6 +51,7 @@
     "drizzle-kit": "^0.30.5",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.0.15",
+    "tsconfig-paths": "^4.2.0",
     "tsx": "^4.20.3",
     "typescript": "^5.8.2"
   },

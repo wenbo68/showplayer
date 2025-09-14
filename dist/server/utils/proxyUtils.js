@@ -1,0 +1,27 @@
+// Helper to set CORS headers
+export function withCors(headers = {}) {
+    return {
+        ...headers,
+        'Access-Control-Allow-Origin': `${process.env.FRONTEND_URL}`,
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    };
+}
+// two ways to create url with params:
+// 1. encode params and append them to to url as strings (encode the urls so that they can be included in another url otherwise the special characters in the embeded urls can cause confusions)
+// 2. use URL obj and attach params (without encoding) as key/value
+export function getProxiedSrcUrl(selectedSrc) {
+    if (!selectedSrc)
+        return undefined;
+    const urlObject = new URL(`${process.env.BUNNY_URL}/api/proxy`);
+    urlObject.searchParams.set('url', selectedSrc.url);
+    if (selectedSrc.headers && typeof selectedSrc.headers === 'object') {
+        for (const [key, value] of Object.entries(selectedSrc.headers)) {
+            if (typeof value === 'string') {
+                urlObject.searchParams.set(key, value);
+            }
+        }
+    }
+    console.log(`[getProxiedSrcUrl]: `, urlObject.toString());
+    return urlObject.toString();
+}

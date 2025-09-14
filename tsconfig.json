@@ -40,3 +40,5 @@
   ],
   "exclude": ["node_modules"]
 }
+
+// used when you run pnpm build

@@ -43,7 +43,10 @@ export default async function RootLayout({
   );
 }
 
+// let vercel cron call vps api
+// add logo, tab image, etc.
 // update watch page visuals
+// link to google analytics
 
 // create a single cron procedure and test
 

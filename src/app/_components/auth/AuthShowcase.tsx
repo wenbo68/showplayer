@@ -7,11 +7,16 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { FaHeart } from 'react-icons/fa6';
 import { RiLogoutBoxRLine } from 'react-icons/ri';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 export function AuthShowcase() {
   const { data: session, status: sessionStatus } = useSession();
   const [isDropdownOpen, setDropdownOpen] = useState(false);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   // Effect to close the dropdown if a click occurs outside of it
   useEffect(() => {
@@ -38,7 +43,11 @@ export function AuthShowcase() {
   if (!session) {
     return (
       <button
-        onClick={() => signIn('google')}
+        onClick={() => {
+          const params = searchParams.toString();
+          const callbackUrl = `${pathname}${params ? `?${params}` : ''}`;
+          signIn(undefined, { callbackUrl });
+        }}
         className="rounded bg-blue-600 hover:bg-blue-500 text-gray-300 px-4 py-2 text-sm font-semibold transition cursor-pointer"
       >
         Login
@@ -69,7 +78,7 @@ export function AuthShowcase() {
       {isDropdownOpen && (
         <div className="z-10 absolute right-0 mt-4 w-36 origin-top-right rounded bg-gray-800 p-2 flex flex-col">
           <Link
-            href="/search?list=saved" // 👈 Change this to your list page URL
+            href="/search?list=saved"
             className="flex items-center gap-2 rounded w-full p-2 text-left text-sm hover:bg-gray-900 hover:text-blue-400"
             onClick={() => setDropdownOpen(false)} // Close dropdown on navigation
           >

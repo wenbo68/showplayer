@@ -4,8 +4,8 @@ import { Suspense } from 'react';
 import MediaList from './_components/media/MediaList';
 import SearchBarFallback from './_components/search/SearchBarFallback';
 import { auth } from '~/server/auth';
-import IdSubmitter from './_components/IdSubmitter';
-import SubmissionHistory from './_components/SubmissionHistory';
+import IdSubmitter from './_components/submit/IdSubmitter';
+import SubmissionHistory from './_components/submit/SubmissionHistory';
 
 export default async function Home() {
   const session = await auth();

@@ -48,6 +48,7 @@ export default async function RootLayout({
 // add logo, tab image, etc.
 // update watch page visuals
 // link to google analytics
+// change user submit times to utc
 
 // create a single cron procedure and test
 

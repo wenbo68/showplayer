@@ -36,7 +36,9 @@ export function AuthShowcase() {
 
   // Shows a placeholder while the session is being fetched
   if (sessionStatus === 'loading') {
-    return <div className="h-10 w-10 animate-pulse rounded-full bg-white/10" />;
+    return (
+      <div className="h-10 w-10 animate-pulse rounded-full bg-gray-300/10" />
+    );
   }
 
   // User is not logged in

@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { AuthShowcase } from '~/app/_components/auth/AuthShowcase';
+import { AuthShowcaseFallback } from './auth/AuthShowcaseFallback';
 
 export function TopNav() {
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -54,7 +55,10 @@ export function TopNav() {
         <Link href="/" className="block text-xl font-bold">
           SP
         </Link>
-        <AuthShowcase />
+        {/* ✨ 3. Wrap AuthShowcase with the Suspense boundary */}
+        <Suspense fallback={<AuthShowcaseFallback />}>
+          <AuthShowcase />
+        </Suspense>
       </div>
     </nav>
   );

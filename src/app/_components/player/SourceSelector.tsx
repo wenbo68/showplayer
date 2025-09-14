@@ -1,12 +1,6 @@
 'use client';
 
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
-import {
-  MdOutlineKeyboardArrowDown,
-  MdOutlineKeyboardArrowLeft,
-} from 'react-icons/md';
 import type { Source } from '~/type';
 import { NavButton } from '../NavButton';
 
@@ -57,10 +51,13 @@ export function SourceSelector({
     <div className="flex flex-col gap-2">
       {/** label */}
       <div
-        className="flex"
+        className="flex gap-2 items-baseline"
         // onClick={() => setIsServersExpanded(!isServersExpanded)}
       >
         <span className="text-base font-semibold">Server</span>
+        <span className="text-xs font-semibold">
+          Please try a different server if the video takes too long to load.
+        </span>
         {/* {isServersExpanded ? (
           <MdOutlineKeyboardArrowDown className="relative top-[3px] left-[1px]" />
         ) : (

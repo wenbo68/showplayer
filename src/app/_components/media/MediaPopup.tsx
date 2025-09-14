@@ -57,28 +57,8 @@ export function MediaPopup({
       {/* Modal Content */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-[90vw] lg:max-w-4xl rounded-lg bg-gray-800 max-h-[75vh] flex overflow-y-auto"
+        className="relative w-full max-w-[90vw] lg:max-w-5xl rounded-lg bg-gray-800 max-h-[75vh] flex overflow-y-auto"
       >
-        {/* Close Button
-        <button
-          onClick={onClose}
-          className="absolute top-2 right-2 hover:text-gray-200 z-10"
-        >
-          <svg
-            className="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button> */}
-
         {/* Poster Image */}
         <div className="hidden sm:block sm:w-1/3">
           <img
@@ -92,7 +72,20 @@ export function MediaPopup({
         </div>
 
         {/* Details */}
-        <div className="p-6 sm:w-2/3 flex flex-col gap-5">
+        <div className="p-6 sm:w-2/3 flex flex-col gap-5 relative isolate">
+          {media.backdropUrl && (
+            <>
+              {/** backdrop image */}
+              <div
+                style={{
+                  backgroundImage: `url(${`https://image.tmdb.org/t/p/w1280${media.backdropUrl}`})`,
+                }}
+                className="absolute inset-0 bg-cover bg-center -z-10 rounded-r-lg"
+              />
+              {/** overlay to control backdrop transparency */}
+              <div className="absolute inset-0 bg-gray-900/90 -z-10 rounded-r-lg" />
+            </>
+          )}
           <div className="flex flex-col gap-4">
             {/* Title */}
             <h2 className="text-3xl font-bold">{media.title}</h2>
@@ -160,7 +153,7 @@ export function MediaPopup({
               href={`/${media.type}/${media.tmdbId}${
                 media.type === 'movie' ? '' : '/1/1'
               }`}
-              onClick={onClose} // <-- ADD THIS LINE
+              onClick={onClose}
               className={`${
                 !isReleased || media.availabilityCount <= 0
                   ? `bg-gray-700 hover:bg-gray-600`

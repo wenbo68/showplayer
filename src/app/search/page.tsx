@@ -11,6 +11,8 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { auth } from '~/server/auth';
 import OrderSelector from '../_components/search/OrderSelector';
+import OrderSelectorFallback from '../_components/search/OrderSelectorFallback';
+import ActiveLabelsFallback from '../_components/search/ActiveLabelsFallback';
 
 // Helper function to ensure a value is an array of strings
 const ensureStringArray = (value: string | string[] | undefined): string[] => {
@@ -156,8 +158,12 @@ export default async function SearchPage({
       </Suspense>
 
       <div className="w-full flex flex-col sm:flex-row sm:justify-between gap-6">
-        <ActiveLabels filterOptions={filterOptions} />
-        <OrderSelector options={orderOptions} />
+        <Suspense fallback={<ActiveLabelsFallback />}>
+          <ActiveLabels filterOptions={filterOptions} />
+        </Suspense>
+        <Suspense fallback={<OrderSelectorFallback />}>
+          <OrderSelector options={orderOptions} />
+        </Suspense>
       </div>
 
       {pageMedia.length > 0 && (

@@ -178,7 +178,7 @@ export default function IdSubmitter() {
             <div
               ref={containerRef}
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="relative flex rounded bg-gray-800 cursor-pointer text-xs font-semibold"
+              className="min-w-32 relative flex rounded bg-gray-800 cursor-pointer text-xs font-semibold"
             >
               <div className="w-12 pl-3 flex items-center justify-center">
                 {mediaType === 'movie' ? 'Movie' : 'TV'}

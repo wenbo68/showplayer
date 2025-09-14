@@ -26,7 +26,7 @@ export function NavButton({
 }: ActionButtonProps) {
   // Base styles that are always applied
   const baseStyle =
-    'rounded cursor-pointer h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10 flex items-center justify-center shrink-0 transition-colors';
+    'text-xs font-semibold rounded cursor-pointer h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10 flex items-center justify-center shrink-0 transition-colors';
 
   // The component type will be a Next.js Link if href is provided, otherwise a button
   const Component = href ? Link : 'button';

@@ -9,6 +9,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from 'lucide-react';
+import { NavButton } from '../NavButton';
 
 type PageSelectorProps = {
   currentPage: number;
@@ -58,65 +59,53 @@ export default function PageSelector({
   const hasNextPage = currentPage < totalPages;
 
   return (
-    <div className="flex items-center justify-center gap-2 text-xs font-semibold">
+    <div className="flex items-center justify-center gap-2">
       {/* First Page Button */}
-      <button
+      <NavButton
         onClick={() => handlePageChange(1)}
-        disabled={!hasPrevPage}
-        className={`rounded hover:bg-gray-800 cursor-pointer h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10 flex items-center justify-center`}
+        isDisabled={!hasPrevPage}
         aria-label="Go to first page"
       >
         <ChevronsLeft size={16} />
-      </button>
+      </NavButton>
 
       {/* Previous Page Button */}
-      <button
+      <NavButton
         onClick={() => handlePageChange(currentPage - 1)}
-        disabled={!hasPrevPage}
-        className={`rounded hover:bg-gray-800 cursor-pointer h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10 flex items-center justify-center`}
+        isDisabled={!hasPrevPage}
         aria-label="Go to previous page"
       >
         <ChevronLeft size={16} />
-      </button>
+      </NavButton>
 
       {/* Page Number Buttons */}
-      {/* <div className="flex items-center gap-2"> */}
       {pageNumbers.map((page) => (
-        <button
+        <NavButton
           key={page}
           onClick={() => handlePageChange(page)}
-          disabled={currentPage === page}
-          className={`rounded cursor-pointer h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10 flex items-center justify-center transition-colors
-              ${
-                currentPage === page
-                  ? 'text-blue-400 bg-gray-800'
-                  : 'hover:bg-gray-800'
-              }`}
+          isActive={currentPage === page}
         >
           {page}
-        </button>
+        </NavButton>
       ))}
-      {/* </div> */}
 
       {/* Next Page Button */}
-      <button
+      <NavButton
         onClick={() => handlePageChange(currentPage + 1)}
-        disabled={!hasNextPage}
-        className={`rounded hover:bg-gray-800 cursor-pointer h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10 flex items-center justify-center`}
+        isDisabled={!hasNextPage}
         aria-label="Go to next page"
       >
         <ChevronRight size={16} />
-      </button>
+      </NavButton>
 
       {/* Last Page Button */}
-      <button
+      <NavButton
         onClick={() => handlePageChange(totalPages)}
-        disabled={!hasNextPage}
-        className={`rounded hover:bg-gray-800 cursor-pointer h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10 flex items-center justify-center`}
+        isDisabled={!hasNextPage}
         aria-label="Go to last page"
       >
         <ChevronsRight size={16} />
-      </button>
+      </NavButton>
     </div>
   );
 }

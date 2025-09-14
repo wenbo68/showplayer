@@ -8,6 +8,7 @@ import {
   MdOutlineKeyboardArrowLeft,
 } from 'react-icons/md';
 import type { Source } from '~/type';
+import { NavButton } from '../NavButton';
 
 interface SourceSelectorProps {
   sources: Source[];
@@ -75,17 +76,13 @@ export function SourceSelector({
         }`}
       >
         {sources.map((source) => (
-          <Link
+          <NavButton
             key={source.id}
             href={`${basePath}/${source.provider}`}
-            className={`flex items-center justify-center rounded shrink-0 w-10 h-10 text-sm font-semibold ${
-              source.provider === selectedProvider
-                ? 'bg-gray-800 text-blue-400'
-                : 'hover:bg-gray-800'
-            }`}
+            isActive={source.provider === selectedProvider}
           >
             {source.provider}
-          </Link>
+          </NavButton>
         ))}
       </div>
     </div>

@@ -57,7 +57,7 @@ export function MediaPopup({
       {/* Modal Content */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-4xl rounded-lg bg-gray-800 max-h-[75vh] flex overflow-y-auto"
+        className="relative w-full max-w-[90vw] lg:max-w-4xl rounded-lg bg-gray-800 max-h-[75vh] flex overflow-y-auto"
       >
         {/* Close Button
         <button
@@ -80,7 +80,7 @@ export function MediaPopup({
         </button> */}
 
         {/* Poster Image */}
-        <div className="hidden sm:inline sm:w-1/3">
+        <div className="hidden sm:block sm:w-1/3">
           <img
             src={
               `https://image.tmdb.org/t/p/w500${media.imageUrl}` ||

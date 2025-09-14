@@ -27,6 +27,19 @@ export default async function Page({ params }: PageProps) {
   const mediaData = await db.query.tmdbMedia.findFirst({
     where: eq(tmdbMedia.tmdbId, tmdbId),
     with: {
+      // --- ADD THIS BLOCK to get Genres ---
+      genres: {
+        with: {
+          genre: true, // This follows the relation from the join table to the tmdbGenre table
+        },
+      },
+
+      // --- ADD THIS BLOCK to get Origins ---
+      origins: {
+        with: {
+          origin: true, // This follows the relation from the join table to the tmdbOrigin table
+        },
+      },
       // For movies, we fetch sources directly linked to the mediaId
       sources: {
         orderBy: asc(tmdbSource.provider),
@@ -77,7 +90,13 @@ export default async function Page({ params }: PageProps) {
 
   return (
     <div className="p-4 flex flex-col gap-4">
-      <MvOverview selectedMedia={mediaData} />
+      <MvOverview
+        selectedMedia={{
+          media: mediaData,
+          origins: mediaData.origins?.map((o) => o.origin?.name ?? '') ?? [],
+          genres: mediaData.genres?.map((g) => g.genre?.name ?? '') ?? [],
+        }}
+      />
 
       {/* Video Player Component */}
       <VideoPlayer

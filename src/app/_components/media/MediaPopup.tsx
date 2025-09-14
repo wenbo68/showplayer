@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { ListMedia } from '~/type';
 import { MediaBadge } from './MediaBadge';
 import { AddToUserListButton } from './AddToUserListButton';
+import Backdrop from '../player/Backdrop';
 
 export const tagClassMap = {
   // title: 'bg-rose-500/20 text-rose-300 ring-rose-500/30',
@@ -57,7 +58,7 @@ export function MediaPopup({
       {/* Modal Content */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-[90vw] lg:max-w-5xl rounded-lg bg-gray-800 max-h-[75vh] flex overflow-y-auto"
+        className="relative w-full max-w-[90vw] lg:max-w-5xl rounded-lg bg-gray-800 max-h-[75vh] flex overflow-y-auto scrollbar-thin"
       >
         {/* Poster Image */}
         <div className="hidden sm:block sm:w-1/3">
@@ -73,19 +74,7 @@ export function MediaPopup({
 
         {/* Details */}
         <div className="p-6 sm:w-2/3 flex flex-col gap-5 relative isolate">
-          {media.backdropUrl && (
-            <>
-              {/** backdrop image */}
-              <div
-                style={{
-                  backgroundImage: `url(${`https://image.tmdb.org/t/p/w1280${media.backdropUrl}`})`,
-                }}
-                className="absolute inset-0 bg-cover bg-center -z-10 rounded-r-lg"
-              />
-              {/** overlay to control backdrop transparency */}
-              <div className="absolute inset-0 bg-gray-900/90 -z-10 rounded-r-lg" />
-            </>
-          )}
+          <Backdrop backdropUrl={media.backdropUrl} />
           <div className="flex flex-col gap-4">
             {/* Title */}
             <h2 className="text-3xl font-bold">{media.title}</h2>
@@ -136,7 +125,7 @@ export function MediaPopup({
             </div>
           </div>
 
-          <div className="text-base prose prose-sm max-w-none">
+          <div className="text-base max-w-none">
             {media.description ?? 'No description available.'}
           </div>
 

@@ -56,7 +56,7 @@ export function SourceSelector({
       >
         <span className="text-base font-semibold">Server</span>
         <span className="text-xs font-semibold">
-          Please try a different server if the video takes too long to load.
+          Please try a different server if the video's lagging.
         </span>
         {/* {isServersExpanded ? (
           <MdOutlineKeyboardArrowDown className="relative top-[3px] left-[1px]" />

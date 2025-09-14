@@ -4,6 +4,7 @@ import {
   tmdbSeason,
   tmdbEpisode,
   tmdbSource,
+  tmdbOrigin,
 } from '~/server/db/schema';
 import { eq, asc, sql } from 'drizzle-orm';
 import { notFound, redirect } from 'next/navigation';
@@ -35,6 +36,19 @@ export default async function Page({ params }: PageProps) {
   const mediaData = await db.query.tmdbMedia.findFirst({
     where: eq(tmdbMedia.tmdbId, tmdbId),
     with: {
+      // --- ADD THIS BLOCK to get Genres ---
+      genres: {
+        with: {
+          genre: true, // This follows the relation from the join table to the tmdbGenre table
+        },
+      },
+
+      // --- ADD THIS BLOCK to get Origins ---
+      origins: {
+        with: {
+          origin: true, // This follows the relation from the join table to the tmdbOrigin table
+        },
+      },
       seasons: {
         orderBy: [asc(tmdbSeason.seasonNumber)],
         with: {
@@ -109,7 +123,11 @@ export default async function Page({ params }: PageProps) {
     <div className="p-4 flex flex-col gap-4">
       {/* Title, Season, Episode */}
       <TvOverview
-        selectedMedia={mediaData}
+        selectedMedia={{
+          media: mediaData,
+          origins: mediaData.origins?.map((o) => o.origin?.name ?? '') ?? [],
+          genres: mediaData.genres?.map((g) => g.genre?.name ?? '') ?? [],
+        }}
         selectedSeason={selectedSeason}
         selectedEpisode={selectedEpisode}
       />

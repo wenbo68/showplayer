@@ -1,25 +1,22 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  MdOutlineKeyboardArrowDown,
-  MdOutlineKeyboardArrowLeft,
-} from 'react-icons/md';
-import type { Episode, Media, Season } from '~/type';
+import type { Episode, ListMedia, Media, Season } from '~/type';
+import Overview from './Overview';
 
 interface MvOverview {
-  selectedMedia: Media;
+  selectedMedia: ListMedia;
 }
 
 export function MvOverview({ selectedMedia }: MvOverview) {
-  const [showMediaOverview, setShowMediaOverview] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return sessionStorage.getItem('showMediaOverview') === 'true';
+  const [showOverview, setShowOverview] = useState(() => {
+    if (typeof window === 'undefined') return 'media';
+    return sessionStorage.getItem('showOverview');
   });
 
   useEffect(() => {
-    sessionStorage.setItem('showMediaOverview', String(showMediaOverview));
-  }, [showMediaOverview]);
+    sessionStorage.setItem('showOverview', String(showOverview));
+  }, [showOverview]);
 
   return (
     <div className="flex flex-col gap-1">
@@ -27,25 +24,20 @@ export function MvOverview({ selectedMedia }: MvOverview) {
       <div className="flex w-full justify-between items-end">
         {/* title */}
         <div
-          className="flex cursor-pointer"
+          className={`cursor-pointer ${
+            showOverview === 'media' ? `text-blue-400` : `hover:text-blue-400`
+          }`}
           onClick={() => {
-            setShowMediaOverview(!showMediaOverview);
+            setShowOverview(showOverview === 'media' ? null : 'media');
           }}
         >
-          <span className="text-2xl font-bold">{selectedMedia.title}</span>
-          {showMediaOverview ? (
-            <MdOutlineKeyboardArrowDown className="relative top-[8px] left-[1px]" />
-          ) : (
-            <MdOutlineKeyboardArrowLeft className="relative top-[8px] left-[1px]" />
-          )}
+          <span className="text-xl font-bold">{selectedMedia.media.title}</span>
         </div>
       </div>
 
       {/* overview */}
-      {showMediaOverview && selectedMedia.description && (
-        <div className={`overflow-hidden text-gray-400 text-center`}>
-          <p className="text-sm">{selectedMedia.description}</p>
-        </div>
+      {showOverview && (
+        <Overview selectedMedia={selectedMedia} showOverview={showOverview} />
       )}
     </div>
   );

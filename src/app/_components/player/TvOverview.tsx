@@ -1,14 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  MdOutlineKeyboardArrowDown,
-  MdOutlineKeyboardArrowLeft,
-} from 'react-icons/md';
-import type { Episode, Media, Season } from '~/type';
+import { IoIosArrowDown } from 'react-icons/io';
+import type { Episode, ListMedia, Media, Season } from '~/type';
+import Overview from './Overview';
 
 interface TvOverview {
-  selectedMedia: Media;
+  selectedMedia: ListMedia;
   selectedSeason: Season;
   selectedEpisode: Episode;
 }
@@ -18,120 +16,81 @@ export function TvOverview({
   selectedSeason,
   selectedEpisode,
 }: TvOverview) {
-  const [showMediaOverview, setShowMediaOverview] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return sessionStorage.getItem('showMediaOverview') === 'true';
-  });
-  const [showSeasonOverview, setShowSeasonOverview] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return sessionStorage.getItem('showSeasonOverview') === 'true';
-  });
-  const [showEpisodeOverview, setShowEpisodeOverview] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return sessionStorage.getItem('showEpisodeOverview') === 'true';
+  const [showOverview, setShowOverview] = useState(() => {
+    if (typeof window === 'undefined') return 'media';
+    return sessionStorage.getItem('showOverview');
   });
 
   useEffect(() => {
-    sessionStorage.setItem('showMediaOverview', String(showMediaOverview));
-  }, [showMediaOverview]);
-  useEffect(() => {
-    sessionStorage.setItem('showSeasonOverview', String(showSeasonOverview));
-  }, [showSeasonOverview]);
-  useEffect(() => {
-    sessionStorage.setItem('showEpisodeOverview', String(showEpisodeOverview));
-  }, [showEpisodeOverview]);
-
-  const isAnyOverviewVisible =
-    showMediaOverview || showSeasonOverview || showEpisodeOverview;
+    sessionStorage.setItem('showOverview', String(showOverview));
+  }, [showOverview]);
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-3">
       {/* selectors */}
-      <div className="flex w-full justify-between items-end">
-        {/* title */}
+      <div className="flex w-full justify-between items-end gap-6">
+        {/* media title */}
         <div
-          className="flex cursor-pointer"
+          className={`flex gap-2 cursor-pointer items-center justify-center ${
+            showOverview === 'media' ? `text-blue-400` : `hover:text-blue-400`
+          }`}
           onClick={() => {
-            setShowMediaOverview(!showMediaOverview);
-            setShowSeasonOverview(false);
-            setShowEpisodeOverview(false);
+            setShowOverview(showOverview === 'media' ? null : 'media');
           }}
         >
-          <span className="text-2xl font-bold">{selectedMedia.title}</span>
-          {showMediaOverview ? (
-            <MdOutlineKeyboardArrowDown className="relative top-[8px] left-[1px]" />
-          ) : (
-            <MdOutlineKeyboardArrowLeft className="relative top-[8px] left-[1px]" />
-          )}
+          <div className="text-xl font-bold">{selectedMedia.media.title}</div>
+          {/* <div className="">
+            <IoIosArrowDown size={20} />
+          </div> */}
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-2">
           {/* season */}
           <div
-            className="flex cursor-pointer"
+            className={`flex gap-1 cursor-pointer items-center ${
+              showOverview === 'season'
+                ? `text-blue-400`
+                : `hover:text-blue-400`
+            }`}
             onClick={() => {
-              setShowMediaOverview(false);
-              setShowSeasonOverview(!showSeasonOverview);
-              setShowEpisodeOverview(false);
+              setShowOverview(showOverview === 'season' ? null : 'season');
             }}
           >
             <span className="text-xl font-bold">
               S{selectedSeason.seasonNumber}
             </span>
-            {showSeasonOverview ? (
-              <MdOutlineKeyboardArrowDown className="relative top-[6px] left-[1px]" />
-            ) : (
-              <MdOutlineKeyboardArrowLeft className="relative top-[6px] left-[1px]" />
-            )}
+            <div className="">
+              <IoIosArrowDown size={20} />
+            </div>
           </div>
           {/* episode */}
           <div
-            className="flex cursor-pointer"
+            className={`flex gap-1 cursor-pointer items-center ${
+              showOverview === 'episode'
+                ? `text-blue-400`
+                : `hover:text-blue-400`
+            }`}
             onClick={() => {
-              setShowMediaOverview(false);
-              setShowSeasonOverview(false);
-              setShowEpisodeOverview(!showEpisodeOverview);
+              setShowOverview(showOverview === 'episode' ? null : 'episode');
             }}
           >
             <span className="text-xl font-bold">
               E{selectedEpisode.episodeNumber}
             </span>
-            {showEpisodeOverview ? (
-              <MdOutlineKeyboardArrowDown className="relative top-[6px] left-[1px]" />
-            ) : (
-              <MdOutlineKeyboardArrowLeft className="relative top-[6px] left-[1px]" />
-            )}
+            <div className="">
+              <IoIosArrowDown size={20} />
+            </div>
           </div>
         </div>
       </div>
 
       {/* overview */}
-      {isAnyOverviewVisible && (
-        <div className={`overflow-hidden text-gray-400 text-center`}>
-          {/* Conditionally render the correct overview text */}
-          {showMediaOverview && selectedMedia.description && (
-            <p className="text-sm">{selectedMedia.description}</p>
-          )}
-          {showSeasonOverview && (
-            <>
-              {selectedSeason.title && (
-                <p className="font-bold">{selectedSeason.title}</p>
-              )}
-              {selectedSeason.description && (
-                <p className="text-sm">{selectedSeason.description}</p>
-              )}
-            </>
-          )}
-          {showEpisodeOverview && (
-            <>
-              {selectedEpisode.title && (
-                <p className="font-bold">{selectedEpisode.title}</p>
-              )}
-              {selectedEpisode.description && (
-                <p className="text-sm">{selectedEpisode.description}</p>
-              )}
-            </>
-          )}
-        </div>
+      {showOverview && (
+        <Overview
+          selectedMedia={selectedMedia}
+          selectedSeason={selectedSeason}
+          selectedEpisode={selectedEpisode}
+          showOverview={showOverview}
+        />
       )}
     </div>
   );

@@ -21,63 +21,66 @@ export function SourceSelector({
   const pathname = usePathname();
   const basePath = pathname.substring(0, pathname.lastIndexOf('/'));
 
-  const [isServersExpanded, setIsServersExpanded] = useState(() => {
-    if (typeof window === 'undefined') return false; // Guard for SSR
-    return sessionStorage.getItem('isServersExpanded') === 'true';
-  });
+  // const [isServersExpanded, setIsServersExpanded] = useState(() => {
+  //   if (typeof window === 'undefined') return false; // Guard for SSR
+  //   return sessionStorage.getItem('isServersExpanded') === 'true';
+  // });
 
-  useEffect(() => {
-    sessionStorage.setItem('isServersExpanded', String(isServersExpanded));
-  }, [isServersExpanded]);
+  // useEffect(() => {
+  //   sessionStorage.setItem('isServersExpanded', String(isServersExpanded));
+  // }, [isServersExpanded]);
 
-  const serversContainerRef = useRef<HTMLDivElement>(null);
+  // const serversContainerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const container = serversContainerRef.current;
-    if (!container || isServersExpanded) return;
+  // useEffect(() => {
+  //   const container = serversContainerRef.current;
+  //   if (!container || isServersExpanded) return;
 
-    const activeEpisode = container.querySelector<HTMLElement>(
-      '[data-active="true"]'
-    );
-    if (activeEpisode) {
-      const containerWidth = container.offsetWidth;
-      const elementLeft = activeEpisode.offsetLeft;
-      const newScrollPosition = elementLeft - containerWidth / 2;
+  //   const activeEpisode = container.querySelector<HTMLElement>(
+  //     '[data-active="true"]'
+  //   );
+  //   if (activeEpisode) {
+  //     const containerWidth = container.offsetWidth;
+  //     const elementLeft = activeEpisode.offsetLeft;
+  //     const newScrollPosition = elementLeft - containerWidth / 2;
 
-      // Apply the scroll only to the horizontal container
-      container.scrollTo({
-        left: newScrollPosition,
-        behavior: 'smooth',
-      });
-    }
-  }, [selectedProvider, isServersExpanded]); // Reruns when the page/episode or season changes
+  //     // Apply the scroll only to the horizontal container
+  //     container.scrollTo({
+  //       left: newScrollPosition,
+  //       behavior: 'smooth',
+  //     });
+  //   }
+  // }, [selectedProvider, isServersExpanded]); // Reruns when the page/episode or season changes
 
   return (
-    <div className="flex flex-col gap-0">
+    <div className="flex flex-col gap-2">
+      {/** label */}
       <div
-        className="flex cursor-pointer"
-        onClick={() => setIsServersExpanded(!isServersExpanded)}
+        className="flex"
+        // onClick={() => setIsServersExpanded(!isServersExpanded)}
       >
-        <span className="font-semibold">Servers</span>
-        {isServersExpanded ? (
+        <span className="text-base font-semibold">Server</span>
+        {/* {isServersExpanded ? (
           <MdOutlineKeyboardArrowDown className="relative top-[3px] left-[1px]" />
         ) : (
           <MdOutlineKeyboardArrowLeft className="relative top-[3px] left-[1px]" />
-        )}
+        )} */}
       </div>
+      {/** server buttons */}
       <div
-        ref={serversContainerRef}
+        // ref={serversContainerRef}
         className={`flex gap-2 ${
-          isServersExpanded ? 'flex-wrap' : 'overflow-x-auto scrollbar-hide'
+          // isServersExpanded ? 'flex-wrap' :
+          'overflow-x-auto scrollbar-hide'
         }`}
       >
         {sources.map((source) => (
           <Link
             key={source.id}
             href={`${basePath}/${source.provider}`}
-            className={`block py-2 rounded shrink-0 w-10 text-center text-sm ${
+            className={`flex items-center justify-center rounded shrink-0 w-10 h-10 text-sm font-semibold ${
               source.provider === selectedProvider
-                ? 'bg-gray-800'
+                ? 'bg-gray-800 text-blue-400'
                 : 'hover:bg-gray-800'
             }`}
           >

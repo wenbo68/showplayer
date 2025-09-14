@@ -76,7 +76,7 @@ export default async function Page({ params }: PageProps) {
   );
 
   return (
-    <div className="p-4 flex flex-col gap-2">
+    <div className="p-4 flex flex-col gap-4">
       <MvOverview selectedMedia={mediaData} />
 
       {/* Video Player Component */}

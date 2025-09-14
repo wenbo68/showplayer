@@ -160,6 +160,7 @@ export function MediaPopup({
               href={`/${media.type}/${media.tmdbId}${
                 media.type === 'movie' ? '' : '/1/1'
               }`}
+              onClick={onClose} // <-- ADD THIS LINE
               className={`${
                 !isReleased || media.availabilityCount <= 0
                   ? `bg-gray-700 hover:bg-gray-600`

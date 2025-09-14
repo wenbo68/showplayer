@@ -60,7 +60,7 @@ export default function SubmissionHistory() {
             </div>
           )}
           {/** table */}
-          <div className="overflow-x-auto rounded bg-gray-800 px-4 py-2 scrollbar-thin">
+          <div className="max-h-[50vh] overflow-y-auto overflow-x-auto rounded bg-gray-800 px-4 py-2 scrollbar-thin">
             {/* {isHistoryLoading && <p>Loading history...</p>}
             {isHistoryError && (
               <p className="text-red-400">Failed to load history.</p>

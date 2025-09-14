@@ -57,15 +57,13 @@ export default function PageSelector({
   const hasPrevPage = currentPage > 1;
   const hasNextPage = currentPage < totalPages;
 
-  const buttonSize = 10;
-
   return (
-    <div className="flex items-center justify-center gap-1 text-sm font-semibold">
+    <div className="flex items-center justify-center gap-2 text-xs font-semibold">
       {/* First Page Button */}
       <button
         onClick={() => handlePageChange(1)}
         disabled={!hasPrevPage}
-        className={`hover:text-blue-400 cursor-pointer h-${buttonSize} w-${buttonSize} flex items-center justify-center`}
+        className={`rounded hover:bg-gray-800 cursor-pointer h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10 flex items-center justify-center`}
         aria-label="Go to first page"
       >
         <ChevronsLeft size={16} />
@@ -75,7 +73,7 @@ export default function PageSelector({
       <button
         onClick={() => handlePageChange(currentPage - 1)}
         disabled={!hasPrevPage}
-        className={`hover:text-blue-400 cursor-pointer h-${buttonSize} w-${buttonSize} flex items-center justify-center`}
+        className={`rounded hover:bg-gray-800 cursor-pointer h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10 flex items-center justify-center`}
         aria-label="Go to previous page"
       >
         <ChevronLeft size={16} />
@@ -88,11 +86,11 @@ export default function PageSelector({
           key={page}
           onClick={() => handlePageChange(page)}
           disabled={currentPage === page}
-          className={`h-${buttonSize} w-${buttonSize} flex items-center justify-center transition-colors
+          className={`rounded cursor-pointer h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10 flex items-center justify-center transition-colors
               ${
                 currentPage === page
-                  ? 'text-blue-400'
-                  : 'hover:text-blue-400 cursor-pointer'
+                  ? 'text-blue-400 bg-gray-800'
+                  : 'hover:bg-gray-800'
               }`}
         >
           {page}
@@ -104,7 +102,7 @@ export default function PageSelector({
       <button
         onClick={() => handlePageChange(currentPage + 1)}
         disabled={!hasNextPage}
-        className={`hover:text-blue-400 cursor-pointer h-${buttonSize} w-${buttonSize} flex items-center justify-center`}
+        className={`rounded hover:bg-gray-800 cursor-pointer h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10 flex items-center justify-center`}
         aria-label="Go to next page"
       >
         <ChevronRight size={16} />
@@ -114,7 +112,7 @@ export default function PageSelector({
       <button
         onClick={() => handlePageChange(totalPages)}
         disabled={!hasNextPage}
-        className={`hover:text-blue-400 cursor-pointer h-${buttonSize} w-${buttonSize} flex items-center justify-center`}
+        className={`rounded hover:bg-gray-800 cursor-pointer h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10 flex items-center justify-center`}
         aria-label="Go to last page"
       >
         <ChevronsRight size={16} />

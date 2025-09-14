@@ -34,7 +34,7 @@ const pillColors = {
   list: tagClassMap['list'],
 };
 
-export default function ActiveFilters({
+export default function ActiveLabels({
   filterOptions,
 }: {
   filterOptions: FilterOptions;
@@ -171,9 +171,9 @@ export default function ActiveFilters({
     return pills;
   }, [searchParams, filterOptions, pathname, router]);
 
-  if (activePills.length === 0) {
-    return null; // Don't render anything if no filters are active
-  }
+  // if (activePills.length === 0) {
+  //   return null; // Don't render anything if no filters are active
+  // }
 
   return (
     <div className="flex flex-wrap gap-2 text-xs font-semibold items-center">

@@ -5,10 +5,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Season, Episode, Media, Source } from '~/type';
 import { SourceSelector } from './SourceSelector';
-import {
-  MdOutlineKeyboardArrowDown,
-  MdOutlineKeyboardArrowLeft,
-} from 'react-icons/md';
+import { IoGrid } from 'react-icons/io5';
 
 interface TvSelector {
   tmdbId: number;
@@ -106,7 +103,7 @@ export function TvSelector({
   }, [episodeIdParam, selectedSeason, isEpisodesExpanded]); // Reruns when the page/episode or season changes
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-4 text-sm font-semibold">
       {/* Sources */}
       <SourceSelector
         sources={episodeSources}
@@ -114,18 +111,22 @@ export function TvSelector({
       />
 
       {/* Seasons */}
-      <div className="flex flex-col gap-0">
+      <div className="flex flex-col gap-2">
         <div
-          className="flex cursor-pointer"
+          className="flex cursor-pointer gap-2 group"
           onClick={() => setIsSeasonsExpanded(!isSeasonsExpanded)}
         >
-          <span className="font-semibold">Seasons</span>
-          {isSeasonsExpanded ? (
-            <MdOutlineKeyboardArrowDown className="relative top-[3px] left-[1px]" />
-          ) : (
-            <MdOutlineKeyboardArrowLeft className="relative top-[3px] left-[1px]" />
-          )}
+          {/** label */}
+          <span className="text-base">Season</span>
+          {/** grid display */}
+          <IoGrid
+            size={15}
+            className={`relative top-[4px] ${
+              isSeasonsExpanded ? `text-blue-400` : `group-hover:text-blue-400`
+            }`}
+          />
         </div>
+        {/** season buttons */}
         <div
           ref={seasonsContainerRef}
           className={`flex gap-2 ${
@@ -139,9 +140,9 @@ export function TvSelector({
               data-active={season.id === selectedSeasonId}
               className={`${
                 season.id === selectedSeasonId
-                  ? `bg-gray-800`
+                  ? `bg-gray-800 text-blue-400`
                   : `hover:bg-gray-800`
-              } py-2 rounded w-10 text-center shrink-0 text-sm`}
+              } rounded w-10 h-10 flex items-center justify-center shrink-0`}
             >
               {season.seasonNumber}
             </button>
@@ -150,18 +151,22 @@ export function TvSelector({
       </div>
 
       {/* Episodes */}
-      <div className="flex flex-col gap-0">
+      <div className="flex flex-col gap-2">
         <div
-          className="flex cursor-pointer"
+          className="flex cursor-pointer gap-2 group"
           onClick={() => setIsEpisodesExpanded(!isEpisodesExpanded)}
         >
-          <span className="font-semibold">Episodes</span>
-          {isEpisodesExpanded ? (
-            <MdOutlineKeyboardArrowDown className="relative top-[3px] left-[1px]" />
-          ) : (
-            <MdOutlineKeyboardArrowLeft className="relative top-[3px] left-[1px]" />
-          )}
+          {/** label */}
+          <span className="text-base">Episode</span>
+          {/** grid display */}
+          <IoGrid
+            size={15}
+            className={`relative top-[4px] ${
+              isEpisodesExpanded ? `text-blue-400` : `group-hover:text-blue-400`
+            }`}
+          />
         </div>
+        {/** episode buttons */}
         <div
           ref={episodesContainerRef}
           className={`flex gap-2 ${
@@ -175,11 +180,11 @@ export function TvSelector({
               data-active={episode.id === episodeIdParam}
               className={`${
                 episode.id === episodeIdParam
-                  ? `bg-gray-800`
+                  ? `bg-gray-800 text-blue-400`
                   : `hover:bg-gray-800`
               } ${
                 episode.sources.length === 0 ? `line-through text-gray-600` : ``
-              } py-2 rounded w-10 text-center shrink-0 block text-sm`}
+              } rounded w-10 h-10 flex items-center justify-center shrink-0`}
             >
               {episode.episodeNumber}
             </Link>

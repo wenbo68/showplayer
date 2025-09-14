@@ -5,7 +5,7 @@ import SearchBar from '../_components/search/SearchBar';
 import MediaList from '../_components/media/MediaList';
 import { Suspense } from 'react';
 import SearchBarFallback from '../_components/search/SearchBarFallback';
-import ActiveFilters from '../_components/search/ActiveFilters';
+import ActiveLabels from '../_components/search/ActiveLabels';
 import PageSelector from '../_components/search/PageSelector';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
@@ -155,8 +155,8 @@ export default async function SearchPage({
         <SearchBar filterOptions={filterOptions} />
       </Suspense>
 
-      <div className="flex flex-col sm:flex-row sm:justify-between gap-6">
-        <ActiveFilters filterOptions={filterOptions} />
+      <div className="w-full flex flex-col sm:flex-row sm:justify-between gap-6">
+        <ActiveLabels filterOptions={filterOptions} />
         <OrderSelector options={orderOptions} />
       </div>
 

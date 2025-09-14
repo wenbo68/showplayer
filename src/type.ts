@@ -12,6 +12,7 @@ export type Season = InferSelectModel<typeof tmdbSeason>;
 export type Episode = InferSelectModel<typeof tmdbEpisode>;
 export type Source = InferSelectModel<typeof tmdbSource>;
 export type Subtitle = InferSelectModel<typeof tmdbSubtitle>;
+export type SourceWithSubtitles = Source & { subtitles: Subtitle[] };
 
 export type M3U8Result = {
   type: 'master' | 'media';

@@ -1,3 +1,5 @@
+import type { SourceWithSubtitles } from '~/type';
+
 // Helper to set CORS headers
 export function withCors(headers: Record<string, string> = {}) {
   return {
@@ -11,21 +13,7 @@ export function withCors(headers: Record<string, string> = {}) {
 // two ways to create url with params:
 // 1. encode params and append them to to url as strings (encode the urls so that they can be included in another url otherwise the special characters in the embeded urls can cause confusions)
 // 2. use URL obj and attach params (without encoding) as key/value
-export function getProxiedSrcUrl(selectedSrc?: {
-  url: string;
-  headers: unknown;
-  id: string;
-  type: 'master' | 'media';
-  mediaId: string | null;
-  episodeId: string | null;
-  provider: number;
-  subtitles: {
-    id: string;
-    sourceId: string;
-    language: string;
-    content: string;
-  }[];
-}) {
+export function getProxiedSrcUrl(selectedSrc?: SourceWithSubtitles) {
   if (!selectedSrc) return undefined;
   const urlObject = new URL(`${process.env.BUNNY_URL}/api/proxy`);
   urlObject.searchParams.set('url', selectedSrc.url);

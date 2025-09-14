@@ -1,0 +1,30 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+
+export function useSessionStorage<T>(
+  key: string,
+  defaultValue: T
+): [T, (value: T) => void] {
+  const [value, setValue] = useState<T>(defaultValue);
+
+  // This effect runs once on the client to safely read from sessionStorage
+  // without causing a server-client hydration mismatch.
+  useEffect(() => {
+    const storedValue = sessionStorage.getItem(key);
+    if (storedValue !== null) {
+      try {
+        setValue(JSON.parse(storedValue));
+      } catch {
+        setValue(defaultValue);
+      }
+    }
+  }, [key, defaultValue]);
+
+  // This effect runs whenever the value changes, writing it back to sessionStorage.
+  useEffect(() => {
+    sessionStorage.setItem(key, JSON.stringify(value));
+  }, [key, value]);
+
+  return [value, setValue];
+}

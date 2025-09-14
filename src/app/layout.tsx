@@ -43,10 +43,7 @@ export default async function RootLayout({
   );
 }
 
-// let vercel cron call vps api
-// add discord login
 // add logo, tab image, etc.
-// update watch page visuals
 // link to google analytics
 // change user submit times to utc
 

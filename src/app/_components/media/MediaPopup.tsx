@@ -4,7 +4,7 @@ import Link from 'next/link';
 import type { ListMedia } from '~/type';
 import { MediaBadge } from './MediaBadge';
 import { AddToUserListButton } from './AddToUserListButton';
-import Backdrop from '../player/Backdrop';
+import Backdrop from './Backdrop';
 
 export const tagClassMap = {
   // title: 'bg-rose-500/20 text-rose-300 ring-rose-500/30',

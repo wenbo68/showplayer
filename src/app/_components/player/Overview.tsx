@@ -3,7 +3,7 @@
 import type { Episode, ListMedia, Season } from '~/type';
 import { MediaBadge } from '../media/MediaBadge';
 import { tagClassMap } from '../media/MediaPopup';
-import Backdrop from './Backdrop';
+import Backdrop from '../media/Backdrop';
 
 interface OverviewProps {
   selectedMedia: ListMedia;

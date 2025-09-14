@@ -1,17 +1,23 @@
+// ~/app/tv/[...slug]/page.tsx
+
 import { db } from '~/server/db';
 import {
   tmdbMedia,
   tmdbSeason,
   tmdbEpisode,
   tmdbSource,
-  tmdbOrigin,
 } from '~/server/db/schema';
-import { eq, asc, sql } from 'drizzle-orm';
+import { eq, asc } from 'drizzle-orm';
 import { notFound, redirect } from 'next/navigation';
 import { VideoPlayer } from '~/app/_components/player/VideoPlayer';
-import { TvSelector } from '~/app/_components/player/TvSelector';
+// import { TvSelector } from '~/app/_components/player/TvSelector';
 import { getProxiedSrcUrl } from '~/server/utils/proxyUtils';
-import { TvOverview } from '~/app/_components/player/TvOverview';
+import {
+  aggregateSubtitles,
+  getSelectedSourceAndHandleRedirects,
+} from '~/server/utils/playerUtils';
+import { OverviewSelector } from '~/app/_components/player/OverviewSelector';
+import { MediaUrlSelector } from '~/app/_components/player/MediaUrlSelector';
 
 interface PageProps {
   params: Promise<{ slug: string[] }>;
@@ -26,103 +32,82 @@ export default async function Page({ params }: PageProps) {
     return notFound();
   }
 
-  // Parse params from the URL
   const tmdbId = parseInt(tmdbIdParam, 10);
   const seasonNumber = parseInt(seasonNumberParam, 10);
   const episodeNumber = parseInt(episodeNumberParam, 10);
   const provider = providerParam ? parseInt(providerParam, 10) : undefined;
 
-  // Step 1. Fetch the main media data, including all seasons and episodes for the sidebar
-  const mediaData = await db.query.tmdbMedia.findFirst({
-    where: eq(tmdbMedia.tmdbId, tmdbId),
-    with: {
-      // --- ADD THIS BLOCK to get Genres ---
-      genres: {
-        with: {
-          genre: true, // This follows the relation from the join table to the tmdbGenre table
-        },
-      },
-
-      // --- ADD THIS BLOCK to get Origins ---
-      origins: {
-        with: {
-          origin: true, // This follows the relation from the join table to the tmdbOrigin table
-        },
-      },
-      seasons: {
-        orderBy: [asc(tmdbSeason.seasonNumber)],
-        with: {
-          episodes: {
-            orderBy: [asc(tmdbEpisode.episodeNumber)],
-            with: {
-              sources: {
-                orderBy: [asc(tmdbSource.provider)],
+  // --- 1. RUN TWO TARGETED QUERIES IN PARALLEL ---
+  const [playerData, sidebarData] = await Promise.all([
+    // Query 1: Gets only the data needed for the player and overview
+    db.query.tmdbMedia.findFirst({
+      where: eq(tmdbMedia.tmdbId, tmdbId),
+      with: {
+        genres: { with: { genre: true } },
+        origins: { with: { origin: true } },
+        seasons: {
+          where: eq(tmdbSeason.seasonNumber, seasonNumber),
+          with: {
+            episodes: {
+              where: eq(tmdbEpisode.episodeNumber, episodeNumber),
+              with: {
+                sources: {
+                  orderBy: [asc(tmdbSource.provider)],
+                  with: { subtitles: true },
+                },
               },
             },
           },
         },
       },
-    },
-  });
+    }),
+    // Query 2: Gets the full data tree needed for the TvSelector sidebar
+    db.query.tmdbMedia.findFirst({
+      where: eq(tmdbMedia.tmdbId, tmdbId),
+      with: {
+        seasons: {
+          orderBy: [asc(tmdbSeason.seasonNumber)],
+          with: {
+            episodes: {
+              orderBy: [asc(tmdbEpisode.episodeNumber)],
+              with: {
+                sources: {
+                  columns: { provider: true }, // Only need provider for styling
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
+  ]);
 
-  // If the show doesn't exist, render a 404 page
-  if (!mediaData) {
-    notFound();
-  }
+  const mediaData = playerData;
+  if (!mediaData || !sidebarData) notFound();
 
-  // Step 2. Find the specific season and episode the user is watching
-  const selectedSeason = mediaData.seasons.find(
-    (s) => s.seasonNumber === seasonNumber
-  );
+  const selectedSeason = mediaData.seasons[0];
   if (!selectedSeason) notFound();
-  const selectedEpisode = selectedSeason.episodes.find(
-    (e) => e.episodeNumber === episodeNumber
-  );
+
+  const selectedEpisode = selectedSeason.episodes[0];
   if (!selectedEpisode) notFound();
 
-  // Step 3. Fetch all available sources for the selected episode
-  const sourcesAndSubtitles = await db.query.tmdbSource.findMany({
-    where: eq(tmdbSource.episodeId, selectedEpisode.id),
-    orderBy: [asc(tmdbSource.provider)],
-    with: {
-      subtitles: true,
-    },
-  });
-  // if (!sources[0]) notFound();
+  const sourcesAndSubtitles = selectedEpisode.sources;
 
-  // If no provider is in the URL (and if there are providers), redirect to 1st provider
-  if (!provider && sourcesAndSubtitles[0]) {
-    return redirect(
-      `/tv/${tmdbId}/${seasonNumber}/${episodeNumber}/${sourcesAndSubtitles[0].provider}`
-    );
-  }
-
-  // Step 4. Find the selected source URL for the video player
-  const selectedSrc = sourcesAndSubtitles.find((s) => s.provider === provider);
-  // If a provider is in the URL (but doesn't exist for this media) then redirect to 1st provider (if providers exists)
-  if (!selectedSrc && sourcesAndSubtitles[0]) {
-    return redirect(
-      `/tv/${tmdbId}/${seasonNumber}/${episodeNumber}/${sourcesAndSubtitles[0].provider}`
-    );
-  }
-
-  // Step 5. construct the proxied src url with the original src url and headers included as params
-  const proxiedSrcUrl = getProxiedSrcUrl(selectedSrc);
-
-  // 6. find all subtitles
-  const subtitles = sourcesAndSubtitles.flatMap((source, index) =>
-    source.subtitles.map((subtitle) => ({
-      content: subtitle.content,
-      lang: subtitle.language.slice(0, 2).toLowerCase(), // e.g., "English" -> "en"
-      label: `${subtitle.language} (${source.provider})`,
-      default: source.id === selectedSrc?.id,
-    }))
+  // 2. Replace the manual redirect logic with a single call to the helper
+  const baseRedirectUrl = `/tv/${tmdbId}/${seasonNumber}/${episodeNumber}`;
+  const selectedSrc = getSelectedSourceAndHandleRedirects(
+    baseRedirectUrl,
+    sourcesAndSubtitles,
+    provider
   );
+
+  // 3. Replace the manual subtitle aggregation with a single call to the helper
+  const proxiedSrcUrl = getProxiedSrcUrl(selectedSrc ?? undefined);
+  const subtitles = aggregateSubtitles(sourcesAndSubtitles, selectedSrc?.id);
 
   return (
     <div className="p-4 flex flex-col gap-4">
-      {/* Title, Season, Episode */}
-      <TvOverview
+      <OverviewSelector
         selectedMedia={{
           media: mediaData,
           origins: mediaData.origins?.map((o) => o.origin?.name ?? '') ?? [],
@@ -131,20 +116,18 @@ export default async function Page({ params }: PageProps) {
         selectedSeason={selectedSeason}
         selectedEpisode={selectedEpisode}
       />
-
-      {/* Video Player */}
       <VideoPlayer
-        episode={selectedEpisode}
         src={proxiedSrcUrl}
+        episode={selectedEpisode}
         subtitles={subtitles}
       />
 
-      {/* Source/season/episode selector */}
-      <TvSelector
-        tmdbId={tmdbId}
-        mediaData={mediaData}
-        episodeSources={sourcesAndSubtitles}
+      {/* Pass the full tree data to the sidebar */}
+      <MediaUrlSelector
+        sources={sourcesAndSubtitles}
         selectedProvider={provider ?? sourcesAndSubtitles[0]?.provider}
+        tmdbId={tmdbId}
+        mediaData={sidebarData}
         selectedSeasonId={selectedSeason.id}
         selectedEpisodeId={selectedEpisode.id}
       />

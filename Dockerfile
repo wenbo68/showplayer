@@ -11,6 +11,7 @@ ARG AUTH_GOOGLE_SECRET
 ARG CRON_SECRET
 ARG DATABASE_URL
 ARG TMDB_API_KEY
+ARG VPS_URL
 ARG BUNNY_URL
 ARG FRONTEND_URL
 ARG HEADLESS
@@ -59,7 +60,7 @@ COPY . .
 
 # possibly redundant (unless tsconfig.scripts.json is in .dockerignore)
 # Also copy the new tsconfig file for scripts
-COPY tsconfig.scripts.json ./
+# COPY tsconfig.scripts.json ./
 
 # Set environment variable for Puppeteer to find Chromium 
 # don't use secret env vars here bc they are visible in the image on docker hub
@@ -69,7 +70,7 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 # Build Next.js app && the cron script
 RUN pnpm build
-RUN pnpm run build:scripts
+# RUN pnpm run build:scripts
 
 # Let the container expose whatever port nextjs occupies (default is 3000)
 EXPOSE 3000

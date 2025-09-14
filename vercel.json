@@ -1,16 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/trpc/cron.syncPopularity?cronSecret=CRON_SECRET_PLACEHOLDER&mediaType=movie",
-      "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/trpc/cron.syncPopularity?cronSecret=CRON_SECRET_PLACEHOLDER&mediaType=tv",
-      "schedule": "30 9 * * *"
-    },
-    {
-      "path": "/api/trpc/cron.refreshRatings?cronSecret=CRON_SECRET_PLACEHOLDER&limit=2000",
-      "schedule": "0 10 * * *"
+      "path": "/api/call-trigger-cron?cronSecret=d23b4a9f9d009dcf28bd69cdbb2815819379db2702dc96251bd72f2dfa1c9d4e",
+      "schedule": "0 23 * * *"
     }
   ]
 }

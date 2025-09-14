@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "build": "next build",
-    "build:scripts": "tsc --project tsconfig.scripts.json && tsc-alias -p tsconfig.scripts.json",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",

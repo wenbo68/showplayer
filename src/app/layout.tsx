@@ -45,9 +45,6 @@ export default async function RootLayout({
 
 // add logo, tab image, etc.
 // link to google analytics
-// change user submit times to utc
-
-// create a single cron procedure and test
 
 // make media buttons display info according to the search filters (horizontal strips including or not including media description)
 // also should media buttons display availability, total episodes, missing episodes?

@@ -17,12 +17,6 @@ export default function SubmissionHistory() {
 
   const [showInfo, setShowInfo] = useState(false);
 
-  // const statusColors: { [key: string]: string } = {
-  //   pending: 'bg-yellow-500/20 text-yellow-300',
-  //   success: 'bg-green-500/20 text-green-300',
-  //   failure: 'bg-red-500/20 text-red-300',
-  // };
-
   return (
     session?.user && (
       <div className="basis-0 flex-grow flex flex-col gap-4">
@@ -84,36 +78,30 @@ export default function SubmissionHistory() {
                     <tr key={sub.id} className={`border-t border-gray-700`}>
                       <td className="p-2 capitalize">{sub.mediaType}</td>
                       <td className="p-2">{sub.tmdbId}</td>
-                      <td className="p-2">
-                        <span
-                        // className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                        //   statusColors[sub.status] ?? 'bg-gray-600'
-                        // }`}
-                        >
-                          {sub.status}
-                        </span>
-                      </td>
-                      <td className="p-2">
-                        {new Date(sub.createdAt).toLocaleDateString('ja-JP', {
+                      <td className="p-2 whitespace-nowrap">{sub.status} </td>
+                      <td className="p-2 whitespace-nowrap">
+                        {/* --- CORRECTED FORMATTING --- */}
+                        {new Date(sub.createdAt).toLocaleString('ja-JP', {
+                          timeZone: 'UTC', // Display in UTC
                           year: 'numeric',
                           month: 'numeric',
                           day: 'numeric',
                           hour: 'numeric',
                           minute: 'numeric',
+                          hour12: false, // Use 24-hour format
                         })}
                       </td>
-                      <td className="p-2">
+                      <td className="p-2 whitespace-nowrap">
                         {sub.processedAt
-                          ? new Date(sub.processedAt).toLocaleDateString(
-                              'ja-JP',
-                              {
-                                year: 'numeric',
-                                month: 'numeric',
-                                day: 'numeric',
-                                hour: 'numeric',
-                                minute: 'numeric',
-                              }
-                            )
+                          ? new Date(sub.processedAt).toLocaleString('ja-JP', {
+                              timeZone: 'UTC', // Display in UTC
+                              year: 'numeric',
+                              month: 'numeric',
+                              day: 'numeric',
+                              hour: 'numeric',
+                              minute: 'numeric',
+                              hour12: false,
+                            })
                           : 'N/A'}
                       </td>
                     </tr>

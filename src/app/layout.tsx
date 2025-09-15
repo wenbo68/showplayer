@@ -53,21 +53,13 @@ export default async function RootLayout({
 
 // if media title isn't english -> don't add to db
 // update trpc procedure to update popularity, rating, vote count when fetching new media via tmdb api
-// allow user to request new media
 
-// for overview, add "show/hide backdrop" arrow.
 // allow 3 modes for season/episode selector: horizontal scrolling, grid, detailed vertical scrolling (show poster, title, description)
 
 // search bar, mv/tv, genre, origin, release year,
 // airing status (finished: all episodes are older than yesterday, airing: at least 1 episode is in future, not released: releaseDate in the future),
 // availability (full: all episodes have source, partial: at least 1 episode have no src, none: 0 episodes or no episode have src)
 
-// add sorting to the search page (based on title, release date, etc.)
-// sorting based on popularity and vote might require adding popularity/voteAverage/voteCount columns to media table
-// and require fetching details for all media daily to update those new columns
-
-// login (if you want google oauth for 37.60.250.227 you need a domain for that)
-// media request function for users
 // way to stop an trpc procedure (eg src fetch) without shutting down the server
 
 // add display modes to search page (grid, detailed grid, horizontal strips)
@@ -76,7 +68,6 @@ export default async function RootLayout({
 
 // if a movie belongs to a collection, fetch all others in the collection (and display them as related?)
 // add recommendations (just implement your own, tmdb recommendations are too random)
-// add login: add admin, add favorite button, add watch later button
 // add comment function
 // add rating for each mv/tv (make it influence the top rated lists)
 

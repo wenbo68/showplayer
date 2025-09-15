@@ -42,7 +42,8 @@ export async function bulkUpsertNewMedia(fetchOutput: any[]) {
           (item: any) => item.media_type === 'movie' || item.media_type === 'tv'
         )
         .map((item: any) => [
-          item.id,
+          // Use a composite key for the map to handle movie/tv id collisions
+          `${item.media_type}-${item.id}`,
           {
             tmdbId: item.id,
             type: item.media_type,
@@ -74,7 +75,7 @@ export async function bulkUpsertNewMedia(fetchOutput: any[]) {
     // MODIFIED: Exclude both genreIds and originIds from this insert
     .values(mediaInput.map(({ genreIds, originIds, ...rest }) => rest))
     .onConflictDoUpdate({
-      target: tmdbMedia.tmdbId,
+      target: [tmdbMedia.tmdbId, tmdbMedia.type],
       set: {
         type: sql`excluded.type`,
         title: sql`excluded.title`,
@@ -85,7 +86,7 @@ export async function bulkUpsertNewMedia(fetchOutput: any[]) {
         popularity: sql`excluded.popularity`,
         voteAverage: sql`excluded.vote_average`,
         voteCount: sql`excluded.vote_count`,
-        voteUpdatedAt: sql`excluded.vote_updated_at`,
+        voteUpdatedAt: new Date(), // Set to the current time of the update
       },
     })
     .returning({
@@ -150,7 +151,8 @@ export async function bulkUpsertNewMedia(fetchOutput: any[]) {
 
 // Helper function to be placed outside the router
 export async function bulkUpdatePopularity(
-  batch: { tmdbId: number; popularity: number }[]
+  batch: { tmdbId: number; popularity: number }[],
+  mediaType: 'movie' | 'tv'
 ) {
   if (batch.length === 0) return;
   try {
@@ -161,7 +163,8 @@ export async function bulkUpdatePopularity(
         batch.map((p) => sql`(${p.tmdbId}, ${p.popularity})`),
         sql`, `
       )}) AS data(tmdb_id, popularity)
-      WHERE ${tmdbMedia.tmdbId} = ${sql.raw(`data.tmdb_id::integer`)};
+      WHERE ${tmdbMedia.tmdbId} = ${sql.raw(`data.tmdb_id::integer`)}
+            AND ${tmdbMedia.type} = ${mediaType};
     `);
   } catch (error) {
     console.error('[bulkUpdatePopularity] DATABASE FAILED:', error);
@@ -458,7 +461,7 @@ export async function updateRatingsForMediaList(
   });
   if (newRatings.length === 0) {
     console.log('[updateRatingsForMediaList] No media from API had ratings.');
-    return { success: true, count: 0 };
+    return 0;
   }
   console.log(
     `[updateRatingsForMediaList] API returned ${newRatings.length} ratings for media. Starting bulk db insert...`

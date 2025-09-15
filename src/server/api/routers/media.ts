@@ -23,7 +23,7 @@ import {
   tmdbMediaToTmdbGenre,
   tmdbMediaToTmdbOrigin,
   tmdbOrigin,
-  tmdbTopRated,
+  // tmdbTopRated,
   userMediaList,
 } from '~/server/db/schema';
 import { bulkUpsertNewMedia } from '~/server/utils/mediaUtils';
@@ -32,7 +32,7 @@ import { TRPCError } from '@trpc/server';
 import {
   fetchTmdbMvGenresViaApi,
   fetchTmdbOriginsViaApi,
-  fetchTmdbTopRatedViaApi,
+  // fetchTmdbTopRatedViaApi,
   fetchTmdbTvGenresViaApi,
 } from '~/server/utils/tmdbApiUtils';
 
@@ -358,62 +358,62 @@ export const mediaRouter = createTRPCRouter({
     return { count: genreOutput.length };
   }),
 
-  fetchTmdbTopRated: protectedProcedure
-    .input(z.object({ limit: z.number() }))
-    .mutation(async ({ input, ctx }) => {
-      // 1. Delete the old top-rated list first
-      await ctx.db.delete(tmdbTopRated).execute();
+  // fetchTmdbTopRated: protectedProcedure
+  //   .input(z.object({ limit: z.number() }))
+  //   .mutation(async ({ input, ctx }) => {
+  //     // 1. Delete the old top-rated list first
+  //     await ctx.db.delete(tmdbTopRated).execute();
 
-      // 2. Fetch top-rated mv and tv via API (need to add type manually)
-      const fetchedMv = (
-        await fetchTmdbTopRatedViaApi(input.limit, 'movie')
-      ).map((mv) => {
-        return { ...mv, media_type: 'movie' };
-      });
-      const fetchedTv = (await fetchTmdbTopRatedViaApi(input.limit, 'tv')).map(
-        (tv) => {
-          return { ...tv, media_type: 'tv' };
-        }
-      );
-      const fetchOutput = [...fetchedMv, ...fetchedTv];
-      console.log(`fetchedOutput: `, fetchOutput.length);
+  //     // 2. Fetch top-rated mv and tv via API (need to add type manually)
+  //     const fetchedMv = (
+  //       await fetchTmdbTopRatedViaApi(input.limit, 'movie')
+  //     ).map((mv) => {
+  //       return { ...mv, media_type: 'movie' };
+  //     });
+  //     const fetchedTv = (await fetchTmdbTopRatedViaApi(input.limit, 'tv')).map(
+  //       (tv) => {
+  //         return { ...tv, media_type: 'tv' };
+  //       }
+  //     );
+  //     const fetchOutput = [...fetchedMv, ...fetchedTv];
+  //     console.log(`fetchedOutput: `, fetchOutput.length);
 
-      // 3. save rating info
-      const ratingsMap = new Map();
-      fetchedMv.forEach((item, index) => {
-        ratingsMap.set(item.id, {
-          rank: index,
-          voteAverage: item.vote_average,
-          voteCount: item.vote_count,
-        });
-      });
-      fetchedTv.forEach((item, index) => {
-        ratingsMap.set(item.id, {
-          rank: index,
-          voteAverage: item.vote_average,
-          voteCount: item.vote_count,
-        });
-      });
+  //     // 3. save rating info
+  //     const ratingsMap = new Map();
+  //     fetchedMv.forEach((item, index) => {
+  //       ratingsMap.set(item.id, {
+  //         rank: index,
+  //         voteAverage: item.vote_average,
+  //         voteCount: item.vote_count,
+  //       });
+  //     });
+  //     fetchedTv.forEach((item, index) => {
+  //       ratingsMap.set(item.id, {
+  //         rank: index,
+  //         voteAverage: item.vote_average,
+  //         voteCount: item.vote_count,
+  //       });
+  //     });
 
-      // 4. Upsert fetched result to media/genre tables
-      const mediaOutput = await bulkUpsertNewMedia(fetchOutput);
-      console.log(`mediaOutput: `, mediaOutput.length);
+  //     // 4. Upsert fetched result to media/genre tables
+  //     const mediaOutput = await bulkUpsertNewMedia(fetchOutput);
+  //     console.log(`mediaOutput: `, mediaOutput.length);
 
-      // 5. upsert ratings info to top rated table
-      const topRatedInput = mediaOutput.map((item) => {
-        const ratingInfo = ratingsMap.get(item.tmdbId);
-        return {
-          mediaId: item.mediaId,
-          rank: ratingInfo.rank,
-          voteAverage: ratingInfo.voteAverage,
-          voteCount: ratingInfo.voteCount,
-        };
-      });
-      console.log(`topRatedInput: `, topRatedInput.length);
-      await ctx.db.insert(tmdbTopRated).values(topRatedInput).execute();
+  //     // 5. upsert ratings info to top rated table
+  //     const topRatedInput = mediaOutput.map((item) => {
+  //       const ratingInfo = ratingsMap.get(item.tmdbId);
+  //       return {
+  //         mediaId: item.mediaId,
+  //         rank: ratingInfo.rank,
+  //         voteAverage: ratingInfo.voteAverage,
+  //         voteCount: ratingInfo.voteCount,
+  //       };
+  //     });
+  //     console.log(`topRatedInput: `, topRatedInput.length);
+  //     await ctx.db.insert(tmdbTopRated).values(topRatedInput).execute();
 
-      return { count: mediaOutput.length };
-    }),
+  //     return { count: mediaOutput.length };
+  //   }),
 
   // fetchTmdbTrending: protectedProcedure
   //   .input(z.object({ limit: z.number() }))

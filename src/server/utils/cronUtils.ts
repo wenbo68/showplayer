@@ -35,11 +35,12 @@ import { db } from '../db';
 import {
   fetchAllChangedTmdbIds,
   fetchTmdbListViaApi,
-  findExistingTmdbIdsFromFetched,
+  findExistingMediaFromFetched,
   findNewMediaFromFetched,
 } from './tmdbApiUtils';
 import { runItemsInEachBatchInBulk } from './utils';
 import { fetchSrcForMediaIds } from './srcUtils';
+import { isCronStopping } from './cronControllerUtils';
 
 export async function updateAllChangedMedia() {
   // 1. Get ALL changed IDs from the TMDB API
@@ -48,16 +49,37 @@ export async function updateAllChangedMedia() {
     `[updateMediaUsingTmdbChangedApi] number of changed media in tmdb: ${allChangedIds.length}`
   );
 
+  if (isCronStopping()) {
+    console.log(`[updateMediaUsingTmdbChangedApi] ======= Stopped =======.`);
+    return;
+  }
+
   // 2. Filter that list to find only the ones that are in YOUR database
-  const changedIdsInMyDb = await findExistingTmdbIdsFromFetched(allChangedIds);
+  const changedIdsInMyDb = await findExistingMediaFromFetched(allChangedIds);
   console.log(
     `[updateMediaUsingTmdbChangedApi] number of changed media in db: ${changedIdsInMyDb.length}`
   );
-  // console.log(changedIdsInMyDb);
+
+  if (isCronStopping()) {
+    console.log(`[updateMediaUsingTmdbChangedApi] ======= Stopped =======.`);
+    return;
+  }
 
   // 3. run update on the changed media list
   await populateMediaUsingTmdbIds(changedIdsInMyDb);
 }
+
+// --- 1. Add a module-scoped "shutdown flag" ---
+let isShuttingDown = false;
+
+// --- 2. Listen for the SIGINT signal (Ctrl+C) ---
+// This code runs once when your server starts.
+process.on('SIGINT', () => {
+  console.log(
+    '\n[Graceful Shutdown] Ctrl+C detected. Stopping updatePopularity if there is one running.'
+  );
+  isShuttingDown = true;
+});
 
 export async function updateAllPopularity() {
   await updatePopularity('movie');
@@ -94,6 +116,12 @@ async function updatePopularity(mediaType: 'movie' | 'tv') {
   let newPopularity: { tmdbId: number; popularity: number }[] = [];
   let totalCount = 0;
   for await (const line of rl) {
+    // --- 3. use break because we might want to insert the already collected popularity info beneath the loop ---
+    if (isShuttingDown || isCronStopping()) {
+      console.log('[updatePopularity] ======= Stopped =======');
+      break; // Exit the loop cleanly
+    }
+
     // The try...catch now ONLY wraps the JSON.parse, which is the only
     // part that should be allowed to fail without stopping the whole process.
     try {
@@ -107,7 +135,7 @@ async function updatePopularity(mediaType: 'movie' | 'tv') {
     }
     // When the batch is full, bulk insert to db and clear popularity arr
     if (newPopularity.length >= batchSize) {
-      await bulkUpdatePopularity(newPopularity);
+      await bulkUpdatePopularity(newPopularity, mediaType);
       totalCount += newPopularity.length;
       newPopularity = [];
       console.log(`[updatePopularity] batch progress: ${totalCount} items.`);
@@ -116,7 +144,7 @@ async function updatePopularity(mediaType: 'movie' | 'tv') {
 
   // 3. Process any remaining items in the last batch
   if (newPopularity.length > 0) {
-    await bulkUpdatePopularity(newPopularity);
+    await bulkUpdatePopularity(newPopularity, mediaType);
     totalCount += newPopularity.length;
   }
 
@@ -206,7 +234,7 @@ export async function processUserSubmissions() {
     await db.execute(sql`
         UPDATE ${userSubmission}
         SET 
-          status = data.new_status::${userSubmissionStatusEnum}
+          status = data.new_status::${userSubmissionStatusEnum},
           processed_at = NOW()
         FROM (VALUES ${sql.join(
           batch.map((s) => sql`(${s.id}, ${s.status})`),
@@ -235,13 +263,22 @@ export async function processUserSubmissions() {
 
 export async function populateMediaUsingTmdbLists(limit: number) {
   await populateMediaUsingTmdbList('trending', limit);
+  if (isCronStopping()) {
+    console.log(`[populateMediaUsingTmdbLists] ======= Stopped =======.`);
+    return;
+  }
   await populateMediaUsingTmdbList('popular', limit);
+  if (isCronStopping()) {
+    console.log(`[populateMediaUsingTmdbLists] ======= Stopped =======.`);
+    return;
+  }
+  await populateMediaUsingTmdbList('top_rated', limit);
 }
 
 // should only process media not in db
 // media already in db are kept up to date
 export async function populateMediaUsingTmdbList(
-  listType: 'trending' | 'popular',
+  listType: 'trending' | 'popular' | 'top_rated',
   limit: number
 ) {
   // 2. fetch list from api (mv will be missing origin, tv will be missing season/episode)
@@ -363,6 +400,12 @@ export async function updateDenormFieldsForMediaList(input: 'all' | string[]) {
   console.log(
     `[updateDenormFieldsForMediaList] Updated ${mvOutput.length} movies`
   );
+
+  // add stop check btw mv and tv
+  if (isCronStopping()) {
+    console.log(`[updateDenormFieldsForMediaList] ======= Stopped =======.`);
+    return;
+  }
 
   // 2. get tv
   const tvConditions = [

@@ -92,7 +92,7 @@ export const tmdbMediaToTmdbGenre = pgTable(
   (t) => [primaryKey({ columns: [t.mediaId, t.genreId] })]
 );
 
-export const mediaToGenresRelations = relations(
+export const tmdbMediaToTmdbGenreRelations = relations(
   tmdbMediaToTmdbGenre,
   ({ one }) => ({
     media: one(tmdbMedia, {
@@ -154,7 +154,7 @@ export const tmdbMedia = pgTable(
       .notNull()
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-    tmdbId: integer('tmdb_id').unique().notNull(),
+    tmdbId: integer('tmdb_id').notNull(),
     type: tmdbTypeEnum('type').notNull(),
     title: text('title').notNull(),
     description: text('description'),
@@ -210,6 +210,7 @@ export const tmdbMedia = pgTable(
     index('denorm_updated_at_idx').on(table.denormFieldsOutdated),
     index('vote_updated_at_idx').on(table.voteUpdatedAt),
     index('updated_date_idx').on(table.updatedDate),
+    uniqueIndex('tmdb_id_type_unq_idx').on(table.tmdbId, table.type),
   ]
 );
 
@@ -218,10 +219,10 @@ export const tmdbMediaRelations = relations(tmdbMedia, ({ one, many }) => ({
     fields: [tmdbMedia.id],
     references: [tmdbTrending.mediaId],
   }),
-  topRated: one(tmdbTopRated, {
-    fields: [tmdbMedia.id],
-    references: [tmdbTopRated.mediaId],
-  }),
+  // topRated: one(tmdbTopRated, {
+  //   fields: [tmdbMedia.id],
+  //   references: [tmdbTopRated.mediaId],
+  // }),
   sources: many(tmdbSource),
   seasons: many(tmdbSeason),
   genres: many(tmdbMediaToTmdbGenre),
@@ -254,27 +255,27 @@ export const tmdbTrendingRelations = relations(tmdbTrending, ({ one }) => ({
   }),
 }));
 
-export const tmdbTopRated = pgTable('tmdb_top_rated', {
-  id: varchar({ length: 255 })
-    .notNull()
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  mediaId: varchar('media_id', { length: 255 })
-    .notNull()
-    .references(() => tmdbMedia.id, { onDelete: 'cascade' })
-    .unique(),
-  rank: integer('rank').notNull(),
-  voteAverage: real('vote_average').notNull(),
-  voteCount: integer('vote_count').notNull(),
-});
+// export const tmdbTopRated = pgTable('tmdb_top_rated', {
+//   id: varchar({ length: 255 })
+//     .notNull()
+//     .primaryKey()
+//     .$defaultFn(() => crypto.randomUUID()),
+//   mediaId: varchar('media_id', { length: 255 })
+//     .notNull()
+//     .references(() => tmdbMedia.id, { onDelete: 'cascade' })
+//     .unique(),
+//   rank: integer('rank').notNull(),
+//   voteAverage: real('vote_average').notNull(),
+//   voteCount: integer('vote_count').notNull(),
+// });
 
-export const tmdbTopRatedRelations = relations(tmdbTopRated, ({ one }) => ({
-  // Creates a link to get the full media details
-  media: one(tmdbMedia, {
-    fields: [tmdbTopRated.mediaId],
-    references: [tmdbMedia.id],
-  }),
-}));
+// export const tmdbTopRatedRelations = relations(tmdbTopRated, ({ one }) => ({
+//   // Creates a link to get the full media details
+//   media: one(tmdbMedia, {
+//     fields: [tmdbTopRated.mediaId],
+//     references: [tmdbMedia.id],
+//   }),
+// }));
 
 export const tmdbSeason = pgTable(
   'tmdb_season',

@@ -24,7 +24,7 @@ export default function SearchError({
         <p className="">Please log in and try again.</p>
         <Link
           href="/api/auth/signin"
-          className="rounded bg-blue-600 px-4 py-2 text-gray-300 hover:bg-blue-500 text-sm"
+          className="cursor-pointer rounded bg-blue-600 px-4 py-2 text-gray-300 hover:bg-blue-500 text-sm"
         >
           Log In
         </Link>

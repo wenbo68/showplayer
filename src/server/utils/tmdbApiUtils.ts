@@ -2,6 +2,8 @@ import { and, eq, inArray, or, sql } from 'drizzle-orm';
 import { env } from '~/env';
 import { tmdbMedia, tmdbSeason } from '../db/schema';
 import { db } from '../db';
+import { isLatinBased } from './utils';
+import type { FetchedMediaItem } from '~/type';
 
 const TMDB_API_HEADERS = {
   accept: 'application/json',
@@ -126,7 +128,7 @@ export async function fetchAllChangedTmdbIds(): Promise<MediaTypeAndTmdbId[]> {
  * @param input - An array of objects with tmdbId and type.
  * @returns A promise that resolves to an array of existing media with their season count.
  */
-export async function findExistingTmdbIdsFromFetched(
+export async function findExistingMediaFromFetched(
   input: MediaTypeAndTmdbId[]
 ): Promise<MediaTypeAndTmdbIdAndSeasonCount[]> {
   if (input.length === 0) {
@@ -162,33 +164,47 @@ export async function findExistingTmdbIdsFromFetched(
   return existingMedia;
 }
 
-/**
- * Takes an array of media items from the TMDB API and filters out
- * any that already exist in the local database.
- * @param fetchOutput The array of media items fetched from TMDB.
- * @returns A promise that resolves to an array containing only the new media items.
- */
 export async function findNewMediaFromFetched(
-  fetchOutput: any[]
-): Promise<any[]> {
+  fetchOutput: FetchedMediaItem[]
+): Promise<FetchedMediaItem[]> {
   if (fetchOutput.length === 0) {
     return [];
   }
 
-  // 1. Extract all unique TMDB IDs from the incoming list.
-  const uniqueTmdbIds = [...new Set(fetchOutput.map((item) => item.id))];
+  // 1. Create a unique list of the {tmdbId, type} pairs we need to check.
+  const mediaToVerify = [
+    ...new Map(
+      fetchOutput.map((item) => [
+        `${item.media_type}-${item.id}`, // Create a composite key to handle duplicates
+        { tmdbId: item.id, type: item.media_type },
+      ])
+    ).values(),
+  ];
 
-  // 2. Perform a single, efficient query to find which of those IDs already exist.
+  // 2. Build a composite WHERE clause to check for all pairs in a single query.
+  //    e.g., WHERE (tmdbId = 123 AND type = 'tv') OR (tmdbId = 456 AND type = 'movie')
+  const compositeWhereClause = or(
+    ...mediaToVerify.map((item) =>
+      and(eq(tmdbMedia.tmdbId, item.tmdbId), eq(tmdbMedia.type, item.type))
+    )
+  );
+  if (!compositeWhereClause) return [];
+
   const existingMedia = await db
-    .select({ tmdbId: tmdbMedia.tmdbId })
+    .select({ tmdbId: tmdbMedia.tmdbId, type: tmdbMedia.type })
     .from(tmdbMedia)
-    .where(inArray(tmdbMedia.tmdbId, uniqueTmdbIds));
+    .where(compositeWhereClause);
 
-  // 3. Create a Set of existing IDs for a very fast lookup.
-  const existingTmdbIds = new Set(existingMedia.map((item) => item.tmdbId));
+  // 3. Create a Set of existing composite keys (e.g., "movie-123") for fast lookups.
+  const existingMediaKeys = new Set(
+    existingMedia.map((item) => `${item.type}-${item.tmdbId}`)
+  );
 
-  // 4. Filter the original list, keeping only items whose IDs are not in the existing set.
-  const newMedia = fetchOutput.filter((item) => !existingTmdbIds.has(item.id));
+  // 4. Filter the original list by checking against the composite key Set.
+  const newMedia = fetchOutput.filter((item) => {
+    const key = `${item.media_type}-${item.id}`;
+    return !existingMediaKeys.has(key);
+  });
 
   console.log(
     `[findNewMedia] ${fetchOutput.length} fetched => ${newMedia.length} new`
@@ -197,52 +213,52 @@ export async function findNewMediaFromFetched(
   return newMedia;
 }
 
-export async function fetchTmdbTopRatedViaApi(
-  limit: number,
-  type: 'movie' | 'tv'
-) {
-  const collected = [];
-  const seenIds = new Set(); // Use a Set to track seen IDs
-  let page = 1;
+// export async function fetchTmdbTopRatedViaApi(
+//   limit: number,
+//   type: 'movie' | 'tv'
+// ) {
+//   const collected = [];
+//   const seenIds = new Set(); // Use a Set to track seen IDs
+//   let page = 1;
 
-  while (collected.length < limit) {
-    const resp = await fetch(
-      `https://api.themoviedb.org/3/${type}/top_rated?language=en-US&page=${page}`,
-      {
-        headers: {
-          accept: 'application/json',
-          Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
-        },
-      }
-    );
-    const { results } = await resp.json();
+//   while (collected.length < limit) {
+//     const resp = await fetch(
+//       `https://api.themoviedb.org/3/${type}/top_rated?language=en-US&page=${page}`,
+//       {
+//         headers: {
+//           accept: 'application/json',
+//           Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
+//         },
+//       }
+//     );
+//     const { results } = await resp.json();
 
-    // Break the loop if the API has no more results to prevent an infinite loop
-    if (!results || results.length === 0) {
-      break;
-    }
+//     // Break the loop if the API has no more results to prevent an infinite loop
+//     if (!results || results.length === 0) {
+//       break;
+//     }
 
-    // Iterate through the fetched results
-    for (const item of results) {
-      // Check if the item's ID has not been seen yet
-      if (!seenIds.has(item.id)) {
-        seenIds.add(item.id); // Add the new ID to the set
-        collected.push(item); // Add the unique item to our collection
-      }
-      // Stop once we have collected enough items
-      if (collected.length >= limit) {
-        break;
-      }
-    }
-    page += 1;
-  }
+//     // Iterate through the fetched results
+//     for (const item of results) {
+//       // Check if the item's ID has not been seen yet
+//       if (!seenIds.has(item.id)) {
+//         seenIds.add(item.id); // Add the new ID to the set
+//         collected.push(item); // Add the unique item to our collection
+//       }
+//       // Stop once we have collected enough items
+//       if (collected.length >= limit) {
+//         break;
+//       }
+//     }
+//     page += 1;
+//   }
 
-  // Ensure the final array is exactly the length of the limit
-  return collected.slice(0, limit);
-}
+//   // Ensure the final array is exactly the length of the limit
+//   return collected.slice(0, limit);
+// }
 
 export async function fetchTmdbListViaApi(
-  listType: 'trending' | 'popular',
+  listType: 'trending' | 'popular' | 'top_rated',
   mediaType: 'movie' | 'tv',
   limit: number
 ) {
@@ -255,7 +271,7 @@ export async function fetchTmdbListViaApi(
       `https://api.themoviedb.org/3/${
         listType === 'trending'
           ? `trending/${mediaType}/day`
-          : `${mediaType}/popular`
+          : `${mediaType}/${listType}`
       }?language=en-US&page=${page}`,
       {
         headers: {
@@ -273,10 +289,13 @@ export async function fetchTmdbListViaApi(
 
     // Iterate through the fetched results
     for (const item of results) {
-      // Check if the item's ID has not been seen yet
-      if (!seenIds.has(item.id)) {
-        seenIds.add(item.id); // Add the new ID to the set
-        collected.push(item); // Add the unique item to our collection
+      // 1. Get the correct title field based on the media type.
+      const title = mediaType === 'movie' ? item.title : item.name;
+
+      // 2. Check if the ID is new AND if the title is Latin-based.
+      if (!seenIds.has(item.id) && isLatinBased(title)) {
+        seenIds.add(item.id);
+        collected.push(item);
       }
       // Stop once we have collected enough items
       if (collected.length >= limit) {

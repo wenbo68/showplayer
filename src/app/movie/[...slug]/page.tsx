@@ -3,7 +3,7 @@ import { tmdbMedia, tmdbSource } from '~/server/db/schema';
 import { asc, eq } from 'drizzle-orm';
 import { notFound, redirect } from 'next/navigation';
 import { VideoPlayer } from '~/app/_components/player/VideoPlayer';
-import { SourceSelector } from '~/app/_components/player/SourceSelector';
+// import { SourceSelector } from '~/app/_components/player/SourceSelector';
 import { getProxiedSrcUrl } from '~/server/utils/proxyUtils';
 import {
   aggregateSubtitles,

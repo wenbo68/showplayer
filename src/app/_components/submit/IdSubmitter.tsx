@@ -172,55 +172,69 @@ export default function IdSubmitter() {
             </p>
           </div>
         )}
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex gap-4 flex-grow">
-            {/** media type selector */}
-            <div
-              ref={containerRef}
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="relative flex justify-between rounded bg-gray-800 cursor-pointer text-xs font-semibold"
-            >
-              <div className="w-12 pl-3 flex items-center justify-center">
-                {mediaType === 'movie' ? 'Movie' : 'TV'}
-              </div>
-              <div className="p-2">
-                <IoIosArrowDown size={20} />
-              </div>
-              {/** dropdown */}
-              {isDropdownOpen && (
-                <div className="absolute z-10 bottom-full mb-2 w-full flex flex-col bg-gray-800 rounded p-2 max-h-96 overflow-y-auto scrollbar-thin">
-                  {mediaTypeOptions.map((option) => (
-                    <button
-                      key={option.input}
-                      onClick={() => setMediaType(option.input)}
-                      className={`w-full text-start p-2 rounded cursor-pointer hover:text-blue-400 hover:bg-gray-900 ${
-                        mediaType === option.input ? 'text-blue-400' : ''
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
+        {session?.user ? (
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex gap-4 flex-grow">
+              {/** media type selector */}
+              <div
+                ref={containerRef}
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="relative flex justify-between rounded bg-gray-800 cursor-pointer text-xs font-semibold"
+              >
+                <div className="w-12 pl-3 flex items-center justify-center">
+                  {mediaType === 'movie' ? 'Movie' : 'TV'}
                 </div>
-              )}
+                <div className="p-2">
+                  <IoIosArrowDown size={20} />
+                </div>
+                {/** dropdown */}
+                {isDropdownOpen && (
+                  <div className="absolute z-10 bottom-full mb-2 w-full flex flex-col bg-gray-800 rounded p-2 max-h-96 overflow-y-auto scrollbar-thin">
+                    {mediaTypeOptions.map((option) => (
+                      <button
+                        key={option.input}
+                        onClick={() => setMediaType(option.input)}
+                        className={`w-full text-start p-2 rounded cursor-pointer hover:text-blue-400 hover:bg-gray-900 ${
+                          mediaType === option.input ? 'text-blue-400' : ''
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/** tmdb id input */}
+              <input
+                type="number"
+                placeholder="Enter tmdb id..."
+                value={tmdbIdInput}
+                onChange={(e) => setTmdbIdInput(e.target.value)}
+                className="flex-grow rounded bg-gray-800 px-3 py-2 outline-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
             </div>
-            {/** tmdb id input */}
-            <input
-              type="number"
-              placeholder="Enter tmdb id..."
-              value={tmdbIdInput}
-              onChange={(e) => setTmdbIdInput(e.target.value)}
-              className="flex-grow rounded bg-gray-800 px-3 py-2 outline-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
+            {/** submit button */}
+            <button
+              type="submit"
+              disabled={submitTmdbIdMutation.isPending}
+              className="min-w-32 rounded bg-blue-600 px-4 py-2 font-semibold text-gray-300 transition hover:bg-blue-500"
+            >
+              {submitTmdbIdMutation.isPending ? 'Submitting...' : 'Submit'}
+            </button>
           </div>
-          {/** submit button */}
-          <button
-            type="submit"
-            disabled={submitTmdbIdMutation.isPending}
-            className="min-w-32 rounded bg-blue-600 px-4 py-2 font-semibold text-gray-300 transition hover:bg-blue-500"
-          >
-            {submitTmdbIdMutation.isPending ? 'Submitting...' : 'Submit'}
-          </button>
-        </div>
+        ) : (
+          <p className="rounded text-sm bg-gray-800 px-4 py-2 ">
+            Please{' '}
+            <Link
+              href="/api/auth/signin"
+              className="underline text-blue-400 cursor-pointer"
+            >
+              login
+            </Link>{' '}
+            first to request a new media.
+          </p>
+        )}
+
         {message && (
           <div className="w-full p-4 bg-gray-800 rounded">
             <p

@@ -19,28 +19,53 @@ export default function CronAdmin() {
   const fetchTmdbListsMutation = api.cron.fetchTmdbLists.useMutation();
   const fetchSrcMutation = api.cron.fetchSrc.useMutation();
   const updateDenormFieldsMutation = api.cron.updateDenormFields.useMutation();
+  const stopCronMutation = api.cron.stopCron.useMutation();
+  const resetCronFlagMutation = api.cron.resetCronFlag.useMutation();
 
   // --- Create a handler for each mutation ---
   // A generic handler for simple mutations
   const createSimpleHandler = (mutation: any, name: string) => () => {
-    mutation.mutate(undefined, {
-      onSuccess: () =>
-        alert(
-          `Successfully triggered ${name} job. Check server logs for progress.`
-        ),
-      onError: (err: any) => alert(`Error triggering ${name}: ${err.message}`),
-    });
+    mutation.mutate(
+      {},
+      {
+        // onSuccess: () =>
+        //   alert(
+        //     `Successfully triggered ${name} job. Check server logs for progress.`
+        //   ),
+        onError: (err: any) => console.error(`${name} Error: ${err.message}`),
+      }
+    );
   };
 
   const handleRunCron = () => {
     runCronMutation.mutate(
       { tmdbListLimit },
       {
-        onSuccess: () =>
-          alert(
-            'Successfully triggered master cron sequence. Check server logs for progress.'
-          ),
-        onError: (err) => alert(`Error triggering master cron: ${err.message}`),
+        // onSuccess: () =>
+        //   alert(
+        //     'Successfully triggered master cron sequence. Check server logs for progress.'
+        //   ),
+        onError: (err) => console.error(`handleRunCron Error: ${err.message}`),
+      }
+    );
+  };
+
+  const handleStopCron = () => {
+    stopCronMutation.mutate(
+      {},
+      {
+        // onSuccess: (data) => alert(data.message),
+        onError: (err) => console.error(`handleStopCron Error: ${err.message}`),
+      }
+    );
+  };
+
+  const handleResetFlag = () => {
+    resetCronFlagMutation.mutate(
+      {},
+      {
+        // onSuccess: (data) => alert(data.message),
+        onError: (err) => console.error(`handleStopCron Error: ${err.message}`),
       }
     );
   };
@@ -49,12 +74,12 @@ export default function CronAdmin() {
     fetchTmdbListsMutation.mutate(
       { limit: tmdbListLimit },
       {
-        onSuccess: () =>
-          alert(
-            'Successfully triggered fetchTmdbLists job. Check server logs for progress.'
-          ),
+        // onSuccess: () =>
+        //   alert(
+        //     'Successfully triggered fetchTmdbLists job. Check server logs for progress.'
+        //   ),
         onError: (err) =>
-          alert(`Error triggering fetchTmdbLists: ${err.message}`),
+          console.error(`handleFetchTmdbLists Error: ${err.message}`),
       }
     );
   };
@@ -118,6 +143,7 @@ export default function CronAdmin() {
 
       {/* Master Control */}
       <div className="flex w-full flex-col items-center gap-2">
+        {/* run all cron jobs */}
         <h3 className="font-semibold text-gray-400">Master Control</h3>
         <label htmlFor="tmdbListLimit" className="text-xs text-gray-500">
           TMDB List Limit (for step 5)
@@ -143,6 +169,24 @@ export default function CronAdmin() {
             Error: {runCronMutation.error.message}
           </p>
         )}
+
+        {/* New Stop and Reset Buttons */}
+        <div className="flex w-60 gap-2 mt-2">
+          <button
+            onClick={handleStopCron}
+            disabled={stopCronMutation.isPending}
+            className="flex-1 rounded bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            {stopCronMutation.isPending ? '...' : 'Request Stop'}
+          </button>
+          <button
+            onClick={handleResetFlag}
+            disabled={resetCronFlagMutation.isPending}
+            className="flex-1 rounded bg-gray-500 px-4 py-2 font-semibold text-white hover:bg-gray-600 disabled:opacity-50"
+          >
+            {resetCronFlagMutation.isPending ? '...' : 'Reset Flag'}
+          </button>
+        </div>
       </div>
 
       <hr className="my-4 w-full border-gray-700" />

@@ -24,7 +24,7 @@ export default function TmdbAdmin() {
   const fetchGenresMutation = api.media.fetchGenres.useMutation();
 
   const fetchTmdbListsMutation = api.cron.fetchTmdbLists.useMutation();
-  const fetchTmdbTopMutation = api.media.fetchTmdbTopRated.useMutation();
+  // const fetchTmdbTopMutation = api.media.fetchTmdbTopRated.useMutation();
 
   // --- 2. Add new mutation hooks for the cron procedures ---
   const updatePopularityMutation = api.cron.updatePopularity.useMutation();
@@ -73,15 +73,15 @@ export default function TmdbAdmin() {
       }
     );
   };
-  const handleFetchTmdbTop = () => {
-    fetchTmdbTopMutation.mutate(
-      { limit: topLimit },
-      {
-        onSuccess: (data) => console.log('Fetched:', data),
-        onError: (err) => console.error('Error:', err),
-      }
-    );
-  };
+  // const handleFetchTmdbTop = () => {
+  //   fetchTmdbTopMutation.mutate(
+  //     { limit: topLimit },
+  //     {
+  //       onSuccess: (data) => console.log('Fetched:', data),
+  //       onError: (err) => console.error('Error:', err),
+  //     }
+  //   );
+  // };
   // --- 3. Add new handlers for the cron procedures ---
   const handleUpdatePopularity = (mediaType: 'movie' | 'tv') => {
     // NOTE: This can take a long time to run!
@@ -242,25 +242,31 @@ export default function TmdbAdmin() {
   // --- 2. Add the new handler function ---
   const handleUpsertUserSubmittedIds = () => {
     // NOTE: This can be a very long-running job!
-    upsertUserSubmittedIdsMutation.mutate(undefined, {
-      onSuccess: (data) => {
-        console.log(`upsert success`);
-      },
-      onError: (err) => {
-        console.error('Error processing user submissions:', err);
-      },
-    });
+    upsertUserSubmittedIdsMutation.mutate(
+      {},
+      {
+        onSuccess: (data) => {
+          console.log(`upsert success`);
+        },
+        onError: (err) => {
+          console.error('Error processing user submissions:', err);
+        },
+      }
+    );
   };
 
   const handleUpdateAllChangedMedia = () => {
-    updateAllChangedMediaMutation.mutate(undefined, {
-      onSuccess: (data) => {
-        console.log(`[handleUpdateAllChangedMedia] update done.`);
-      },
-      onError: (err) => {
-        console.error(`[handleUpdateAllChangedMedia] error: `, err);
-      },
-    });
+    updateAllChangedMediaMutation.mutate(
+      {},
+      {
+        onSuccess: (data) => {
+          console.log(`[handleUpdateAllChangedMedia] update done.`);
+        },
+        onError: (err) => {
+          console.error(`[handleUpdateAllChangedMedia] error: `, err);
+        },
+      }
+    );
   };
 
   const handleRunCron = () => {
@@ -332,7 +338,7 @@ export default function TmdbAdmin() {
             Error: {fetchTmdbListsMutation.error.message}
           </p>
         )}
-        <input
+        {/*        <input
           type="number"
           placeholder="Top Rated Limit"
           value={topLimit}
@@ -350,7 +356,7 @@ export default function TmdbAdmin() {
           <p className="text-red-600 dark:text-red-400">
             Error: {fetchTmdbTopMutation.error.message}
           </p>
-        )}
+        )} */}
 
         <hr className="w-full my-4 border-gray-300 dark:border-gray-700" />
 

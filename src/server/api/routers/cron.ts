@@ -11,68 +11,72 @@ import {
   updateDenormFieldsForMediaList,
   updateRatings,
 } from '~/server/utils/cronUtils';
+import {
+  isCronStopping,
+  requestCronStop,
+  resetCronStopFlag,
+} from '~/server/utils/cronControllerUtils';
 
 // cron job order: updateChangedMedia -> updatePopularity -> updateRatings -> processSubmission -> fetchTmdbLists -> fetchSrc -> updateDenormFields
 export const cronRouter = createTRPCRouter({
+  stopCron: protectedProcedure.input(z.object({})).mutation(() => {
+    requestCronStop();
+    return {
+      message:
+        'Stop request has been sent. The job will halt at its next checkpoint.',
+    };
+  }),
+
+  resetCronFlag: protectedProcedure.input(z.object({})).mutation(() => {
+    resetCronStopFlag();
+    return { message: 'Cron stop flag has been reset.' };
+  }),
+
   runCron: protectedProcedure
     .input(z.object({ tmdbListLimit: z.number().min(1).default(50) }))
     .mutation(async ({ input }) => {
-      console.log(`======= 1. update changed media =======`);
-      try {
-        await updateAllChangedMedia();
-      } catch (error) {
-        console.error(`[runCron] updateAllChangeMedia failed. Error: `, error);
-      }
+      // At the start of a new run, always reset the flag.
+      resetCronStopFlag();
 
-      console.log(`======= 2. update popularity =======`);
-      try {
-        await updateAllPopularity();
-      } catch (error) {
-        console.error(`[runCron] updateAllPopularity failed. Error: `, error);
-      }
+      // 1. Define all your jobs in a single, easy-to-manage array.
+      const jobs = [
+        { name: '1. update changed media', fn: () => updateAllChangedMedia() },
+        { name: '2. update popularity', fn: () => updateAllPopularity() },
+        { name: '3. update ratings', fn: () => updateRatings() },
+        {
+          name: '4. process user submissions',
+          fn: () => processUserSubmissions(),
+        },
+        {
+          name: '5. fetch tmdb lists',
+          fn: () => populateMediaUsingTmdbLists(input.tmdbListLimit),
+        },
+        { name: '6. fetch src', fn: () => fetchSrc() },
+        {
+          name: '7. update denorm fields',
+          fn: () => updateDenormFieldsForMediaList('all'),
+        },
+      ];
 
-      console.log(`======= 3. update ratings =======`);
-      try {
-        await updateRatings();
-      } catch (error) {
-        console.error(`[runCron] updateRatings failed. Error: `, error);
-      }
+      // 2. Use a single loop to run the jobs.
+      for (const job of jobs) {
+        // 3. The check for the stop flag is now in one central place.
+        if (isCronStopping()) {
+          console.log(
+            `======= Stopped. Halting before step: ${job.name} =======`
+          );
+          return; // Exit the entire procedure
+        }
 
-      console.log(`======= 4. process user submissions =======`);
-      try {
-        await processUserSubmissions();
-      } catch (error) {
-        console.error(
-          `[runCron] processUserSubmissions failed. Error: `,
-          error
-        );
-      }
-
-      console.log(`======= 5. fetch tmdb trending/popular =======`);
-      try {
-        await populateMediaUsingTmdbLists(input.tmdbListLimit);
-      } catch (error) {
-        console.error(
-          `[runCron] populateMediaUsingTmdbLists failed. Error: `,
-          error
-        );
-      }
-
-      console.log(`======= 6. fetch src =======`);
-      try {
-        await fetchSrc();
-      } catch (error) {
-        console.error(`[runCron] fetchSrc failed. Error: `, error);
-      }
-
-      console.log(`======= 7. update denormalized fields =======`);
-      try {
-        await updateDenormFieldsForMediaList('all');
-      } catch (error) {
-        console.error(
-          `[runCron] updateDenormFieldsForMediaList failed. Error: `,
-          error
-        );
+        console.log(`======= Starting: ${job.name} =======`);
+        try {
+          await job.fn();
+        } catch (error) {
+          console.error(`[runCron] Step '${job.name}' failed. Error: `, error);
+          // You could choose to stop the whole sequence on failure by uncommenting the next line
+          // throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: `Step '${job.name}' failed.` });
+        }
+        console.log(`======= Done: ${job.name} =======`);
       }
 
       console.log(`======= All cron jobs done =======`);
@@ -82,9 +86,14 @@ export const cronRouter = createTRPCRouter({
    * get changed tmdb ids from changed api
    * then refetch detail for each changed media in our db
    */
-  updateAllChangedMedia: protectedProcedure.mutation(async () => {
-    await updateAllChangedMedia();
-  }),
+  updateAllChangedMedia: protectedProcedure
+    .input(z.object({}))
+    .mutation(async () => {
+      resetCronStopFlag();
+      console.log(`======= Starting: 1. updateAllChangedMedia =======`);
+      await updateAllChangedMedia();
+      console.log(`======= Done: 1. updateAllChangedMedia =======`);
+    }),
 
   /**
    * Downloads the daily TMDB export file, parses it, and bulk-updates the popularity
@@ -93,7 +102,10 @@ export const cronRouter = createTRPCRouter({
   updatePopularity: protectedProcedure
     .input(z.object({}))
     .mutation(async () => {
+      resetCronStopFlag();
+      console.log(`======= Starting: 2. updatePopularity =======`);
       await updateAllPopularity();
+      console.log(`======= Done: 2. updatePopularity =======`);
     }),
 
   /**
@@ -101,7 +113,10 @@ export const cronRouter = createTRPCRouter({
    * and updates their ratings from the TMDB API.
    */
   updateRatings: protectedProcedure.input(z.object({})).mutation(async ({}) => {
+    resetCronStopFlag();
+    console.log(`======= Starting: 3. updateRatings =======`);
     await updateRatings();
+    console.log(`======= Done: 3. updateRatings =======`);
   }),
 
   /**
@@ -109,18 +124,26 @@ export const cronRouter = createTRPCRouter({
    * populate media for all those submissions
    * mark each submission as success or failure based on above step
    */
-  processUserSubmissions: protectedProcedure.mutation(async ({}) => {
-    await processUserSubmissions();
-  }),
+  processUserSubmissions: protectedProcedure
+    .input(z.object({}))
+    .mutation(async ({}) => {
+      resetCronStopFlag();
+      console.log(`======= Starting: 4. processUserSubmissions =======`);
+      await processUserSubmissions();
+      console.log(`======= Done: 4. processUserSubmissions =======`);
+    }),
 
   /**
-   * fetch trending/popular mv/tv
+   * fetch trending/popular/top_rated mv/tv
    * populate media only for ones not in db
    */
   fetchTmdbLists: protectedProcedure
     .input(z.object({ limit: z.number() }))
     .mutation(async ({ input }) => {
+      resetCronStopFlag();
+      console.log(`======= Starting: 5. fetchTmdbLists =======`);
       await populateMediaUsingTmdbLists(input.limit);
+      console.log(`======= Done: 5. fetchTmdbLists =======`);
     }),
 
   /**
@@ -128,13 +151,19 @@ export const cronRouter = createTRPCRouter({
    * and triggers the source fetching process for them.
    */
   fetchSrc: protectedProcedure.input(z.object({})).mutation(async ({}) => {
+    resetCronStopFlag();
+    console.log(`======= Starting: 6. fetchSrc =======`);
     await fetchSrc();
+    console.log(`======= Done: 6. fetchSrc =======`);
   }),
 
   // update denorm fields of media marked as outdated
   updateDenormFields: protectedProcedure
     .input(z.object({}))
     .mutation(async () => {
+      resetCronStopFlag();
+      console.log(`======= Starting: 7. updateDenormFields =======`);
       await updateDenormFieldsForMediaList('all');
+      console.log(`======= Done: 7. updateDenormFields =======`);
     }),
 });

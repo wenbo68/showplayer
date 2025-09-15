@@ -52,3 +52,9 @@ export type FilterOptions = {
 
 export type UserList = 'saved' | 'favorite' | 'later';
 export type UserRole = 'user' | 'admin';
+
+export type FetchedMediaItem = {
+  id: number;
+  media_type: 'movie' | 'tv';
+  [key: string]: any;
+};

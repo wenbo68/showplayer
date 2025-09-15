@@ -24,7 +24,6 @@ import {
 } from 'drizzle-orm';
 import { db } from '../db';
 import { runItemsInEachBatchConcurrently } from './utils';
-// import { runItemsInEachBatchConcurrently } from './mediaUtils';
 
 function convertToVtt(subtitle: string): string {
   if (subtitle.trim().startsWith('WEBVTT')) return subtitle;

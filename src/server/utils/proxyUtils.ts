@@ -1,3 +1,4 @@
+import { env } from '~/env';
 import type { SourceWithSubtitles } from '~/type';
 
 // cors headers: which frontend (websites) can make requests to your backend
@@ -5,7 +6,7 @@ import type { SourceWithSubtitles } from '~/type';
 export function withCors(headers: Record<string, string> = {}) {
   return {
     ...headers,
-    'Access-Control-Allow-Origin': `${process.env.FRONTEND_URL}`,
+    'Access-Control-Allow-Origin': `${env.FRONTEND_URL}`,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
@@ -16,7 +17,7 @@ export function withCors(headers: Record<string, string> = {}) {
 // 2. use URL obj and attach params (without encoding) as key/value
 export function getProxiedSrcUrl(selectedSrc?: SourceWithSubtitles) {
   if (!selectedSrc) return undefined;
-  const urlObject = new URL(`${process.env.BUNNY_URL}/api/proxy`);
+  const urlObject = new URL(`${env.BUNNY_URL}/api/proxy`);
   urlObject.searchParams.set('url', selectedSrc.url);
 
   if (selectedSrc.headers && typeof selectedSrc.headers === 'object') {

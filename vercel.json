@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/call-trigger-cron?cronSecret=d23b4a9f9d009dcf28bd69cdbb2815819379db2702dc96251bd72f2dfa1c9d4e",
-      "schedule": "0 23 * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }

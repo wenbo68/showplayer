@@ -64,7 +64,8 @@ export default async function RootLayout({
   );
 }
 
-// cannot play video: bunny or env var bug?
+// add expand button to search bar in sm
+// minimal 2 col in sm
 
 // link to google analytics
 // create a discord server for showplayer

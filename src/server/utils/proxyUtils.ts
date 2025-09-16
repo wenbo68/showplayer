@@ -1,6 +1,7 @@
 import type { SourceWithSubtitles } from '~/type';
 
-// Helper to set CORS headers
+// cors headers: which frontend (websites) can make requests to your backend
+// not needed if your frontend and backend are together (same subdomain/port)
 export function withCors(headers: Record<string, string> = {}) {
   return {
     ...headers,

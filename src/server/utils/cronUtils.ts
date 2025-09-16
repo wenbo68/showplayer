@@ -20,7 +20,7 @@ import {
   sql,
 } from 'drizzle-orm';
 import { format, subDays } from 'date-fns';
-import { createGunzip } from 'node:zlib';
+import { createGunzip, gunzipSync } from 'node:zlib';
 import { Readable } from 'stream';
 import readline from 'readline';
 import {
@@ -38,7 +38,10 @@ import {
   findExistingMediaFromFetched,
   findNewMediaFromFetched,
 } from './tmdbApiUtils';
-import { runItemsInEachBatchInBulk } from './utils';
+import {
+  runItemsInEachBatchConcurrently,
+  runItemsInEachBatchInBulk,
+} from './utils';
 import { fetchSrcForMediaIds } from './srcUtils';
 import { isCronStopping } from './cronControllerUtils';
 
@@ -69,20 +72,26 @@ export async function updateAllChangedMedia() {
   await populateMediaUsingTmdbIds(changedIdsInMyDb);
 }
 
-// --- 1. Add a module-scoped "shutdown flag" ---
-let isShuttingDown = false;
+// // --- 1. Add a module-scoped "shutdown flag" ---
+// let isShuttingDown = false;
 
-// --- 2. Listen for the SIGINT signal (Ctrl+C) ---
-// This code runs once when your server starts.
-process.on('SIGINT', () => {
-  console.log(
-    '\n[Graceful Shutdown] Ctrl+C detected. Stopping updatePopularity if there is one running.'
-  );
-  isShuttingDown = true;
-});
+// // --- 2. Listen for the SIGINT signal (Ctrl+C) ---
+// // This code runs once when your server starts.
+// process.on('SIGINT', () => {
+//   console.log(
+//     '\n[Graceful Shutdown] Ctrl+C detected. Stopping updatePopularity if there is one running.'
+//   );
+//   isShuttingDown = true;
+// });
 
 export async function updateAllPopularity() {
   await updatePopularity('movie');
+
+  if (isCronStopping()) {
+    console.log('[updatePopularity] ======= Stopped =======');
+    return; // Exit the loop cleanly
+  }
+
   await updatePopularity('tv');
 }
 
@@ -116,8 +125,8 @@ async function updatePopularity(mediaType: 'movie' | 'tv') {
   let newPopularity: { tmdbId: number; popularity: number }[] = [];
   let totalCount = 0;
   for await (const line of rl) {
-    // --- 3. use break because we might want to insert the already collected popularity info beneath the loop ---
-    if (isShuttingDown || isCronStopping()) {
+    // 3. use break instead of return because we want to insert the already collected popularity info to db
+    if (isCronStopping()) {
       console.log('[updatePopularity] ======= Stopped =======');
       break; // Exit the loop cleanly
     }
@@ -150,6 +159,68 @@ async function updatePopularity(mediaType: 'movie' | 'tv') {
 
   console.log(`[updatePopularity] done: ${totalCount} successful.`);
 }
+
+// async function updatePopularity(mediaType: 'movie' | 'tv') {
+//   // 1. download file from url
+//   const yesterdayDateStr = format(subDays(new Date(), 1), 'MM_dd_yyyy');
+//   const fileName =
+//     mediaType === 'movie'
+//       ? `movie_ids_${yesterdayDateStr}.json.gz`
+//       : `tv_series_ids_${yesterdayDateStr}.json.gz`;
+//   const url = `http://files.tmdb.org/p/exports/${fileName}`;
+
+//   console.log(`[updatePopularity] Downloading json.gz from: ${url}`);
+//   const tmdbResponse = await fetch(url);
+//   if (!tmdbResponse.ok || !tmdbResponse.body) {
+//     console.error(
+//       `[updatePopularity] Failed to download file: ${tmdbResponse.statusText}`
+//     );
+//     return;
+//   }
+
+//   // 2. load zip file to buffer in memory
+//   const gzippedBuffer = await tmdbResponse.arrayBuffer();
+
+//   if (isCronStopping()) {
+//     console.log(`[updatePopularity] ======= Stopped =======.`);
+//     return;
+//   }
+
+//   console.log(`[updatePopularity] Downloaded. Decompressing...`);
+//   // 3. Decompress the entire buffer in memory. This can use a lot of RAM.
+//   const uncompressedBuffer = gunzipSync(gzippedBuffer);
+//   const jsonText = uncompressedBuffer.toString('utf-8');
+//   const lines = jsonText.split('\n');
+
+//   console.log(
+//     `[updatePopularity] Decompressed. Collecting from ${lines.length} items...`
+//   );
+//   // 4. collect popularity info from each line
+//   const allPopularityScores: { tmdbId: number; popularity: number }[] = [];
+//   for (const line of lines) {
+//     if (isCronStopping()) {
+//       console.log(`[updatePopularity] ======= Stopped =======.`);
+//       return;
+//     }
+//     if (!line) continue; // Skip empty lines
+//     try {
+//       const item = JSON.parse(line);
+//       allPopularityScores.push({
+//         tmdbId: item.id,
+//         popularity: item.popularity,
+//       });
+//     } catch (e) {
+//       /* Ignore parse errors */
+//     }
+//   }
+
+//   // 3. Process the full list in batches (database part)
+//   await runItemsInEachBatchInBulk(allPopularityScores, 25000, async (batch) => {
+//     await bulkUpdatePopularity(batch, mediaType);
+//   });
+
+//   console.log(`[updatePopularity] done.`);
+// }
 
 export async function updateRatings() {
   // 1. smartly select media that need a rating update

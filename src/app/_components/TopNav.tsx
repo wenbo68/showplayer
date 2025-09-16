@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect, Suspense } from 'react';
 import { AuthShowcase } from '~/app/_components/auth/AuthShowcase';
@@ -53,7 +54,13 @@ export function TopNav() {
     >
       <div className="flex items-center justify-between max-w-7xl mx-auto px-4 py-2">
         <Link href="/" className="block text-xl font-bold">
-          SP
+          <Image
+            src="/favicon-32x32.png" // Path to your icon in the public folder
+            alt="ShowPlayer Logo"
+            width={40} // The original width of the icon file
+            height={40} // The original height of the icon file
+            priority // Recommended for logos to preload them
+          />
         </Link>
         {/* ✨ 3. Wrap AuthShowcase with the Suspense boundary */}
         <Suspense fallback={<AuthShowcaseFallback />}>

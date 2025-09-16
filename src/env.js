@@ -12,7 +12,7 @@ export const env = createEnv({
         ? z.string()
         : z.string().optional(),
     AUTH_URL: z.string().url(),
-    AUTH_TRUST_HOST: z.string(),
+    // AUTH_TRUST_HOST: z.string(),
     AUTH_GOOGLE_ID: z.string(),
     AUTH_GOOGLE_SECRET: z.string(),
     AUTH_DISCORD_ID: z.string(),
@@ -53,7 +53,7 @@ export const env = createEnv({
   runtimeEnv: {
     AUTH_SECRET: process.env.AUTH_SECRET,
     AUTH_URL: process.env.AUTH_URL,
-    AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST,
+    // AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST,
     AUTH_GOOGLE_ID: process.env.AUTH_GOOGLE_ID,
     AUTH_GOOGLE_SECRET: process.env.AUTH_GOOGLE_SECRET,
     AUTH_DISCORD_ID: process.env.AUTH_DISCORD_ID,

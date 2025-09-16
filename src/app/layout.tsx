@@ -14,9 +14,7 @@ import { env } from '~/env';
 export const metadata: Metadata = {
   title: 'Showplayer',
   description: 'Stream movies and tv shows for free without popups',
-  metadataBase: new URL(
-    env.FRONTEND_URL === '*' ? `http://localhost:3000` : env.FRONTEND_URL
-  ),
+  metadataBase: new URL(env.AUTH_URL),
 
   // Points to your manifest file for PWA capabilities (website can be saved like apps)
   // the manifest file calls android-chrome images internally

@@ -3,10 +3,22 @@ import type { SourceWithSubtitles } from '~/type';
 
 // cors headers: which frontend (websites) can make requests to your backend
 // not needed if your frontend and backend are together (same subdomain/port)
-export function withCors(headers: Record<string, string> = {}) {
+export function withCors(
+  headers: Record<string, string> = {},
+  requestOrigin: string | null
+) {
+  // 1. Create the whitelist from your environment variable
+  const whitelist = [env.BUNNY_URL, env.VPS_URL, env.FRONTEND_URL];
+
+  let accessControlAllowOrigin = '';
+
+  // 2. Check if the incoming origin is in the whitelist
+  if (requestOrigin && whitelist.includes(requestOrigin)) {
+    accessControlAllowOrigin = requestOrigin;
+  }
   return {
     ...headers,
-    'Access-Control-Allow-Origin': `${env.BUNNY_URL}`,
+    'Access-Control-Allow-Origin': accessControlAllowOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };

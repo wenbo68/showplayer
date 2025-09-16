@@ -60,6 +60,9 @@ function rewritePlaylist(
 
 // could be playlist url or vidseg url
 export async function GET(request: NextRequest) {
+  // 1. Get the origin from the incoming request's headers
+  const requestOrigin = request.headers.get('Origin');
+
   console.log(`[GET] Proxy request received.`);
   const { searchParams } = new URL(request.url);
 
@@ -69,7 +72,14 @@ export async function GET(request: NextRequest) {
   if (!targetUrl) {
     return new NextResponse(
       JSON.stringify({ error: 'Target URL is required' }),
-      { status: 400, headers: withCors({ 'Content-Type': 'application/json' }) }
+      // 2. Pass the origin to every withCors() call
+      {
+        status: 400,
+        headers: withCors(
+          { 'Content-Type': 'application/json' },
+          requestOrigin
+        ),
+      }
     );
   }
 
@@ -93,7 +103,7 @@ export async function GET(request: NextRequest) {
       const errorText = await response.text();
       return new NextResponse(errorText, {
         status: response.status,
-        headers: withCors(),
+        headers: withCors({}, requestOrigin),
       });
     }
 
@@ -115,32 +125,46 @@ export async function GET(request: NextRequest) {
       );
 
       return new NextResponse(rewrittenPlaylist, {
-        headers: withCors({
-          'Content-Type': contentType,
-          'Cache-Control':
-            'public, max-age=15, s-maxage=15, stale-while-revalidate=30',
-        }),
+        headers: withCors(
+          {
+            'Content-Type': contentType,
+            'Cache-Control':
+              'public, max-age=15, s-maxage=15, stale-while-revalidate=30',
+          },
+          requestOrigin
+        ),
       });
     } else {
       // if .ts (vid seg) or another file type => just send back to frontend
       console.log(`it's a vidseg`);
 
       return new NextResponse(buffer, {
-        headers: withCors({
-          'Content-Type': contentType,
-          'Cache-Control':
-            'public, max-age=3600, s-maxage=3600, stale-while-revalidate=60',
-        }),
+        headers: withCors(
+          {
+            'Content-Type': contentType,
+            'Cache-Control':
+              'public, max-age=3600, s-maxage=3600, stale-while-revalidate=60',
+          },
+          requestOrigin
+        ),
       });
     }
   } catch (error) {
     return new NextResponse(
       JSON.stringify({ error: 'Failed to proxy request' }),
-      { status: 500, headers: withCors({ 'Content-Type': 'application/json' }) }
+      {
+        status: 500,
+        headers: withCors(
+          { 'Content-Type': 'application/json' },
+          requestOrigin
+        ),
+      }
     );
   }
 }
 
-export async function OPTIONS() {
-  return new NextResponse(null, { headers: withCors() });
+// 3. Update the OPTIONS handler to accept the request object
+export async function OPTIONS(request: NextRequest) {
+  const requestOrigin = request.headers.get('Origin');
+  return new NextResponse(null, { headers: withCors({}, requestOrigin) });
 }

@@ -22,7 +22,7 @@ export const env = createEnv({
     TMDB_API_KEY: z.string(),
     VPS_URL: z.string().url(),
     BUNNY_URL: z.string().url(),
-    FRONTEND_URL: z.string(),
+    FRONTEND_URL: z.string().url(),
     HEADLESS: z.string(),
     FIRST_CLICK: z.string(),
     LONG_CLICK: z.string(),

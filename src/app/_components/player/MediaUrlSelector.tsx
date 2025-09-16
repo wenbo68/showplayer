@@ -5,7 +5,6 @@
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Season, Episode, Media, Source } from '~/type';
-import { IoGrid } from 'react-icons/io5';
 import { NavButton } from '../NavButton';
 import { useSessionStorage } from '~/app/_hooks/sessionStorageHooks';
 import { useAutoScroll } from '~/app/_hooks/autoscrollHooks';
@@ -75,7 +74,7 @@ export function MediaUrlSelector({
         <div className="flex gap-2 items-baseline">
           <span className="text-base font-semibold">Server</span>
           <span className="text-xs">
-            Please try a different server if the video is lagging.
+            Please try a different server if it doesn't play.
           </span>
         </div>
         <div className="flex gap-2 overflow-x-auto scrollbar-hide">

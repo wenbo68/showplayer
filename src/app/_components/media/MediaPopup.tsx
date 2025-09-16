@@ -16,6 +16,7 @@ export const tagClassMap = {
   avg: 'bg-sky-500/20 text-sky-300 ring-sky-500/30',
   count: 'bg-blue-500/20 text-blue-300 ring-blue-500/30',
   list: 'bg-indigo-500/20 text-indigo-300 ring-indigo-500/30',
+  order: 'bg-gray-500/20 text-gray-300 ring-gray-500/30', // Style for the order label
 };
 
 interface MediaPopupProps {

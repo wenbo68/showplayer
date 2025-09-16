@@ -4,7 +4,7 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
-import type { FilterOptions } from '~/type';
+import type { FilterOptionGroup, FilterOptions } from '~/type';
 import { tagClassMap } from '../media/MediaPopup';
 
 type Pill = {
@@ -32,19 +32,22 @@ const pillColors = {
   avg: tagClassMap['avg'],
   count: tagClassMap['count'],
   list: tagClassMap['list'],
+  order: 'bg-gray-500/20 text-gray-300 ring-gray-500/30', // Style for the order label
 };
 
 export default function ActiveLabels({
   filterOptions,
+  orderOptions, // 2. Accept orderOptions as a prop
 }: {
   filterOptions: FilterOptions;
+  orderOptions: FilterOptionGroup[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // This function builds the list of active pills from the URL and filterOptions
-  const activePills = useMemo(() => {
+  // We can calculate both the pills and the order label inside the same useMemo
+  const { activePills, orderLabel } = useMemo(() => {
     const pills: Pill[] = [];
     const params = new URLSearchParams(searchParams.toString());
 
@@ -168,7 +171,22 @@ export default function ActiveLabels({
       });
     });
 
-    return pills;
+    // --- 3. Add logic to find the human-readable order label ---
+    let foundOrderLabel: string | null = null;
+    const currentOrder = searchParams.get('order');
+    if (currentOrder) {
+      for (const group of orderOptions) {
+        const foundOption = group.options.find(
+          (opt) => opt.trpcInput === currentOrder
+        );
+        if (foundOption) {
+          foundOrderLabel = `${group.groupLabel}: ${foundOption.label}`;
+          break; // Stop searching once found
+        }
+      }
+    }
+
+    return { activePills: pills, orderLabel: foundOrderLabel };
   }, [searchParams, filterOptions, pathname, router]);
 
   // if (activePills.length === 0) {
@@ -177,7 +195,7 @@ export default function ActiveLabels({
 
   return (
     <div className="flex flex-wrap gap-2 text-xs font-semibold items-center">
-      {/* <span className="text-sm font-semibold">Active Filters:</span> */}
+      {/* Render the clickable filter pills */}
       {activePills.map((pill) => (
         <button
           key={pill.key}
@@ -187,9 +205,16 @@ export default function ActiveLabels({
           }`}
         >
           {pill.label}
-          {/* <X size={12} /> */}
         </button>
       ))}
+      {/* 4. Render the non-clickable order label last, if it exists */}
+      {orderLabel && (
+        <span
+          className={`rounded px-[9px] py-0.5 ring-1 ring-inset ${pillColors['order']}`}
+        >
+          {orderLabel}
+        </span>
+      )}
     </div>
   );
 }

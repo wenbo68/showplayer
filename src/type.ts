@@ -58,3 +58,7 @@ export type FetchedMediaItem = {
   media_type: 'movie' | 'tv';
   [key: string]: any;
 };
+
+// --- Define the shape of the sort options ---
+export type FilterOption = { label: string; trpcInput: string | number };
+export type FilterOptionGroup = { groupLabel: string; options: FilterOption[] };

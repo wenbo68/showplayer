@@ -51,7 +51,7 @@ export default async function RootLayout({
           <AuthProvider>
             <MediaPopupProvider>
               <TopNav /> {/* ✨ Add the navigation bar here */}
-              <main className="max-w-7xl mx-auto w-full flex-grow py-4">
+              <main className="max-w-7xl mx-auto w-full flex-grow py-2">
                 {children}
               </main>
             </MediaPopupProvider>
@@ -62,8 +62,7 @@ export default async function RootLayout({
   );
 }
 
-// add expand button to search bar in sm
-// minimal 2 col in sm
+// currently selecting from the filters in quick succession doesn't work.
 
 // link to google analytics
 // create a discord server for showplayer

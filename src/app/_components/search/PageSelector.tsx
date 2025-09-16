@@ -59,7 +59,7 @@ export default function PageSelector({
   const hasNextPage = currentPage < totalPages;
 
   return (
-    <div className="flex items-center justify-center gap-2">
+    <div className="flex items-center justify-center gap-1">
       {/* First Page Button */}
       <NavButton
         onClick={() => handlePageChange(1)}

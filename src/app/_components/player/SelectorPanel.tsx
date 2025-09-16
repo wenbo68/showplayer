@@ -35,7 +35,7 @@ export function SelectorPanel({
       </div>
       <div
         ref={containerRef}
-        className={`flex gap-2 flex-wrap ${
+        className={`flex gap-1 flex-wrap ${
           isExpanded ? '' : 'max-h-[15vh] overflow-y-auto scrollbar-thin'
         }`}
       >

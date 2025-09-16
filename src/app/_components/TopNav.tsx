@@ -55,10 +55,10 @@ export function TopNav() {
       <div className="flex items-center justify-between max-w-7xl mx-auto px-4 py-2">
         <Link href="/" className="block text-xl font-bold">
           <Image
-            src="/favicon-32x32.png" // Path to your icon in the public folder
+            src="/showplayer-logo.png" // Path to your icon in the public folder
             alt="ShowPlayer Logo"
-            width={40} // The original width of the icon file
-            height={40} // The original height of the icon file
+            width={38} // The original width of the icon file
+            height={38} // The original height of the icon file
             priority // Recommended for logos to preload them
           />
         </Link>

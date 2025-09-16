@@ -19,7 +19,7 @@ export default async function Home() {
         minVoteCount: 0,
         order: 'popularity-desc',
         page: 1,
-        pageSize: 15,
+        pageSize: 6,
       }),
       api.media.searchAndFilter({
         format: ['tv'],
@@ -27,7 +27,7 @@ export default async function Home() {
         minVoteCount: 0,
         order: 'popularity-desc',
         page: 1,
-        pageSize: 15,
+        pageSize: 6,
       }),
       api.media.searchAndFilter({
         format: ['movie'],
@@ -35,7 +35,7 @@ export default async function Home() {
         minVoteCount: 300,
         order: 'vote-avg-desc',
         page: 1,
-        pageSize: 15,
+        pageSize: 6,
       }),
       api.media.searchAndFilter({
         format: ['tv'],
@@ -43,7 +43,7 @@ export default async function Home() {
         minVoteCount: 300,
         order: 'vote-avg-desc',
         page: 1,
-        pageSize: 15,
+        pageSize: 6,
       }),
       api.media.getFilterOptions(),
     ]);
@@ -76,47 +76,48 @@ export default async function Home() {
 
   return (
     <HydrateClient>
-      <div className="flex flex-col justify-center p-4 gap-12">
+      <div className="flex flex-col justify-center p-4 gap-10">
         <Suspense fallback={<SearchBarFallback />}>
           <SearchBar filterOptions={filterOptions} />
         </Suspense>
 
-        <div className="w-full flex flex-col gap-8">
-          {/* --- 3. Render the four new MediaList previews with correct links --- */}
-          <MediaList
-            pageMediaIds={uniquePageMediaIds}
-            mediaList={popularMvList}
-            viewMode="preview"
-            label="POPULAR MOVIES"
-            link="/search?format=movie&avg=0&count=0&order=popularity-desc&page=1"
-          />
-          <MediaList
-            pageMediaIds={uniquePageMediaIds}
-            mediaList={popularTvList}
-            viewMode="preview"
-            label="POPULAR SHOWS"
-            link="/search?format=tv&avg=0&count=0&order=popularity-desc&page=1"
-          />
-          <MediaList
-            pageMediaIds={uniquePageMediaIds}
-            mediaList={topMvList}
-            viewMode="preview"
-            label="TOP MOVIES"
-            link="/search?format=movie&avg=0&count=300&order=vote-avg-desc&page=1"
-          />
-          <MediaList
-            pageMediaIds={uniquePageMediaIds}
-            mediaList={topTvList}
-            viewMode="preview"
-            label="TOP SHOWS"
-            link="/search?format=tv&avg=0&count=300&order=vote-avg-desc&page=1"
-          />
-        </div>
+        {/* <div className="w-full flex flex-col gap-10">
+          <div className="w-full flex flex-col gap-10"> */}
+        <MediaList
+          pageMediaIds={uniquePageMediaIds}
+          mediaList={popularMvList}
+          viewMode="preview"
+          label="POPULAR MOVIES"
+          link="/search?format=movie&order=popularity-desc&page=1"
+        />
+        <MediaList
+          pageMediaIds={uniquePageMediaIds}
+          mediaList={popularTvList}
+          viewMode="preview"
+          label="POPULAR SHOWS"
+          link="/search?format=tv&order=popularity-desc&page=1"
+        />
+        <MediaList
+          pageMediaIds={uniquePageMediaIds}
+          mediaList={topMvList}
+          viewMode="preview"
+          label="TOP MOVIES"
+          link="/search?format=movie&count=300&order=vote-avg-desc&page=1"
+        />
+        <MediaList
+          pageMediaIds={uniquePageMediaIds}
+          mediaList={topTvList}
+          viewMode="preview"
+          label="TOP SHOWS"
+          link="/search?format=tv&count=300&order=vote-avg-desc&page=1"
+        />
+        {/* </div>
 
-        <div className="w-full flex flex-col gap-10">
-          <IdSubmitter />
-          <SubmissionHistory />
-        </div>
+          <div className="w-full flex flex-col gap-10"> */}
+        <IdSubmitter />
+        <SubmissionHistory />
+        {/* </div>
+        </div> */}
       </div>
     </HydrateClient>
   );

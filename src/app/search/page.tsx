@@ -152,23 +152,26 @@ export default async function SearchPage({
 
   // just use traditional pagination instead of infinite scrolling (harder to use go back/forward in browser)
   return (
-    <div className="flex flex-col gap-12 p-4">
+    <div className="flex flex-col gap-10 p-4">
       <Suspense fallback={<SearchBarFallback />}>
         <SearchBar filterOptions={filterOptions} />
       </Suspense>
 
-      <div className="w-full flex flex-col sm:flex-row sm:justify-between gap-6">
+      <div className="w-full flex justify-between gap-4">
         <Suspense fallback={<ActiveLabelsFallback />}>
-          <ActiveLabels filterOptions={filterOptions} />
+          <ActiveLabels
+            filterOptions={filterOptions}
+            orderOptions={orderOptions}
+          />
         </Suspense>
-        <Suspense fallback={<OrderSelectorFallback />}>
+        {/* <Suspense fallback={<OrderSelectorFallback />}>
           <OrderSelector options={orderOptions} />
-        </Suspense>
+        </Suspense> */}
       </div>
 
       {pageMedia.length > 0 && (
         <HydrateClient>
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-6">
             <MediaList
               viewMode="full"
               mediaList={pageMedia}

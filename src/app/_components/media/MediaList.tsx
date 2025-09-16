@@ -33,25 +33,21 @@ export default function MediaList({
           </Link>
         </div>
       )}
-      <div className="flex gap-4 overflow-x-auto scrollbar-hide">
+      <div className="w-full grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-6 gap-4">
         {mediaList.map((mediaDetail) => {
           return (
-            <div
+            <MediaButton
               key={mediaDetail.media.id}
-              className="flex-shrink-0 w-[160px] lg:w-[200px]"
-            >
-              <MediaButton
-                pageMediaIds={pageMediaIds}
-                mediaDetail={mediaDetail}
-              />
-            </div>
+              pageMediaIds={pageMediaIds}
+              mediaDetail={mediaDetail}
+            />
           );
         })}
       </div>
     </div>
   ) : (
     // full list
-    <div className="w-full grid grid-cols-[repeat(auto-fit,minmax(170px,170px))] lg:grid-cols-[repeat(auto-fit,minmax(194px,194px))] justify-center gap-4">
+    <div className="w-full grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-6 gap-4">
       {label && <span className="col-span-full font-bold">{label}</span>}
       {mediaList.map((mediaDetail) => {
         return (

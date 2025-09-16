@@ -4,22 +4,12 @@
 
 import { useRef, useState, useEffect } from 'react';
 import { IoIosArrowDown } from 'react-icons/io';
-
-// --- Define the shape of our options ---
-type FilterOption = {
-  trpcInput: string | number;
-  label: string;
-};
-
-type OptionGroup = {
-  groupLabel: string;
-  options: FilterOption[];
-};
+import type { FilterOption as FilterOptions, FilterOptionGroup } from '~/type';
 
 // Type guard to check if we have grouped options
 function isGroupedOptions(
-  options: (FilterOption | OptionGroup)[]
-): options is OptionGroup[] {
+  options: (FilterOptions | FilterOptionGroup)[]
+): options is FilterOptionGroup[] {
   return (
     options.length > 0 && options[0] !== undefined && 'groupLabel' in options[0]
   );
@@ -27,7 +17,7 @@ function isGroupedOptions(
 
 type FilterProps = {
   label: string;
-  options: (FilterOption | OptionGroup)[];
+  options: (FilterOptions | FilterOptionGroup)[];
   placeholder?: string;
 } & (
   | {
@@ -95,12 +85,12 @@ export default function Filter(props: FilterProps) {
           // 5. If neither the group nor any of its options match, discard it.
           return null;
         })
-        .filter((group): group is OptionGroup => group !== null) // Filter out the discarded groups.
-    : (options as FilterOption[]).filter((option) =>
+        .filter((group): group is FilterOptionGroup => group !== null) // Filter out the discarded groups.
+    : (options as FilterOptions[]).filter((option) =>
         option.label.toLowerCase().includes(searchText)
       );
 
-  const handleSelectOption = (option: FilterOption) => {
+  const handleSelectOption = (option: FilterOptions) => {
     if (mode === 'single') {
       setUrlValues(option.trpcInput);
       setIsDropdownOpen(false);
@@ -266,7 +256,7 @@ export default function Filter(props: FilterProps) {
                   </div>
                 ))
               : // Fallback for original flat options
-                (filteredOptions as FilterOption[]).map((option) => (
+                (filteredOptions as FilterOptions[]).map((option) => (
                   <button
                     key={option.trpcInput}
                     onClick={() => handleSelectOption(option)}

@@ -6,7 +6,7 @@ import type { SourceWithSubtitles } from '~/type';
 export function withCors(headers: Record<string, string> = {}) {
   return {
     ...headers,
-    'Access-Control-Allow-Origin': `${env.FRONTEND_URL}`,
+    'Access-Control-Allow-Origin': `${env.BUNNY_URL}`,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };

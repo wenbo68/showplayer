@@ -8,7 +8,6 @@ import { api } from '~/trpc/react';
 import { TRPCClientError } from '@trpc/client';
 import Link from 'next/link';
 import { IoIosArrowDown } from 'react-icons/io';
-import UtcTime from './UtcTime';
 
 export default function IdSubmitter() {
   const { data: session } = useSession();
@@ -204,8 +203,8 @@ export default function IdSubmitter() {
           </div>
         )}
         {session?.user ? (
-          <div className="flex flex-col md:flex-row gap-3">
-            <div className="flex gap-3 flex-grow">
+          <div className="flex flex-col md:flex-row gap-2">
+            <div className="flex gap-2 flex-grow">
               {/** media type selector */}
               <div
                 ref={containerRef}

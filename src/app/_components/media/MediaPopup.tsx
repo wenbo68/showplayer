@@ -72,7 +72,7 @@ export function MediaPopup({
       {/* Modal Content */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="rounded-lg w-full max-w-[90vw] lg:max-w-5xl bg-gray-800 max-h-[75vh] flex"
+        className="overflow-hidden rounded-lg w-full max-w-[90vw] lg:max-w-5xl bg-gray-800 max-h-[80vh] flex"
       >
         {/* Poster Image */}
         <div className="hidden sm:block sm:w-1/3">

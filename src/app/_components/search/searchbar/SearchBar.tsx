@@ -199,10 +199,10 @@ export default function SearchBar({
   ];
 
   return (
-    <div className="text-sm w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+    <div className="text-sm w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
       <div className="w-full flex flex-col gap-2 col-span-2 sm:col-span-1">
         <span className="w-full font-semibold"> Title</span>
-        <div className="w-full flex items-center gap-3">
+        <div className="w-full flex items-center gap-2">
           <div className="w-full flex bg-gray-800 items-center rounded">
             <div className="p-2">
               <IoSearchSharp size={20} />

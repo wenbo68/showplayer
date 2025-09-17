@@ -50,7 +50,7 @@ export default function MediaList({
               </Link>
             </div>
           )}
-          <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+          <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
             {mediaList.map((mediaDetail) => {
               return (
                 <MediaButton
@@ -64,7 +64,7 @@ export default function MediaList({
         </div>
       ) : (
         // full list
-        <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+        <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
           {label && <span className="col-span-full font-bold">{label}</span>}
           {mediaList.map((mediaDetail) => {
             return (

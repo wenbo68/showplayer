@@ -51,7 +51,7 @@ export default async function RootLayout({
           <AuthProvider>
             <MediaPopupProvider>
               <TopNav /> {/* ✨ Add the navigation bar here */}
-              <main className="max-w-7xl mx-auto w-full flex-grow p-4">
+              <main className="max-w-7xl mx-auto w-full flex-grow px-2 py-4">
                 {children}
               </main>
             </MediaPopupProvider>

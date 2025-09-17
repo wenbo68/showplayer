@@ -333,29 +333,48 @@ export async function populateOriginForMediaList(
     title: string;
   }[]
 ) {
-  let count = 0;
-  const originInput: { mediaId: string; originId: string }[] = [];
-  await runItemsInEachBatchConcurrently(mediaList, 10, async (media) => {
-    count++;
-    console.log(
-      `[populateOriginForMediaList] progress: ${count}/${mediaList.length} (${media.type} ${media.tmdbId}:${media.title})`
-    );
-    // 2. fetch detail via api
-    const details = await fetchTmdbDetailViaApi(media.type, media.tmdbId);
-    // 3. collect origin inputs
-    const originInput = details.origin_country.map((originId: string) => ({
-      mediaId: media.mediaId,
-      originId: originId,
-    }));
-    originInput.push(...originInput);
-  });
-  // 4. bulk insert origin
+  console.log(
+    `[populateOriginForMediaList] Fetching origins for ${mediaList.length} items...`
+  );
+
+  // 1. Run all API fetches concurrently and collect their results.
+  const allOriginData = await Promise.all(
+    mediaList.map(async (media) => {
+      try {
+        const details = await fetchTmdbDetailViaApi(media.type, media.tmdbId);
+        if (!details.origin_country) return [];
+
+        // Return the array of origin objects for this one media item
+        return details.origin_country.map((originId: string) => ({
+          mediaId: media.mediaId,
+          originId: originId,
+        }));
+      } catch (error) {
+        console.error(
+          `[populateOriginForMediaList] Failed to fetch details for ${media.tmdbId}:`,
+          error
+        );
+        return []; // Return an empty array on failure for this item
+      }
+    })
+  );
+
+  // 2. Flatten the array of arrays into a single list for the database.
+  //    e.g., [ [{...}], [{...}, {...}] ] becomes [ {...}, {...}, {...} ]
+  const originInput = allOriginData.flat();
+
+  // 3. Perform a single, efficient bulk insert.
   if (originInput.length > 0) {
+    console.log(
+      `[populateOriginForMediaList] Bulk inserting ${originInput.length} origin entries...`
+    );
     await db
       .insert(tmdbMediaToTmdbOrigin)
       .values(originInput)
       .onConflictDoNothing();
   }
+
+  console.log(`[populateOriginForMediaList] Finished.`);
 }
 
 // this is only used for new (user submitted) or existing but changed media so far

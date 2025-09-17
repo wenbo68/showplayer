@@ -6,7 +6,6 @@ import SearchBarFallback from './_components/search/searchbar/SearchBarFallback'
 import { auth } from '~/server/auth';
 import IdSubmitter from './_components/submit/IdSubmitter';
 import SubmissionHistory from './_components/submit/SubmissionHistory';
-import UtcTime from './_components/submit/UtcTime';
 
 export default async function Home() {
   const session = await auth();

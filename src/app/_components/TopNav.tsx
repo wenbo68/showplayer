@@ -52,7 +52,7 @@ export function TopNav() {
       className="w-full bg-gray-800 sticky top-0 z-50 transition-transform duration-0"
       style={{ transform: `translateY(${navPosition}px)` }}
     >
-      <div className="flex items-center justify-between max-w-7xl mx-auto px-4 py-2">
+      <div className="flex items-center justify-between max-w-7xl mx-auto px-4 py-1">
         <Link href="/" className="block text-xl font-bold">
           <Image
             src="/showplayer-logo.png" // Path to your icon in the public folder

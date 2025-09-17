@@ -28,38 +28,38 @@ export const userRouter = createTRPCRouter({
       const userId = session.user.id;
       const isAdmin = session.user.role === 'admin';
 
-      // 1. Rate Limiting: Check if a non-admin user has submitted in the last 24 hours.
-      if (!isAdmin) {
-        const startOfUtcToday = new Date(
-          Date.UTC(
-            new Date().getUTCFullYear(),
-            new Date().getUTCMonth(),
-            new Date().getUTCDate()
-          )
-        );
+      // // 1. Rate Limiting: Check if a non-admin user has submitted in the last 24 hours.
+      // if (!isAdmin) {
+      //   const startOfUtcToday = new Date(
+      //     Date.UTC(
+      //       new Date().getUTCFullYear(),
+      //       new Date().getUTCMonth(),
+      //       new Date().getUTCDate()
+      //     )
+      //   );
 
-        // 2. Change the query to COUNT submissions instead of finding the first one.
-        const submissionCountResult = await db
-          .select({ count: count() })
-          .from(userSubmission)
-          .where(
-            and(
-              eq(userSubmission.userId, userId),
-              gte(userSubmission.createdAt, startOfUtcToday)
-            )
-          );
+      //   // 2. Change the query to COUNT submissions instead of finding the first one.
+      //   const submissionCountResult = await db
+      //     .select({ count: count() })
+      //     .from(userSubmission)
+      //     .where(
+      //       and(
+      //         eq(userSubmission.userId, userId),
+      //         gte(userSubmission.createdAt, startOfUtcToday)
+      //       )
+      //     );
 
-        const submissionCount = submissionCountResult[0]?.count ?? 0;
+      //   const submissionCount = submissionCountResult[0]?.count ?? 0;
 
-        // 3. Check if the count has reached the new limit of 5.
-        if (submissionCount >= 3) {
-          throw new TRPCError({
-            code: 'TOO_MANY_REQUESTS',
-            message: 'You have reached your limit of 3 submissions per day.',
-          });
-        }
-        // --- END OF UPDATED LOGIC ---
-      }
+      //   // 3. Check if the count has reached the new limit of 5.
+      //   if (submissionCount >= 3) {
+      //     throw new TRPCError({
+      //       code: 'TOO_MANY_REQUESTS',
+      //       message: 'You have reached your limit of 3 submissions per day.',
+      //     });
+      //   }
+      //   // --- END OF UPDATED LOGIC ---
+      // }
 
       // 2. Check if the media already exists in our main table.
       const existingMedia = await db.query.tmdbMedia.findFirst({

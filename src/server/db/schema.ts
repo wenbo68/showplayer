@@ -23,6 +23,7 @@ import { type AdapterAccount } from 'next-auth/adapters';
  */
 // export const pgTable = pgTableCreator((name) => `showplayer_${name}`);
 
+export const providerEnum = pgEnum('provider_enum', ['E', 'J', 'L', 'F']);
 export const tmdbTypeEnum = pgEnum('tmdb_type', ['movie', 'tv']);
 export const m3u8TypeEnum = pgEnum('m3u8_type', ['master', 'media']);
 export const userListEnum = pgEnum('list_type', ['saved', 'favorite', 'later']);
@@ -32,6 +33,10 @@ export const userSubmissionStatusEnum = pgEnum('user_submission_status', [
   'success',
   'failure',
 ]);
+
+// 2. Create a TypeScript union type from the enum's values
+export type Provider = (typeof providerEnum.enumValues)[number];
+// This results in the type: 'E' | 'J' | 'L' | 'F'
 
 export const tmdbOrigin = pgTable('tmdb_origin', {
   id: varchar('id', { length: 2 }).primaryKey(),
@@ -354,9 +359,8 @@ export const tmdbSource = pgTable(
       }
     ),
 
-    // --- THIS IS THE CHANGE ---
-    // Change the column type from varchar to integer.
-    provider: integer('provider').notNull(),
+    // --- 2. Change the column to use the new enum ---
+    provider: providerEnum('provider').notNull(),
 
     type: m3u8TypeEnum('type').notNull(),
     url: text().notNull(),

@@ -221,13 +221,31 @@ export const mediaRouter = createTRPCRouter({
           inArray(sql`extract(year from ${tmdbMedia.updatedDate})`, updatedYear)
         );
       }
-      // Handle genres filter (acts on the joined tmdbMediaToTmdbGenre table)
+      // // Handle genres filter (acts on the joined tmdbMediaToTmdbGenre table)
+      // if (genre && genre.length > 0) {
+      //   conditions.push(inArray(tmdbMediaToTmdbGenre.genreId, genre));
+      // }
+      // // Handle origins filter (acts on the joined tmdbMediaToTmdbOrigin table)
+      // if (origin && origin.length > 0) {
+      //   conditions.push(inArray(tmdbMediaToTmdbOrigin.originId, origin));
+      // }
+      // Handle genres with a subquery
       if (genre && genre.length > 0) {
-        conditions.push(inArray(tmdbMediaToTmdbGenre.genreId, genre));
+        const genreSubquery = ctx.db
+          .select({ mediaId: tmdbMediaToTmdbGenre.mediaId })
+          .from(tmdbMediaToTmdbGenre)
+          .where(inArray(tmdbMediaToTmdbGenre.genreId, genre));
+
+        conditions.push(inArray(tmdbMedia.id, genreSubquery));
       }
-      // Handle origins filter (acts on the joined tmdbMediaToTmdbOrigin table)
+      // Handle origins with a subquery
       if (origin && origin.length > 0) {
-        conditions.push(inArray(tmdbMediaToTmdbOrigin.originId, origin));
+        const originSubquery = ctx.db
+          .select({ mediaId: tmdbMediaToTmdbOrigin.mediaId })
+          .from(tmdbMediaToTmdbOrigin)
+          .where(inArray(tmdbMediaToTmdbOrigin.originId, origin));
+
+        conditions.push(inArray(tmdbMedia.id, originSubquery));
       }
       if (minVoteAvg && minVoteAvg > 0) {
         conditions.push(gte(tmdbMedia.voteAverage, minVoteAvg));

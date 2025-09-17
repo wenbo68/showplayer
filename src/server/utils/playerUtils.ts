@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import type { SourceWithSubtitles } from '~/type';
+import type { Provider } from '../db/schema';
 
 /**
  * Handles the logic for redirecting to a valid provider if necessary.
@@ -10,7 +11,7 @@ import type { SourceWithSubtitles } from '~/type';
 export function getSelectedSourceAndHandleRedirects(
   baseRedirectUrl: string,
   sources: SourceWithSubtitles[],
-  provider?: number
+  provider?: Provider
 ) {
   // If no sources exist at all, there's nothing to select.
   if (sources.length === 0) {
@@ -46,7 +47,9 @@ export function aggregateSubtitles(
     source.subtitles.map((subtitle) => ({
       content: subtitle.content,
       lang: subtitle.language.slice(0, 2).toLowerCase(),
-      label: `${subtitle.language} (Provider ${source.provider})`,
+      label: `${subtitle.language.slice(0, 2).toLowerCase()} (${
+        source.provider
+      })`,
       default: source.id === selectedSrcId,
     }))
   );

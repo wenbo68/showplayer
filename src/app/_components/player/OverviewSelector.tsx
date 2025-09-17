@@ -17,13 +17,19 @@ export function OverviewSelector({
   selectedSeason,
   selectedEpisode,
 }: OverviewSelectorProps) {
-  const [showOverview, setShowOverview] = useState(() => {
+  const [showOverview, setShowOverview] = useState<string | null>(() => {
     if (typeof window === 'undefined') return 'media';
-    return sessionStorage.getItem('showOverview');
+    return sessionStorage.getItem('showOverview') ?? 'media';
   });
 
+  // Handle the null case explicitly to avoid storing the string "null".
   useEffect(() => {
-    sessionStorage.setItem('showOverview', String(showOverview));
+    if (showOverview === null) {
+      sessionStorage.removeItem('showOverview');
+    } else {
+      // Since showOverview is now guaranteed to be a string, we don't need String()
+      sessionStorage.setItem('showOverview', showOverview);
+    }
   }, [showOverview]);
 
   return (

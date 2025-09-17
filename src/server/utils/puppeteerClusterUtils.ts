@@ -15,7 +15,7 @@ import {
   firstClickMap,
   timeoutPromise,
   getTime,
-  providerIndexMap,
+  providerEnumMap,
 } from './puppeteerUtils'; // Assuming your helper functions and maps are in a utils file
 
 /**
@@ -130,7 +130,7 @@ const puppeteerTask = async ({ page, data }: { page: any; data: any }) => {
 
     if (m3u8List.length === 0) throw new Error(`m3u8 timeout`);
     return {
-      provider: providerIndexMap[provider]!,
+      provider: providerEnumMap[provider]!,
       m3u8: m3u8List.at(-1)!,
       subtitle: subtitleList.at(-1),
     };

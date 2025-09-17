@@ -1,18 +1,18 @@
 // ~/app/search/page.tsx
 
 import { api, HydrateClient } from '~/trpc/server';
-import SearchBar from '../_components/search/SearchBar';
+import SearchBar from '../_components/search/searchbar/SearchBar';
 import MediaList from '../_components/media/MediaList';
 import { Suspense } from 'react';
-import SearchBarFallback from '../_components/search/SearchBarFallback';
-import ActiveLabels from '../_components/search/ActiveLabels';
+import SearchBarFallback from '../_components/search/searchbar/SearchBarFallback';
+import ActiveLabels from '../_components/search/label/ActiveLabels';
 import PageSelector from '../_components/search/PageSelector';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { auth } from '~/server/auth';
-import OrderSelector from '../_components/search/OrderSelector';
-import OrderSelectorFallback from '../_components/search/OrderSelectorFallback';
-import ActiveLabelsFallback from '../_components/search/ActiveLabelsFallback';
+import OrderSelector from '../_components/search/order/OrderSelector';
+import OrderSelectorFallback from '../_components/search/order/OrderSelectorFallback';
+import ActiveLabelsFallback from '../_components/search/label/ActiveLabelsFallback';
 
 // Helper function to ensure a value is an array of strings
 const ensureStringArray = (value: string | string[] | undefined): string[] => {
@@ -152,7 +152,7 @@ export default async function SearchPage({
 
   // just use traditional pagination instead of infinite scrolling (harder to use go back/forward in browser)
   return (
-    <div className="flex flex-col gap-10 p-4">
+    <div className="flex flex-col gap-8">
       <Suspense fallback={<SearchBarFallback />}>
         <SearchBar filterOptions={filterOptions} />
       </Suspense>

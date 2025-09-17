@@ -6,15 +6,16 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Season, Episode, Media, Source } from '~/type';
 import { NavButton } from '../NavButton';
-import { useSessionStorage } from '~/app/_hooks/sessionStorageHooks';
+import { useSessionStorageState } from '~/app/_hooks/sessionStorageHooks';
 import { useAutoScroll } from '~/app/_hooks/autoscrollHooks';
 import { SelectorPanel } from './SelectorPanel';
+import type { Provider } from '~/server/db/schema';
 
 // --- 1. UPDATE THE PROPS ---
 // TV-specific props are now optional
 interface MediaUrlSelectorProps {
   sources: Source[];
-  selectedProvider?: number;
+  selectedProvider?: Provider;
   tmdbId?: number;
   mediaData?: Media & {
     seasons: (Season & {
@@ -43,11 +44,11 @@ export function MediaUrlSelector({
 
   // --- TV-Specific State and Logic ---
   const [selectedSeasonId, setSelectedSeasonId] = useState(seasonIdParam);
-  const [isSeasonsExpanded, setIsSeasonsExpanded] = useSessionStorage(
+  const [isSeasonsExpanded, setIsSeasonsExpanded] = useSessionStorageState(
     'isSeasonsExpanded',
     false
   );
-  const [isEpisodesExpanded, setIsEpisodesExpanded] = useSessionStorage(
+  const [isEpisodesExpanded, setIsEpisodesExpanded] = useSessionStorageState(
     'isEpisodesExpanded',
     false
   );
@@ -72,12 +73,12 @@ export function MediaUrlSelector({
       {/* This part is now always rendered */}
       <div className="flex flex-col gap-2">
         <div className="flex gap-2 items-baseline">
-          <span className="text-base font-semibold">Server</span>
+          <span className="text-base font-semibold">Provider</span>
           <span className="text-xs">
-            Please try a different server if it doesn't play.
+            Please try a different provider if video doesn't play.
           </span>
         </div>
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+        <div className="flex gap-1 overflow-x-auto scrollbar-hide">
           {sources.map((source) => (
             <NavButton
               key={source.id}
@@ -97,7 +98,7 @@ export function MediaUrlSelector({
           <SelectorPanel
             title="Season"
             isExpanded={isSeasonsExpanded}
-            onToggle={() => setIsSeasonsExpanded(!isSeasonsExpanded)}
+            onToggleExpand={() => setIsSeasonsExpanded(!isSeasonsExpanded)}
             containerRef={seasonsContainerRef}
           >
             {mediaData.seasons.map((season) => (
@@ -114,7 +115,7 @@ export function MediaUrlSelector({
           <SelectorPanel
             title="Episode"
             isExpanded={isEpisodesExpanded}
-            onToggle={() => setIsEpisodesExpanded(!isEpisodesExpanded)}
+            onToggleExpand={() => setIsEpisodesExpanded(!isEpisodesExpanded)}
             containerRef={episodesContainerRef}
           >
             {selectedSeason?.episodes.map((episode) => (

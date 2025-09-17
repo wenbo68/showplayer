@@ -188,7 +188,7 @@ export default function Filter(props: FilterProps) {
   // const selectedOptions = getSelectedOptions();
 
   return (
-    <div className="relative flex flex-col w-full gap-3">
+    <div className="relative flex flex-col w-full gap-2">
       <div className="flex w-full gap-2 items-baseline">
         {/** filter label */}
         <label className="font-semibold">{label}</label>

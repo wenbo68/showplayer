@@ -372,6 +372,13 @@
       "when": 1757925976836,
       "tag": "0052_safe_skaar",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1758124792014,
+      "tag": "0053_easy_jigsaw",
+      "breakpoints": true
     }
   ]
 }

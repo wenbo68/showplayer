@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 
-export function useSessionStorage<T>(
+// only use this if you have a state that must be synced with a variable in session storage
+export function useSessionStorageState<T>(
   key: string,
   defaultValue: T
 ): [T, (value: T) => void] {

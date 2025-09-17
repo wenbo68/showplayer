@@ -51,7 +51,7 @@ export default async function RootLayout({
           <AuthProvider>
             <MediaPopupProvider>
               <TopNav /> {/* ✨ Add the navigation bar here */}
-              <main className="max-w-7xl mx-auto w-full flex-grow py-2">
+              <main className="max-w-7xl mx-auto w-full flex-grow p-4">
                 {children}
               </main>
             </MediaPopupProvider>
@@ -62,7 +62,11 @@ export default async function RootLayout({
   );
 }
 
-// currently selecting from the filters in quick succession doesn't work.
+// need to add a one-time-use function to get genres for all media missing them
+// currently selecting from the filters in quick succession doesn't work well.
+// add load time when url changes
+// make logo s thicker
+// season/episode grid button has bug?
 
 // link to google analytics
 // create a discord server for showplayer

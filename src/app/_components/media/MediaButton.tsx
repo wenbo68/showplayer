@@ -29,7 +29,7 @@ export default function MediaButton({
   return (
     <button
       onClick={() => openPopup(pageMediaIds, mediaDetail)}
-      className="flex w-full flex-col items-center gap-2 overflow-hidden text-sm transition group cursor-pointer"
+      className="flex w-full flex-col items-center gap-2 overflow-hidden text-xs md:text-sm transition group cursor-pointer"
     >
       <div className="relative w-full">
         <img
@@ -41,7 +41,7 @@ export default function MediaButton({
           className="aspect-[2/3] w-full rounded object-cover"
         />
       </div>
-      <div className="flex flex-col items-center gap-1">
+      <div className="flex flex-col w-full items-start text-left gap-1">
         <div
           className={`flex items-center gap-1.5 font-semibold transition-colors ${
             hasMounted && isInUserList

@@ -1,4 +1,3 @@
-import { closeCluster, getCluster } from '~/server/utils/puppeteerClusterUtils';
 import { db } from '../db';
 import {
   tmdbEpisode,
@@ -6,27 +5,8 @@ import {
   tmdbMediaToTmdbGenre,
   tmdbMediaToTmdbOrigin,
   tmdbSeason,
-  tmdbSource,
-  tmdbSubtitle,
-  tmdbTrending,
 } from '../db/schema';
-import {
-  and,
-  asc,
-  eq,
-  inArray,
-  isNotNull,
-  isNull,
-  lte,
-  or,
-  sql,
-} from 'drizzle-orm';
-import type { LatestEpisodeInfo, PuppeteerResult } from '~/type';
-import {
-  indexProviderMap,
-  mvProvidersMap,
-  tvProvidersMap,
-} from '~/server/utils/puppeteerUtils';
+import { eq, sql } from 'drizzle-orm';
 import {
   fetchTmdbDetailViaApi,
   fetchTmdbSeasonDetailViaApi,
@@ -56,7 +36,10 @@ export async function bulkUpsertNewMedia(fetchOutput: any[]) {
               : item.first_air_date
               ? new Date(item.first_air_date)
               : null,
-            genreIds: item.genre_ids || [],
+            genreIds:
+              item.genre_ids ||
+              item.genres.map((g: { id: number; name: string }) => g.id) ||
+              [],
             originIds: item.origin_country || [],
             popularity: item.popularity,
             voteAverage: item.vote_average,

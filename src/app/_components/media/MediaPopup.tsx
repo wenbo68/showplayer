@@ -4,10 +4,10 @@ import Link from 'next/link';
 import type { ListMedia } from '~/type';
 import { MediaBadge } from './MediaBadge';
 import { AddToUserListButton } from './AddToUserListButton';
-import Backdrop from './Backdrop';
+// import Backdrop from './Backdrop';
 
 export const tagClassMap = {
-  // title: 'bg-rose-500/20 text-rose-300 ring-rose-500/30',
+  title: 'bg-rose-500/20 text-rose-300 ring-rose-500/30',
   format: 'bg-red-500/20 text-red-300 ring-red-500/30',
   origin: 'bg-orange-500/20 text-orange-300 ring-orange-500/30',
   genre: 'bg-amber-500/20 text-amber-300 ring-amber-500/30',
@@ -51,6 +51,19 @@ export function MediaPopup({
       })
     : '';
 
+  const fullBackdropUrl = media.backdropUrl
+    ? `https://image.tmdb.org/t/p/w780${media.backdropUrl}`
+    : '';
+
+  // --- STYLE FOR THE BACKDROP ---
+  // We combine a semi-transparent gradient overlay with the background image
+  // The RGBA color (17, 24, 39) corresponds to Tailwind's gray-900
+  const backdropStyle = fullBackdropUrl
+    ? {
+        backgroundImage: `linear-gradient(rgba(17, 24, 39, 0.90), rgba(17, 24, 39, 0.90)), url(${fullBackdropUrl})`,
+      }
+    : {};
+
   return (
     <div
       onClick={onClose}
@@ -59,7 +72,7 @@ export function MediaPopup({
       {/* Modal Content */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-[90vw] lg:max-w-5xl rounded-lg bg-gray-800 max-h-[75vh] flex overflow-y-auto scrollbar-thin"
+        className="rounded-lg w-full max-w-[90vw] lg:max-w-5xl bg-gray-800 max-h-[75vh] flex"
       >
         {/* Poster Image */}
         <div className="hidden sm:block sm:w-1/3">
@@ -73,91 +86,103 @@ export function MediaPopup({
           />
         </div>
 
-        {/* Details */}
-        <div className="p-6 sm:w-2/3 flex flex-col gap-5 relative isolate">
-          <Backdrop backdropUrl={media.backdropUrl} />
-          <div className="flex flex-col gap-4">
-            {/* Title */}
-            <h2 className="text-3xl font-bold">{media.title}</h2>
-            {/* Tags */}
-            <div className="flex flex-col gap-2 text-xs font-medium">
-              <div className="flex flex-wrap items-center gap-2">
-                {/** media type */}
-                <MediaBadge className={tagClassMap['format']}>
-                  {media.type === 'movie' ? `Movie` : `TV`}
-                </MediaBadge>
-                {/* Origins */}
-                {mediaDetail.origins.map((origin) => (
-                  <MediaBadge key={origin} className={tagClassMap['origin']}>
-                    {origin}
+        {/* Details - NOW THE SCROLLING CONTAINER with backdrop styles */}
+        <div
+          style={backdropStyle}
+          className="sm:w-2/3 overflow-y-auto scrollbar-thin bg-cover bg-center"
+        >
+          <div className="p-6 flex flex-col gap-5 min-h-full">
+            {/* <Backdrop backdropUrl={media.backdropUrl} /> */}
+            <div className="flex flex-col gap-4">
+              {/* Title */}
+              <h2 className="text-3xl font-bold">{media.title}</h2>
+              {/* Tags */}
+              <div className="flex flex-col gap-2 text-xs font-medium">
+                <div className="flex flex-wrap items-center gap-2">
+                  {/** media type */}
+                  <MediaBadge className={tagClassMap['format']}>
+                    {media.type === 'movie' ? `Movie` : `TV`}
                   </MediaBadge>
-                ))}
-                {/* Genres */}
-                {mediaDetail.genres.map((genre) => (
-                  <MediaBadge key={genre} className={tagClassMap['genre']}>
-                    {genre}
+                  {/* Origins */}
+                  {mediaDetail.origins.map((origin) => (
+                    <MediaBadge key={origin} className={tagClassMap['origin']}>
+                      {origin}
+                    </MediaBadge>
+                  ))}
+                  {/* Genres */}
+                  {mediaDetail.genres.map((genre) => (
+                    <MediaBadge key={genre} className={tagClassMap['genre']}>
+                      {genre}
+                    </MediaBadge>
+                  ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {/** release date */}
+                  {media.releaseDate && (
+                    <MediaBadge className={tagClassMap['released']}>
+                      Released: {releaseDate}
+                    </MediaBadge>
+                  )}
+                  {/** updated date */}
+                  {media.updatedDate && (
+                    <MediaBadge className={tagClassMap['updated']}>
+                      Updated: {updatedDate}
+                    </MediaBadge>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {/** rating avg */}
+                  <MediaBadge className={tagClassMap['avg']}>
+                    Rating Avg: {(media.voteAverage * 10).toFixed(2)}%
                   </MediaBadge>
-                ))}
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {/** release date */}
-                {media.releaseDate && (
-                  <MediaBadge className={tagClassMap['released']}>
-                    Released: {releaseDate}
+                  {/** rating count */}
+                  <MediaBadge className={tagClassMap['count']}>
+                    Rating Cnt: {media.voteCount}
                   </MediaBadge>
-                )}
-                {/** updated date */}
-                {media.updatedDate && (
-                  <MediaBadge className={tagClassMap['updated']}>
-                    Updated: {updatedDate}
-                  </MediaBadge>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {/** rating avg */}
-                <MediaBadge className={tagClassMap['avg']}>
-                  Rating Avg: {(media.voteAverage * 10).toFixed(2)}%
-                </MediaBadge>
-                {/** rating count */}
-                <MediaBadge className={tagClassMap['count']}>
-                  Rating Cnt: {media.voteCount}
-                </MediaBadge>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="text-base max-w-none">
-            {media.description ?? 'No description available.'}
-          </div>
+            <div className="text-base max-w-none">
+              {media.description ?? 'No description available.'}
+            </div>
 
-          <div className="mt-auto flex gap-3">
-            {/** Add to list button */}
-            <AddToUserListButton
-              pageMediaIds={pageMediaIds}
-              mediaId={media.id}
-              listType="saved"
-            />
+            <div className="mt-auto flex gap-3">
+              {/** Add to list button */}
+              <AddToUserListButton
+                pageMediaIds={pageMediaIds}
+                mediaId={media.id}
+                listType="saved"
+              />
 
-            {/** Watch now button */}
-            <Link
-              href={`/${media.type}/${media.tmdbId}${
-                media.type === 'movie' ? '' : '/1/1'
-              }`}
-              onClick={onClose}
-              className={`${
-                !isReleased || media.availabilityCount <= 0
-                  ? `bg-gray-700 hover:bg-gray-600`
-                  : `bg-blue-600 hover:bg-blue-500 text-gray-300`
-              } flex-grow flex items-center justify-center font-semibold rounded-lg`}
-            >
-              {!isReleased
-                ? `Not Released`
-                : media.availabilityCount <= 0
-                ? `Not Available`
-                : media.type === 'movie'
-                ? `Watch Now`
-                : `${media.availabilityCount}/${media.airedEpisodeCount} Episodes`}
-            </Link>
+              {/** Watch now button */}
+              <Link
+                href={`/${media.type}/${media.tmdbId}${
+                  media.type === 'movie' ? '' : '/1/1'
+                }`}
+                // Save the current URL to sessionStorage before navigating
+                onClick={() => {
+                  sessionStorage.setItem(
+                    'previousPageUrl',
+                    window.location.href
+                  );
+                  onClose();
+                }}
+                className={`${
+                  !isReleased || media.availabilityCount <= 0
+                    ? `bg-gray-700 hover:bg-gray-600`
+                    : `bg-blue-600 hover:bg-blue-500 text-gray-300`
+                } flex-grow flex items-center justify-center font-semibold rounded-lg`}
+              >
+                {!isReleased
+                  ? `Not Released`
+                  : media.availabilityCount <= 0
+                  ? `Not Available`
+                  : media.type === 'movie'
+                  ? `Watch Now`
+                  : `${media.availabilityCount}/${media.airedEpisodeCount} Episodes`}
+              </Link>
+            </div>
           </div>
         </div>
       </div>

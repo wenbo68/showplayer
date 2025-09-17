@@ -1,4 +1,4 @@
-import { and, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, eq, or, sql } from 'drizzle-orm';
 import { env } from '~/env';
 import { tmdbMedia, tmdbSeason } from '../db/schema';
 import { db } from '../db';

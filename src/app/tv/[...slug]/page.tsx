@@ -6,6 +6,7 @@ import {
   tmdbSeason,
   tmdbEpisode,
   tmdbSource,
+  type Provider,
 } from '~/server/db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { notFound, redirect } from 'next/navigation';
@@ -18,6 +19,7 @@ import {
 } from '~/server/utils/playerUtils';
 import { OverviewSelector } from '~/app/_components/player/OverviewSelector';
 import { MediaUrlSelector } from '~/app/_components/player/MediaUrlSelector';
+import { BackButton } from '~/app/_components/player/BackButton';
 
 interface PageProps {
   params: Promise<{ slug: string[] }>;
@@ -35,7 +37,16 @@ export default async function Page({ params }: PageProps) {
   const tmdbId = parseInt(tmdbIdParam, 10);
   const seasonNumber = parseInt(seasonNumberParam, 10);
   const episodeNumber = parseInt(episodeNumberParam, 10);
-  const provider = providerParam ? parseInt(providerParam, 10) : undefined;
+  const provider: Provider | undefined =
+    providerParam === 'E'
+      ? providerParam
+      : providerParam === 'F'
+      ? providerParam
+      : providerParam === 'L'
+      ? providerParam
+      : providerParam === 'J'
+      ? providerParam
+      : undefined;
 
   // --- 1. RUN TWO TARGETED QUERIES IN PARALLEL ---
   const [playerData, sidebarData] = await Promise.all([
@@ -106,7 +117,8 @@ export default async function Page({ params }: PageProps) {
   const subtitles = aggregateSubtitles(sourcesAndSubtitles, selectedSrc?.id);
 
   return (
-    <div className="p-4 flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
+      <BackButton />
       <OverviewSelector
         selectedMedia={{
           media: mediaData,

@@ -1,19 +1,20 @@
 import type { Page } from 'puppeteer';
+import type { Provider } from '../db/schema';
 
 // ====== maps
 
-export const indexProviderMap: Record<string, string> = {
-  1: 'videasy',
-  2: 'vidjoy',
-  3: 'vidlink',
-  4: 'vidfast',
+export const EnumProviderMap: Record<Provider, string> = {
+  E: 'videasy',
+  J: 'vidjoy',
+  L: 'vidlink',
+  F: 'vidfast',
 };
 
-export const providerIndexMap: Record<string, number> = {
-  videasy: 1,
-  vidjoy: 2,
-  vidlink: 3,
-  vidfast: 4,
+export const providerEnumMap: Record<string, Provider> = {
+  videasy: 'E',
+  vidjoy: 'J',
+  vidlink: 'L',
+  vidfast: 'F',
 };
 
 export const mvProvidersMap: Record<string, string> = {

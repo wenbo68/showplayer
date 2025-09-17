@@ -1,5 +1,6 @@
 import type { InferSelectModel } from 'drizzle-orm';
 import type {
+  Provider,
   tmdbEpisode,
   tmdbMedia,
   tmdbSeason,
@@ -20,7 +21,7 @@ export type M3U8Result = {
   headers: Record<string, string>;
 };
 export type PuppeteerResult = {
-  provider: number;
+  provider: Provider;
   m3u8: M3U8Result;
   subtitle?: string;
 };

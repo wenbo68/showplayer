@@ -1,6 +1,6 @@
 import { closeCluster, getCluster } from '~/server/utils/puppeteerClusterUtils';
 import {
-  indexProviderMap,
+  EnumProviderMap,
   mvProvidersMap,
   tvProvidersMap,
 } from '~/server/utils/puppeteerUtils';
@@ -69,7 +69,7 @@ async function fetchSrcFromProvidersFast(
 
     successfulResults.forEach((result) => {
       console.log(
-        `[${indexProviderMap[result.provider]}] success: ${result.m3u8.type} ${
+        `[${EnumProviderMap[result.provider]}] success: ${result.m3u8.type} ${
           result.subtitle ? '+ subtitle' : ''
         }`
       );
@@ -155,7 +155,7 @@ export async function fetchAndUpsertMvSrc(
   console.log('=======');
   console.log(
     `[fetchAndUpsertMvSrc] Fetched ${results.length} sources: ${results.map(
-      (result) => indexProviderMap[result.provider]
+      (result) => EnumProviderMap[result.provider]
     )}`
   );
   if (results.length === 0) {
@@ -203,7 +203,7 @@ export async function fetchAndUpsertTvSrc(
   console.log('=======');
   console.log(
     `[fetchAndUpsertTvSrc] Fetched ${results.length} sources: ${results.map(
-      (result) => indexProviderMap[result.provider]
+      (result) => EnumProviderMap[result.provider]
     )}`
   );
   if (results.length === 0) {
@@ -252,6 +252,7 @@ export async function fetchAndUpsertTvSrc(
     .set({ denormFieldsOutdated: true })
     .where(eq(tmdbMedia.id, mediaId));
 }
+
 // fetch src for an arbitrary list of media
 // mv: skip if it has source
 // tv: find srcless episodes and fetch src for them

@@ -5,7 +5,7 @@ import { IoGrid } from 'react-icons/io5';
 interface SelectorPanelProps {
   title: string;
   isExpanded: boolean;
-  onToggle: () => void;
+  onToggleExpand: () => void;
   containerRef?: React.RefObject<HTMLDivElement | null>;
   children: React.ReactNode;
 }
@@ -13,23 +13,21 @@ interface SelectorPanelProps {
 export function SelectorPanel({
   title,
   isExpanded,
-  onToggle,
+  onToggleExpand,
   containerRef,
   children,
 }: SelectorPanelProps) {
   return (
     <div className="flex flex-col gap-2">
-      <div
-        className="flex cursor-pointer items-center gap-2 group"
-        onClick={onToggle}
-      >
+      <div className="flex items-center gap-2">
         <div className="flex items-center justify-center text-base">
           {title}
         </div>
         <IoGrid
           size={15}
-          className={`${
-            isExpanded ? `text-blue-400` : `group-hover:text-blue-400`
+          onClick={onToggleExpand}
+          className={`cursor-pointer ${
+            isExpanded ? `text-blue-400` : `hover:text-blue-400`
           }`}
         />
       </div>

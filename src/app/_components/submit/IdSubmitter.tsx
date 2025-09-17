@@ -8,9 +8,38 @@ import { api } from '~/trpc/react';
 import { TRPCClientError } from '@trpc/client';
 import Link from 'next/link';
 import { IoIosArrowDown } from 'react-icons/io';
+import UtcTime from './UtcTime';
 
 export default function IdSubmitter() {
   const { data: session } = useSession();
+
+  // --- START: UTC TIMER LOGIC ---
+
+  // 1. Add state to hold the current UTC time as a Date object.
+  const [utcTime, setUtcTime] = useState(new Date());
+
+  // 2. Set up an effect to update the time every minute.
+  useEffect(() => {
+    // Set an interval to create a new Date object every 60 seconds.
+    const timerId = setInterval(() => {
+      setUtcTime(new Date());
+    }, 60000); // 60000 milliseconds = 1 minute
+
+    // Cleanup function: This runs when the component unmounts to prevent memory leaks.
+    return () => {
+      clearInterval(timerId);
+    };
+  }, []); // The empty array [] ensures this effect runs only once when the component mounts.
+
+  // 3. Format the Date object into the desired string format.
+  const year = utcTime.getUTCFullYear();
+  // getUTCMonth() is 0-indexed (0=Jan), so we add 1.
+  const month = String(utcTime.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(utcTime.getUTCDate()).padStart(2, '0');
+  const hours = String(utcTime.getUTCHours()).padStart(2, '0');
+  const minutes = String(utcTime.getUTCMinutes()).padStart(2, '0');
+
+  const formattedUtcTime = `${year}/${month}/${day} ${hours}:${minutes}`;
 
   const [tmdbIdInput, setTmdbIdInput] = useState('');
   const [mediaType, setMediaType] = useState<'movie' | 'tv'>('movie');
@@ -120,7 +149,7 @@ export default function IdSubmitter() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="basis-0 flex-grow flex flex-col gap-4"
+      className="basis-0 flex-grow flex flex-col gap-3"
     >
       <div
         onClick={() => setShowInfo(!showInfo)}
@@ -163,18 +192,20 @@ export default function IdSubmitter() {
               </Link>
               , the tmdb id is 1396, and the media type is tv.
             </p>
-            <p className="">
+            {/* <p className="">
               - You can request 3 new media per day. The timer resets at 12am
               UTC.
-            </p>
+            </p> */}
             <p className="">
-              - All user requests are processed together overnight.
+              - User requests are processed together at around 12am to 1am UTC
+              everyday.
             </p>
+            <p className="">- Current UTC time: {formattedUtcTime}</p>
           </div>
         )}
         {session?.user ? (
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex gap-4 flex-grow">
+          <div className="flex flex-col md:flex-row gap-3">
+            <div className="flex gap-3 flex-grow">
               {/** media type selector */}
               <div
                 ref={containerRef}
@@ -231,7 +262,7 @@ export default function IdSubmitter() {
             >
               login
             </Link>{' '}
-            first to request a new media.
+            to request a media.
           </p>
         )}
 

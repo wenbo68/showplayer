@@ -36,11 +36,27 @@ export default function Overview({
       })
     : '';
 
+  const fullBackdropUrl = media.backdropUrl
+    ? `https://image.tmdb.org/t/p/w780${media.backdropUrl}`
+    : '';
+
+  // --- STYLE FOR THE BACKDROP ---
+  // We combine a semi-transparent gradient overlay with the background image
+  // The RGBA color (17, 24, 39) corresponds to Tailwind's gray-900
+  const backdropStyle = fullBackdropUrl
+    ? {
+        backgroundImage: `linear-gradient(rgba(17, 24, 39, 0.90), rgba(17, 24, 39, 0.90)), url(${fullBackdropUrl})`,
+      }
+    : {};
+
   return showOverview === 'media' ? (
-    <div className="relative w-full rounded bg-gray-800 flex">
+    <div className="w-full rounded bg-gray-800 flex">
       {/* Details */}
-      <div className="w-full p-4 flex flex-col gap-3 relative isolate">
-        <Backdrop backdropUrl={media.backdropUrl} />
+      <div
+        style={backdropStyle}
+        className="w-full p-4 flex flex-col gap-3 bg-center bg-cover"
+      >
+        {/* <Backdrop backdropUrl={media.backdropUrl} /> */}
         {/* <div className="flex flex-col gap-4"> */}
         {/* Tags */}
         {/* <div className="flex flex-col gap-2 text-xs font-semibold"> */}
@@ -99,7 +115,7 @@ export default function Overview({
     <div className="relative w-full rounded bg-gray-800 flex">
       {/* Details */}
       <div className="w-full p-4 flex flex-col gap-2 relative isolate">
-        <Backdrop backdropUrl={selectedSeason.imageUrl} />
+        {/* <Backdrop backdropUrl={selectedSeason.imageUrl} /> */}
         <div className="text-base font-semibold">{selectedSeason.title}</div>
         <div className="font-medium text-sm max-w-none">
           {selectedSeason.description ?? 'No description available.'}

@@ -6,10 +6,15 @@ import { useState } from 'react';
 import { api } from '~/trpc/react';
 
 export default function CronAdmin() {
+  // 1. Add new state for the fetch source limit with a default of 100
   const [tmdbListLimit, setTmdbListLimit] = useState(50);
+  const [fetchSrcLimit, setFetchSrcLimit] = useState(100);
 
   // --- Create a useMutation hook for each procedure ---
+  const stopCronMutation = api.cron.stopCron.useMutation();
+  const resetCronFlagMutation = api.cron.resetCronFlag.useMutation();
   const runCronMutation = api.cron.runCron.useMutation();
+
   const updateChangedMediaMutation =
     api.cron.updateAllChangedMedia.useMutation();
   const updatePopularityMutation = api.cron.updatePopularity.useMutation();
@@ -19,8 +24,6 @@ export default function CronAdmin() {
   const fetchTmdbListsMutation = api.cron.fetchTmdbLists.useMutation();
   const fetchSrcMutation = api.cron.fetchSrc.useMutation();
   const updateDenormFieldsMutation = api.cron.updateDenormFields.useMutation();
-  const stopCronMutation = api.cron.stopCron.useMutation();
-  const resetCronFlagMutation = api.cron.resetCronFlag.useMutation();
 
   // --- Create a handler for each mutation ---
   // A generic handler for simple mutations
@@ -28,10 +31,6 @@ export default function CronAdmin() {
     mutation.mutate(
       {},
       {
-        // onSuccess: () =>
-        //   alert(
-        //     `Successfully triggered ${name} job. Check server logs for progress.`
-        //   ),
         onError: (err: any) => console.error(`${name} Error: ${err.message}`),
       }
     );
@@ -74,12 +73,18 @@ export default function CronAdmin() {
     fetchTmdbListsMutation.mutate(
       { limit: tmdbListLimit },
       {
-        // onSuccess: () =>
-        //   alert(
-        //     'Successfully triggered fetchTmdbLists job. Check server logs for progress.'
-        //   ),
         onError: (err) =>
           console.error(`handleFetchTmdbLists Error: ${err.message}`),
+      }
+    );
+  };
+
+  // 3. Create a new, specific handler for fetching sources with a limit
+  const handleFetchSrc = () => {
+    fetchSrcMutation.mutate(
+      { limit: fetchSrcLimit },
+      {
+        onError: (err) => console.error(`handleFetchSrc Error: ${err.message}`),
       }
     );
   };
@@ -118,12 +123,19 @@ export default function CronAdmin() {
       name: '5. Fetch TMDb Lists',
       mutation: fetchTmdbListsMutation,
       handler: handleFetchTmdbLists,
-      needsInput: true,
+      input: {
+        value: tmdbListLimit,
+        setter: setTmdbListLimit,
+      },
     },
     {
       name: '6. Fetch Sources',
       mutation: fetchSrcMutation,
-      handler: createSimpleHandler(fetchSrcMutation, 'Fetch Sources'),
+      handler: handleFetchSrc, // Use the new handler
+      input: {
+        value: fetchSrcLimit,
+        setter: setFetchSrcLimit,
+      },
     },
     {
       name: '7. Update Denorm. Fields',
@@ -143,8 +155,8 @@ export default function CronAdmin() {
 
       {/* Master Control */}
       <div className="flex w-full flex-col items-center gap-2">
-        {/* run all cron jobs */}
         <h3 className="font-semibold text-gray-400">Master Control</h3>
+        {/* Input for TMDb List Limit */}
         <label htmlFor="tmdbListLimit" className="text-xs text-gray-500">
           TMDB List Limit (for step 5)
         </label>
@@ -155,15 +167,28 @@ export default function CronAdmin() {
           onChange={(e) => setTmdbListLimit(Number(e.target.value))}
           className="w-60 rounded border border-gray-700 bg-gray-800 px-3 py-2 text-gray-300"
         />
+        {/* Add a new input for the Fetch Sources limit */}
+        <label htmlFor="fetchSrcLimit" className="text-xs text-gray-500">
+          Fetch Sources Limit (for step 6)
+        </label>
+        <input
+          id="fetchSrcLimit"
+          type="number"
+          value={fetchSrcLimit}
+          onChange={(e) => setFetchSrcLimit(Number(e.target.value))}
+          className="w-60 rounded border border-gray-700 bg-gray-800 px-3 py-2 text-gray-300"
+        />
+        {/** execute button */}
         <button
           onClick={handleRunCron}
           disabled={runCronMutation.isPending}
-          className="w-60 rounded bg-cyan-600 px-4 py-2 font-semibold text-white hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-2 w-60 rounded bg-cyan-600 px-4 py-2 font-semibold text-white hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {runCronMutation.isPending
             ? 'Running Sequence...'
             : 'Run Full Daily Sequence'}
         </button>
+        {/** error message */}
         {runCronMutation.error && (
           <p className="mt-2 text-red-400">
             Error: {runCronMutation.error.message}
@@ -196,14 +221,16 @@ export default function CronAdmin() {
         <h3 className="font-semibold text-gray-400">Individual Steps</h3>
         {jobs.map((job) => (
           <div key={job.name} className="flex flex-col items-center w-60">
-            {job.needsInput && job.name.includes('Lists') && (
+            {/* input if job has one */}
+            {job.input && (
               <input
                 type="number"
-                value={tmdbListLimit}
-                onChange={(e) => setTmdbListLimit(Number(e.target.value))}
+                value={job.input.value}
+                onChange={(e) => job.input.setter(Number(e.target.value))}
                 className="mb-2 w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-gray-300"
               />
             )}
+            {/** execute button */}
             <button
               onClick={job.handler}
               disabled={job.mutation.isPending}
@@ -211,6 +238,7 @@ export default function CronAdmin() {
             >
               {job.mutation.isPending ? 'Running...' : job.name}
             </button>
+            {/** error message */}
             {job.mutation.error && (
               <p className="mt-2 text-red-400">
                 Error: {job.mutation.error.message}

@@ -11,7 +11,7 @@ export default function Backdrop({
         style={{
           backgroundImage: `url(https://image.tmdb.org/t/p/w1280${backdropUrl})`,
         }}
-        className="absolute inset-0 bg-cover bg-center -z-10 brightness-18"
+        className="absolute inset-0 bg-cover bg-center -z-10 brightness-15"
       />
     )
   );

@@ -19,7 +19,7 @@ export default function SubmissionHistory() {
   const [showInfo, setShowInfo] = useState(false);
 
   return (
-    <div className="basis-0 flex-grow flex flex-col gap-4">
+    <div className="basis-0 flex-grow flex flex-col gap-3">
       <div
         onClick={() => setShowInfo(!showInfo)}
         className={`flex cursor-pointer gap-2 transition ${
@@ -120,7 +120,7 @@ export default function SubmissionHistory() {
             >
               login
             </Link>{' '}
-            first to see your request history.
+            to see your request history.
           </p>
         )}
       </div>

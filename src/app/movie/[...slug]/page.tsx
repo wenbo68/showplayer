@@ -1,5 +1,5 @@
 import { db } from '~/server/db';
-import { tmdbMedia, tmdbSource } from '~/server/db/schema';
+import { tmdbMedia, tmdbSource, type Provider } from '~/server/db/schema';
 import { asc, eq } from 'drizzle-orm';
 import { notFound, redirect } from 'next/navigation';
 import { VideoPlayer } from '~/app/_components/player/VideoPlayer';
@@ -11,6 +11,7 @@ import {
 } from '~/server/utils/playerUtils';
 import { OverviewSelector } from '~/app/_components/player/OverviewSelector';
 import { MediaUrlSelector } from '~/app/_components/player/MediaUrlSelector';
+import { BackButton } from '~/app/_components/player/BackButton';
 
 interface PageProps {
   params: Promise<{ slug: string[] }>;
@@ -26,7 +27,16 @@ export default async function Page({ params }: PageProps) {
 
   // Parse params from the URL
   const tmdbId = parseInt(tmdbIdParam, 10);
-  const provider = providerParam ? parseInt(providerParam, 10) : undefined;
+  const provider: Provider | undefined =
+    providerParam === 'E'
+      ? providerParam
+      : providerParam === 'F'
+      ? providerParam
+      : providerParam === 'L'
+      ? providerParam
+      : providerParam === 'J'
+      ? providerParam
+      : undefined;
 
   // Step 1. Fetch the movie data, including all its sources and their subtitles in one query
   const mediaData = await db.query.tmdbMedia.findFirst({
@@ -59,7 +69,9 @@ export default async function Page({ params }: PageProps) {
   const subtitles = aggregateSubtitles(sourcesAndSubtitles, selectedSrc?.id);
 
   return (
-    <div className="p-4 flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
+      <BackButton />
+
       <OverviewSelector
         selectedMedia={{
           media: mediaData,

@@ -20,7 +20,7 @@ import {
   sql,
 } from 'drizzle-orm';
 import { format, subDays } from 'date-fns';
-import { createGunzip, gunzipSync } from 'node:zlib';
+import { createGunzip } from 'node:zlib';
 import { Readable } from 'stream';
 import readline from 'readline';
 import {
@@ -38,10 +38,7 @@ import {
   findExistingMediaFromFetched,
   findNewMediaFromFetched,
 } from './tmdbApiUtils';
-import {
-  runItemsInEachBatchConcurrently,
-  runItemsInEachBatchInBulk,
-} from './utils';
+import { runItemsInEachBatchInBulk } from './utils';
 import { fetchSrcForMediaIds } from './srcUtils';
 import { isCronStopping } from './cronControllerUtils';
 
@@ -389,7 +386,7 @@ export async function populateMediaUsingTmdbList(
   return mediaOutput;
 }
 
-export async function fetchSrc() {
+export async function fetchSrc(limit: number) {
   // 1. Find a prioritized list of media to check, using the same logic as updateRatings
   const mediaToFetchSrc = await db
     .select({ id: tmdbMedia.id })
@@ -406,8 +403,8 @@ export async function fetchSrc() {
         lt(tmdbMedia.srcFetchedAt, sql`CURRENT_DATE - INTERVAL '7 day'`)
       )
     )
-    .orderBy(desc(tmdbMedia.popularity), asc(tmdbMedia.srcFetchedAt));
-  // .limit(limit);
+    .orderBy(desc(tmdbMedia.popularity), asc(tmdbMedia.srcFetchedAt))
+    .limit(limit);
 
   if (mediaToFetchSrc.length === 0) {
     console.log('[smartFetchMediaSrc] No media needed src fetch.');

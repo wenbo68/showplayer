@@ -5,13 +5,44 @@
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
 import type { FilterOptionGroup, FilterOptions } from '~/type';
-import { tagClassMap } from '../media/MediaPopup';
+import { tagClassMap } from '../../media/MediaPopup';
+import { FilterPill, OrderLabel, PillContainer } from './Pill';
 
-type Pill = {
+// type Pill = {
+//   key: string;
+//   label: string;
+//   type:
+//     | 'title'
+//     | 'format'
+//     | 'origin'
+//     | 'genre'
+//     | 'released'
+//     | 'updated'
+//     | 'avg'
+//     | 'count'
+//     | 'list';
+//   onRemove: () => void;
+// };
+
+// const pillColors = {
+//   title: tagClassMap['title'],
+//   format: tagClassMap['format'],
+//   origin: tagClassMap['origin'],
+//   genre: tagClassMap['genre'],
+//   released: tagClassMap['released'],
+//   updated: tagClassMap['updated'],
+//   avg: tagClassMap['avg'],
+//   count: tagClassMap['count'],
+//   list: tagClassMap['list'],
+//   order: 'bg-gray-500/20 text-gray-300 ring-gray-500/30', // Style for the order label
+// };
+
+type PillData = {
   key: string;
   label: string;
-  type: // | 'title'
-  | 'format'
+  type:
+    | 'title'
+    | 'format'
     | 'origin'
     | 'genre'
     | 'released'
@@ -20,19 +51,6 @@ type Pill = {
     | 'count'
     | 'list';
   onRemove: () => void;
-};
-
-const pillColors = {
-  // title: tagClassMap['title'],
-  format: tagClassMap['format'],
-  origin: tagClassMap['origin'],
-  genre: tagClassMap['genre'],
-  released: tagClassMap['released'],
-  updated: tagClassMap['updated'],
-  avg: tagClassMap['avg'],
-  count: tagClassMap['count'],
-  list: tagClassMap['list'],
-  order: 'bg-gray-500/20 text-gray-300 ring-gray-500/30', // Style for the order label
 };
 
 export default function ActiveLabels({
@@ -48,7 +66,7 @@ export default function ActiveLabels({
 
   // We can calculate both the pills and the order label inside the same useMemo
   const { activePills, orderLabel } = useMemo(() => {
-    const pills: Pill[] = [];
+    const pills: PillData[] = [];
     const params = new URLSearchParams(searchParams.toString());
 
     const createRemoveHandler = (key: string, value: string) => () => {
@@ -61,16 +79,16 @@ export default function ActiveLabels({
       router.push(`${pathname}?${params.toString()}`);
     };
 
-    // // 1. Title
-    // const titles = searchParams.getAll('title');
-    // titles.forEach((title) => {
-    //   pills.push({
-    //     key: `title-${title}`,
-    //     label: `Title: ${title}`,
-    //     type: 'title',
-    //     onRemove: createRemoveHandler('title', title),
-    //   });
-    // });
+    // 1. Title
+    const titles = searchParams.getAll('title');
+    titles.forEach((title) => {
+      pills.push({
+        key: `title-${title}`,
+        label: `Title: ${title}`,
+        type: 'title',
+        onRemove: createRemoveHandler('title', title),
+      });
+    });
 
     // 2. Formats
     const formats = searchParams.getAll('format');
@@ -187,34 +205,24 @@ export default function ActiveLabels({
     }
 
     return { activePills: pills, orderLabel: foundOrderLabel };
-  }, [searchParams, filterOptions, pathname, router]);
+  }, [searchParams, filterOptions, orderOptions, pathname, router]);
 
   // if (activePills.length === 0) {
   //   return null; // Don't render anything if no filters are active
   // }
 
+  // The rendering logic is now much simpler and more declarative.
   return (
-    <div className="flex flex-wrap gap-2 text-xs font-semibold items-center">
-      {/* Render the clickable filter pills */}
+    <PillContainer>
       {activePills.map((pill) => (
-        <button
+        <FilterPill
           key={pill.key}
-          onClick={pill.onRemove}
-          className={`cursor-pointer rounded px-[9px] py-0.5 ring-1 ring-inset transition hover:opacity-80 ${
-            pillColors[pill.type]
-          }`}
-        >
-          {pill.label}
-        </button>
+          label={pill.label}
+          type={pill.type}
+          onRemove={pill.onRemove}
+        />
       ))}
-      {/* 4. Render the non-clickable order label last, if it exists */}
-      {orderLabel && (
-        <span
-          className={`rounded px-[9px] py-0.5 ring-1 ring-inset ${pillColors['order']}`}
-        >
-          {orderLabel}
-        </span>
-      )}
-    </div>
+      {orderLabel && <OrderLabel label={orderLabel} />}
+    </PillContainer>
   );
 }

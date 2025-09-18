@@ -2,28 +2,14 @@
 
 'use client';
 
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+// import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
-import type { FilterOptionGroup, FilterOptions } from '~/type';
-import { FilterPill, OrderLabel, PillContainer } from './Pill';
+import type { FilterGroupOption, FilterOptionsFromDb } from '~/type';
+import { Label, OrderLabel, LabelContainer } from './Label';
+import { orderOptions } from '~/constant';
+import { useFilterContext } from '~/app/_contexts/SearchContext';
 
-// type Pill = {
-//   key: string;
-//   label: string;
-//   type:
-//     | 'title'
-//     | 'format'
-//     | 'origin'
-//     | 'genre'
-//     | 'released'
-//     | 'updated'
-//     | 'avg'
-//     | 'count'
-//     | 'list';
-//   onRemove: () => void;
-// };
-
-type PillData = {
+type ActiveLabel = {
   key: string;
   label: string;
   type:
@@ -41,157 +27,167 @@ type PillData = {
 
 export default function ActiveLabels({
   filterOptions,
-  orderOptions, // 2. Accept orderOptions as a prop
-}: {
-  filterOptions: FilterOptions;
-  orderOptions: FilterOptionGroup[];
+}: // orderOptions, // 2. Accept orderOptions as a prop
+{
+  filterOptions: FilterOptionsFromDb;
+  // orderOptions: FilterGroupOption[];
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  // const router = useRouter();
+  // const pathname = usePathname();
+  // const searchParams = useSearchParams();
 
-  // We can calculate both the pills and the order label inside the same useMemo
-  const { activePills, orderLabel } = useMemo(() => {
-    const pills: PillData[] = [];
-    const params = new URLSearchParams(searchParams.toString());
+  // --- 2. Get state and setters from context ---
+  const {
+    title,
+    setTitle,
+    format,
+    setFormat,
+    genre,
+    setGenre,
+    origin,
+    setOrigin,
+    released,
+    setReleased,
+    updated,
+    setUpdated,
+    avg,
+    setAvg,
+    count,
+    setCount,
+    order,
+    // Note: We don't need setOrder here, as the order label isn't removable.
+  } = useFilterContext();
 
-    const createRemoveHandler = (key: string, value: string) => () => {
-      const currentValues = params.getAll(key);
-      const newValues = currentValues.filter((v) => v !== value);
-      params.delete(key);
-      newValues.forEach((v) => params.append(key, v));
-      // Reset to the first page whenever a filter is removed.
-      params.set('page', '1');
-      router.push(`${pathname}?${params.toString()}`);
-    };
+  // --- 3. Build the labels from the CONTEXT STATE, not searchParams ---
+  const { activeLabels, orderLabel } = useMemo(() => {
+    const activeLabels: ActiveLabel[] = [];
 
-    // 1. Title
-    const titles = searchParams.getAll('title');
-    titles.forEach((title) => {
-      pills.push({
+    // Title
+    if (title) {
+      activeLabels.push({
         key: `title-${title}`,
         label: `Title: ${title}`,
         type: 'title',
-        onRemove: createRemoveHandler('title', title),
+        onRemove: () => setTitle(''),
       });
-    });
+    }
 
-    // 2. Formats
-    const formats = searchParams.getAll('format');
-    formats.forEach((format) => {
-      pills.push({
-        key: `format-${format}`,
-        label: format === 'movie' ? 'Movie' : 'TV',
+    // Formats
+    format.forEach((fmt) => {
+      activeLabels.push({
+        key: `format-${fmt}`,
+        label: fmt === 'movie' ? 'Movie' : 'TV',
         type: 'format',
-        onRemove: createRemoveHandler('format', format),
+        onRemove: () => setFormat(format.filter((f) => f !== fmt)),
       });
     });
-    // 3. Origins
-    const origins = searchParams.getAll('origin');
-    origins.forEach((originId) => {
-      const origin = filterOptions.origins.find((o) => o.id === originId);
-      if (origin) {
-        pills.push({
-          key: `origin-${origin.id}`,
-          label: origin.name,
+
+    // Origins
+    origin.forEach((originId) => {
+      const originDetails = filterOptions.origins.find(
+        (o) => o.id === originId
+      );
+      if (originDetails) {
+        activeLabels.push({
+          key: `origin-${originId}`,
+          label: originDetails.name,
           type: 'origin',
-          onRemove: createRemoveHandler('origin', origin.id),
-        });
-      }
-    });
-    // 4. Genres
-    const genres = searchParams.getAll('genre');
-    genres.forEach((genreId) => {
-      const genre = filterOptions.genres.find((g) => String(g.id) === genreId);
-      if (genre) {
-        pills.push({
-          key: `genre-${genre.id}`,
-          label: genre.name,
-          type: 'genre',
-          onRemove: createRemoveHandler('genre', genreId),
+          onRemove: () => setOrigin(origin.filter((o) => o !== originId)),
         });
       }
     });
 
-    // 1. Released Years
-    const released = searchParams.getAll('released');
+    // Genres
+    genre.forEach((genreId) => {
+      const genreDetails = filterOptions.genres.find(
+        (g) => g.id === Number(genreId)
+      );
+      if (genreDetails) {
+        activeLabels.push({
+          key: `genre-${genreId}`,
+          label: genreDetails.name,
+          type: 'genre',
+          onRemove: () => setGenre(genre.filter((g) => g !== genreId)),
+        });
+      }
+    });
+
+    // Released Years
     released.forEach((year) => {
-      pills.push({
+      activeLabels.push({
         key: `released-${year}`,
         label: `Released: ${year}`,
         type: 'released',
-        onRemove: createRemoveHandler('released', year),
+        onRemove: () => setReleased(released.filter((y) => y !== year)),
       });
     });
 
-    // 1. Released Years
-    const updated = searchParams.getAll('updated');
+    // Updated Years
     updated.forEach((year) => {
-      pills.push({
+      activeLabels.push({
         key: `updated-${year}`,
         label: `Updated: ${year}`,
         type: 'updated',
-        onRemove: createRemoveHandler('updated', year),
+        onRemove: () => setUpdated(updated.filter((y) => y !== year)),
       });
     });
 
-    // 1. Rating Avg
-    const avg = searchParams.getAll('avg');
-    avg.forEach((num) => {
-      pills.push({
-        key: `avg-${num}`,
-        label: `Rating Avg > ${Number(num) * 10}%`,
+    // Rating Avg
+    if (avg) {
+      activeLabels.push({
+        key: `avg-${avg}`,
+        label: `Rating Avg > ${Number(avg) * 10}%`,
         type: 'avg',
-        onRemove: createRemoveHandler('avg', num),
+        onRemove: () => setAvg(''),
       });
-    });
+    }
 
-    // 1. Rating Count
-    const count = searchParams.getAll('count');
-    count.forEach((num) => {
-      pills.push({
-        key: `count-${num}`,
-        label: `Rating Cnt > ${num}`,
+    // Rating Count
+    if (count) {
+      activeLabels.push({
+        key: `count-${count}`,
+        label: `Rating Cnt > ${count}`,
         type: 'count',
-        onRemove: createRemoveHandler('count', num),
+        onRemove: () => setCount(''),
       });
-    });
+    }
 
-    // 3. Add logic to create pills for the 'list' parameter
-    const lists = searchParams.getAll('list');
-    lists.forEach((listValue) => {
-      const listLabels = {
-        saved: 'my list',
-        favorite: 'favorites',
-        later: 'watch later',
-      };
-      pills.push({
-        key: `list-${listValue}`,
-        label: `List: ${
-          listLabels[listValue as keyof typeof listLabels] ?? listValue
-        }`,
-        type: 'list',
-        onRemove: createRemoveHandler('list', listValue),
-      });
-    });
-
-    // --- 3. Add logic to find the human-readable order label ---
-    let foundOrderLabel: string | null = null;
-    const currentOrder = searchParams.get('order');
-    if (currentOrder) {
+    // Order Label
+    let orderLabel: string | null = null;
+    if (order) {
       for (const group of orderOptions) {
         const foundOption = group.options.find(
-          (opt) => opt.trpcInput === currentOrder
+          (opt) => opt.trpcInput === order
         );
         if (foundOption) {
-          foundOrderLabel = `${group.groupLabel}: ${foundOption.label}`;
-          break; // Stop searching once found
+          orderLabel = `${group.groupLabel}: ${foundOption.label}`;
+          break;
         }
       }
     }
 
-    return { activePills: pills, orderLabel: foundOrderLabel };
-  }, [searchParams, filterOptions, orderOptions, pathname, router]);
+    return { activeLabels, orderLabel };
+  }, [
+    title,
+    format,
+    genre,
+    origin,
+    released,
+    updated,
+    avg,
+    count,
+    order,
+    filterOptions,
+    orderOptions,
+    setAvg,
+    setCount,
+    setFormat,
+    setGenre,
+    setOrigin,
+    setReleased,
+    setTitle,
+    setUpdated,
+  ]);
 
   // if (activePills.length === 0) {
   //   return null; // Don't render anything if no filters are active
@@ -199,16 +195,16 @@ export default function ActiveLabels({
 
   // The rendering logic is now much simpler and more declarative.
   return (
-    <PillContainer>
-      {activePills.map((pill) => (
-        <FilterPill
-          key={pill.key}
-          label={pill.label}
-          type={pill.type}
-          onRemove={pill.onRemove}
+    <LabelContainer>
+      {activeLabels.map((label) => (
+        <Label
+          key={label.key}
+          label={label.label}
+          type={label.type}
+          onRemove={label.onRemove}
         />
       ))}
       {orderLabel && <OrderLabel label={orderLabel} />}
-    </PillContainer>
+    </LabelContainer>
   );
 }

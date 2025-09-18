@@ -10,9 +10,8 @@ import PageSelector from '../_components/search/PageSelector';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { auth } from '~/server/auth';
-import OrderSelector from '../_components/search/order/OrderSelector';
-import OrderSelectorFallback from '../_components/search/order/OrderSelectorFallback';
 import ActiveLabelsFallback from '../_components/search/label/ActiveLabelsFallback';
+import { FilterProvider } from '../_contexts/SearchContext';
 
 // Helper function to ensure a value is an array of strings
 const ensureStringArray = (value: string | string[] | undefined): string[] => {
@@ -32,21 +31,12 @@ export default async function SearchPage({
   // --- 1. Check for missing required parameters ---
   const isOrderMissing = typeof params.order !== 'string';
   const isPageMissing = typeof params.page !== 'string';
-  // const isAvgMissing = typeof params.avg !== 'string';
-  // const isCountMissing = typeof params.count !== 'string';
 
   // --- 2. If any parameter is missing, redirect to a complete URL ---
   if (isOrderMissing || isPageMissing) {
     // Create a mutable copy of the current params
     const newParams = new URLSearchParams(params as Record<string, string>);
 
-    // Add the defaults if they are missing
-    // if (isAvgMissing) {
-    //   newParams.set('avg', '0');
-    // }
-    // if (isCountMissing) {
-    //   newParams.set('count', '0');
-    // }
     if (isOrderMissing) {
       // 2. get user's last used order from cookie or use default
       const cookieStore = await cookies();
@@ -105,69 +95,20 @@ export default async function SearchPage({
   // get filter options from trpc
   const filterOptions = await api.media.getFilterOptions();
 
-  const orderOptions = [
-    {
-      groupLabel: 'Popularity',
-      options: [
-        { label: 'Most→Least', trpcInput: 'popularity-desc' },
-        { label: 'Least→Most', trpcInput: 'popularity-asc' },
-      ],
-    },
-    {
-      groupLabel: 'Rating Avg',
-      options: [
-        { label: 'High→Low', trpcInput: 'vote-avg-desc' },
-        { label: 'Low→High', trpcInput: 'vote-avg-asc' },
-      ],
-    },
-    {
-      groupLabel: 'Rating Count',
-      options: [
-        { label: 'Most→Fewest', trpcInput: 'vote-count-desc' },
-        { label: 'Fewest→Most', trpcInput: 'vote-count-asc' },
-      ],
-    },
-    {
-      groupLabel: 'Release Date',
-      options: [
-        { label: 'New→Old', trpcInput: 'released-desc' },
-        { label: 'Old→New', trpcInput: 'released-asc' },
-      ],
-    },
-    {
-      groupLabel: 'Updated Date',
-      options: [
-        { label: 'Recent→Old', trpcInput: 'updated-desc' },
-        { label: 'Old→Recent', trpcInput: 'updated-asc' },
-      ],
-    },
-    {
-      groupLabel: 'Title',
-      options: [
-        { label: 'A→Z', trpcInput: 'title-asc' },
-        { label: 'Z→A', trpcInput: 'title-desc' },
-      ],
-    },
-  ];
-
   // just use traditional pagination instead of infinite scrolling (harder to use go back/forward in browser)
   return (
     <div className="flex flex-col gap-8">
-      <Suspense fallback={<SearchBarFallback />}>
-        <SearchBar filterOptions={filterOptions} />
-      </Suspense>
-
-      <div className="w-full flex justify-between gap-4">
-        <Suspense fallback={<ActiveLabelsFallback />}>
-          <ActiveLabels
-            filterOptions={filterOptions}
-            orderOptions={orderOptions}
-          />
+      <FilterProvider>
+        <Suspense fallback={<SearchBarFallback />}>
+          <SearchBar filterOptions={filterOptions} />
         </Suspense>
-        {/* <Suspense fallback={<OrderSelectorFallback />}>
-          <OrderSelector options={orderOptions} />
-        </Suspense> */}
-      </div>
+
+        <div className="w-full flex justify-between gap-4">
+          <Suspense fallback={<ActiveLabelsFallback />}>
+            <ActiveLabels filterOptions={filterOptions} />
+          </Suspense>
+        </div>
+      </FilterProvider>
 
       {pageMedia.length > 0 && (
         <HydrateClient>

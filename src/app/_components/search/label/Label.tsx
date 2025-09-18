@@ -2,7 +2,7 @@
 
 import { tagClassMap } from '../../media/MediaPopup';
 
-const pillColors = {
+const labelColors = {
   title: tagClassMap['title'],
   format: tagClassMap['format'],
   origin: tagClassMap['origin'],
@@ -16,7 +16,7 @@ const pillColors = {
 };
 
 // 1. The Shared Container
-export function PillContainer({ children }: { children: React.ReactNode }) {
+export function LabelContainer({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-wrap gap-2 text-xs font-semibold items-center">
       {children}
@@ -25,17 +25,17 @@ export function PillContainer({ children }: { children: React.ReactNode }) {
 }
 
 // 2. The Clickable Filter Pill
-type FilterPillProps = {
+type LabelProps = {
   label: string;
-  type: keyof typeof pillColors;
+  type: keyof typeof labelColors;
   onRemove: () => void;
 };
 
-export function FilterPill({ label, type, onRemove }: FilterPillProps) {
+export function Label({ label, type, onRemove }: LabelProps) {
   return (
     <button
       onClick={onRemove}
-      className={`cursor-pointer rounded px-[9px] py-0.5 ring-1 ring-inset transition hover:opacity-80 ${pillColors[type]}`}
+      className={`cursor-pointer rounded px-[9px] py-0.5 ring-1 ring-inset transition hover:opacity-80 ${labelColors[type]}`}
     >
       {label}
     </button>
@@ -46,7 +46,7 @@ export function FilterPill({ label, type, onRemove }: FilterPillProps) {
 export function OrderLabel({ label }: { label: string }) {
   return (
     <span
-      className={`rounded px-[9px] py-0.5 ring-1 ring-inset ${pillColors['order']}`}
+      className={`rounded px-[9px] py-0.5 ring-1 ring-inset ${labelColors['order']}`}
     >
       {label}
     </span>
@@ -54,6 +54,6 @@ export function OrderLabel({ label }: { label: string }) {
 }
 
 // 4. The Skeleton Pill for the Fallback
-export function PillSkeleton({ width }: { width: string }) {
+export function LabelSkeleton({ width }: { width: string }) {
   return <div className={`h-6 ${width} rounded bg-gray-700 animate-pulse`} />;
 }

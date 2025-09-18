@@ -38,7 +38,7 @@ export type LatestEpisodeInfo = {
   episodeNumber: number;
 } | null; // It will be null for movies
 
-export type FilterOptions = {
+export type FilterOptionsFromDb = {
   genres: {
     id: number;
     name: string;
@@ -61,5 +61,5 @@ export type FetchedMediaItem = {
 };
 
 // --- Define the shape of the sort options ---
-export type FilterOption = { label: string; trpcInput: string | number };
-export type FilterOptionGroup = { groupLabel: string; options: FilterOption[] };
+export type FilterOption = { label: string; trpcInput: string };
+export type FilterGroupOption = { groupLabel: string; options: FilterOption[] };

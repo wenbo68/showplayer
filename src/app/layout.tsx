@@ -10,6 +10,7 @@ import { TopNav } from '~/app/_components/TopNav';
 import { MediaPopupProvider } from './_contexts/MediaPopupContext';
 import { AuthProvider } from './_contexts/AuthContext';
 import { env } from '~/env';
+import { FilterProvider } from './_contexts/SearchContext';
 
 export const metadata: Metadata = {
   title: 'Showplayer',
@@ -50,10 +51,12 @@ export default async function RootLayout({
         <TRPCReactProvider>
           <AuthProvider>
             <MediaPopupProvider>
+              {/* <FilterProvider> */}
               <TopNav /> {/* ✨ Add the navigation bar here */}
               <main className="max-w-7xl mx-auto w-full flex-grow px-2 py-4">
                 {children}
               </main>
+              {/* </FilterProvider> */}
             </MediaPopupProvider>
           </AuthProvider>
         </TRPCReactProvider>
@@ -61,6 +64,10 @@ export default async function RootLayout({
     </html>
   );
 }
+
+// successive filtering (label works but do we need change?)
+// responsive filter/label
+// add loading skeleton to search page when server is preparing new search result
 
 // need to add a one-time-use function to get genre/origin for all media missing them
 // currently selecting from the filters in quick succession doesn't work well.

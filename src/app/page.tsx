@@ -6,6 +6,8 @@ import SearchBarFallback from './_components/search/searchbar/SearchBarFallback'
 import { auth } from '~/server/auth';
 import IdSubmitter from './_components/submit/IdSubmitter';
 import SubmissionHistory from './_components/submit/SubmissionHistory';
+import { orderOptions } from '~/constant';
+import { FilterProvider } from './_contexts/SearchContext';
 
 export default async function Home() {
   const session = await auth();
@@ -77,9 +79,14 @@ export default async function Home() {
   return (
     <HydrateClient>
       <div className="flex flex-col justify-center gap-8">
-        <Suspense fallback={<SearchBarFallback />}>
-          <SearchBar filterOptions={filterOptions} />
-        </Suspense>
+        <FilterProvider>
+          {/* <Suspense fallback={<SearchBarFallback />}> */}
+          <SearchBar
+            filterOptions={filterOptions}
+            // orderOptions={orderOptions}
+          />
+          {/* </Suspense> */}
+        </FilterProvider>
 
         {/* <div className="w-full flex flex-col gap-10">
           <div className="w-full flex flex-col gap-10"> */}

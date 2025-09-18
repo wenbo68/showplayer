@@ -62,7 +62,7 @@ export default async function RootLayout({
   );
 }
 
-// need to add a one-time-use function to get genres for all media missing them
+// need to add a one-time-use function to get genre/origin for all media missing them
 // currently selecting from the filters in quick succession doesn't work well.
 // add load time when url changes
 // make logo s thicker

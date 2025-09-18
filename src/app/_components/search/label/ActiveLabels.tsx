@@ -5,7 +5,6 @@
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
 import type { FilterOptionGroup, FilterOptions } from '~/type';
-import { tagClassMap } from '../../media/MediaPopup';
 import { FilterPill, OrderLabel, PillContainer } from './Pill';
 
 // type Pill = {
@@ -22,19 +21,6 @@ import { FilterPill, OrderLabel, PillContainer } from './Pill';
 //     | 'count'
 //     | 'list';
 //   onRemove: () => void;
-// };
-
-// const pillColors = {
-//   title: tagClassMap['title'],
-//   format: tagClassMap['format'],
-//   origin: tagClassMap['origin'],
-//   genre: tagClassMap['genre'],
-//   released: tagClassMap['released'],
-//   updated: tagClassMap['updated'],
-//   avg: tagClassMap['avg'],
-//   count: tagClassMap['count'],
-//   list: tagClassMap['list'],
-//   order: 'bg-gray-500/20 text-gray-300 ring-gray-500/30', // Style for the order label
 // };
 
 type PillData = {

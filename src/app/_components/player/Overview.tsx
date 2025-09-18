@@ -37,7 +37,7 @@ export default function Overview({
     : '';
 
   const fullBackdropUrl = media.backdropUrl
-    ? `https://image.tmdb.org/t/p/w780${media.backdropUrl}`
+    ? `https://image.tmdb.org/t/p/w500${media.backdropUrl}`
     : '';
 
   // --- STYLE FOR THE BACKDROP ---

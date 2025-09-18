@@ -52,7 +52,7 @@ export function MediaPopup({
     : '';
 
   const fullBackdropUrl = media.backdropUrl
-    ? `https://image.tmdb.org/t/p/w780${media.backdropUrl}`
+    ? `https://image.tmdb.org/t/p/w500${media.backdropUrl}`
     : '';
 
   // --- STYLE FOR THE BACKDROP ---
@@ -75,7 +75,7 @@ export function MediaPopup({
         className="overflow-hidden rounded-lg w-full max-w-[90vw] lg:max-w-5xl bg-gray-800 max-h-[80vh] flex"
       >
         {/* Poster Image */}
-        <div className="hidden sm:block sm:w-1/3">
+        <div className="hidden md:block md:w-1/3">
           <img
             src={
               `https://image.tmdb.org/t/p/w500${media.imageUrl}` ||
@@ -89,9 +89,9 @@ export function MediaPopup({
         {/* Details - NOW THE SCROLLING CONTAINER with backdrop styles */}
         <div
           style={backdropStyle}
-          className="sm:w-2/3 overflow-y-auto scrollbar-thin bg-cover bg-center"
+          className="md:w-2/3 overflow-y-auto scrollbar-thin bg-cover bg-center"
         >
-          <div className="p-6 flex flex-col gap-5 min-h-full">
+          <div className="p-4 flex flex-col gap-5 min-h-full">
             {/* <Backdrop backdropUrl={media.backdropUrl} /> */}
             <div className="flex flex-col gap-4">
               {/* Title */}
@@ -143,7 +143,7 @@ export function MediaPopup({
               </div>
             </div>
 
-            <div className="text-base max-w-none">
+            <div className="text-sm md:text-base font-medium">
               {media.description ?? 'No description available.'}
             </div>
 

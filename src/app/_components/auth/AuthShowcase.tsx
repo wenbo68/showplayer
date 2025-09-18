@@ -69,8 +69,8 @@ export function AuthShowcase() {
           <Image
             src={session.user.image ?? '/fallback-avatar.png'}
             alt={session.user.name ?? 'User avatar'}
-            width={36}
-            height={36}
+            width={40}
+            height={40}
             className="rounded-full"
           />
         </button>

@@ -31,7 +31,7 @@ export default function MediaList({
               key={`preload-${mediaDetail.media.id}`}
               rel="preload"
               as="image"
-              href={`https://image.tmdb.org/t/p/w780${mediaDetail.media.backdropUrl}`}
+              href={`https://image.tmdb.org/t/p/w500${mediaDetail.media.backdropUrl}`}
             />
           ) : null
         )}

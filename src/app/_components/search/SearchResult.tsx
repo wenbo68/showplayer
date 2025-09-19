@@ -51,9 +51,7 @@ export default function MediaResults({
   // 3. Use the `useQuery` hook to fetch data
   const { data, isFetching } = api.media.searchAndFilter.useQuery(trpcInput, {
     // Use the server-fetched data for the very first load
-    // initialData: initialData,
-    // // Keep showing old data while new data is fetching for a smoother UX
-    // placeholderData: (previousData) => previousData,
+    // placeholderData: initialData,
   });
 
   // 4. Show a skeleton while fetching new data

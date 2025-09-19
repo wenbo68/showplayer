@@ -52,15 +52,12 @@ type FilterContextType = {
 
 const FilterContext = createContext<FilterContextType | undefined>(undefined);
 
-// This is now the one and only provider you export
 export function FilterProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // State initialization remains the same
   const [title, setTitle] = useState(searchParams.get('title') ?? '');
   const [format, setFormat] = useState(() => searchParams.getAll('format'));
-  // ✨ FIX: All state should be string arrays to match URL params directly
   const [genre, setGenre] = useState(() => searchParams.getAll('genre'));
   const [origin, setOrigin] = useState(() => searchParams.getAll('origin'));
   const [released, setReleased] = useState(() =>
@@ -71,7 +68,6 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   const [count, setCount] = useState(searchParams.get('count') ?? '');
   const [order, setOrder] = useState(searchParams.get('order') ?? '');
 
-  // Effect to sync URL to state remains the same
   useEffect(() => {
     setTitle(searchParams.get('title') ?? '');
     setFormat(searchParams.getAll('format'));
@@ -85,10 +81,9 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   }, [searchParams]);
 
   const updateUrl = useDebouncedCallback((queryString: string) => {
-    router.push(`/search?${queryString}`);
+    router.replace(`/search?${queryString}`, { scroll: false });
   }, 500);
 
-  // Effect to sync state to URL remains the same
   useEffect(() => {
     const newParams = new URLSearchParams();
 
@@ -108,12 +103,11 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     const oldParams = new URLSearchParams(searchParams.toString());
     oldParams.delete('page');
 
-    // ✨ FIX: Use the robust comparison function
     if (
       getCanonicalQueryString(newParams) !== getCanonicalQueryString(oldParams)
     ) {
       newParams.set('page', '1');
-      updateUrl(newParams.toString());
+      updateUrl(getCanonicalQueryString(newParams));
     }
   }, [
     title,
@@ -126,7 +120,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     count,
     order,
     updateUrl,
-    // searchParams, // Add searchParams back to avoid stale closure issues
+    // searchParams,
   ]);
 
   const value = {

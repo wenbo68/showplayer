@@ -1,14 +1,17 @@
 import type { InferSelectModel } from 'drizzle-orm';
-import type {
-  SrcProvider,
-  tmdbEpisode,
-  tmdbMedia,
-  tmdbSeason,
-  tmdbSource,
-  tmdbSubtitle,
+import {
+  tmdbTypeEnum,
+  userListEnum,
+  type SrcProvider,
+  type tmdbEpisode,
+  type tmdbMedia,
+  type tmdbSeason,
+  type tmdbSource,
+  type tmdbSubtitle,
 } from './server/db/schema';
 import z from 'zod';
 import { orderEnum, orderValues } from './constant';
+// import type { SearchAndFilterInputSchema as RemoteSearchAndFilterInputSchema } from './server/api/routers/media';
 
 export type Media = InferSelectModel<typeof tmdbMedia>;
 export type Season = InferSelectModel<typeof tmdbSeason>;
@@ -64,3 +67,21 @@ export type FilterOption = { label: string; trpcInput: string };
 export type FilterGroupOption = { groupLabel: string; options: FilterOption[] };
 
 export type Order = z.infer<typeof orderEnum>;
+
+export const SearchAndFilterInputSchema = z.object({
+  title: z.string().optional(),
+  format: z.array(z.enum(tmdbTypeEnum.enumValues)).optional(),
+  genre: z.array(z.number()).optional(),
+  origin: z.array(z.string()).optional(),
+  releaseYear: z.array(z.number()).optional(),
+  updatedYear: z.array(z.number()).optional(),
+  minVoteAvg: z.number().min(0).optional(),
+  minVoteCount: z.number().min(0).optional(),
+  order: z.enum(orderValues).default('popularity-desc'), // ✨ Set a default!
+  page: z.number().min(1).default(1),
+  pageSize: z.number().min(1),
+  list: z.array(z.enum(userListEnum.enumValues)).optional(),
+});
+
+// ✨ 2. Export the inferred TypeScript type
+export type SearchAndFilterInput = z.infer<typeof SearchAndFilterInputSchema>;

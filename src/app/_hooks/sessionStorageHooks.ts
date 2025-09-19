@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type SetStateAction, type Dispatch } from 'react';
 
 // only use this if you have a state that must be synced with a variable in session storage
 export function useSessionStorageState<T>(
   key: string,
   defaultValue: T
-): [T, (value: T) => void] {
+): [T, Dispatch<SetStateAction<T>>] {
   const [value, setValue] = useState<T>(defaultValue);
 
   // This effect runs once on the client to safely read from sessionStorage

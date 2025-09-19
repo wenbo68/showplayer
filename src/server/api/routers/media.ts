@@ -29,7 +29,7 @@ import {
   userMediaList,
 } from '~/server/db/schema';
 import { bulkUpsertNewMedia } from '~/server/utils/mediaUtils';
-import type { ListMedia } from '~/type';
+import { SearchAndFilterInputSchema, type ListMedia } from '~/type';
 import { TRPCError } from '@trpc/server';
 import {
   fetchTmdbMvGenresViaApi,
@@ -98,22 +98,7 @@ export const mediaRouter = createTRPCRouter({
   }),
 
   searchAndFilter: publicProcedure
-    .input(
-      z.object({
-        title: z.string().optional(),
-        format: z.array(z.enum(tmdbTypeEnum.enumValues)).optional(),
-        genre: z.array(z.number()).optional(),
-        origin: z.array(z.string()).optional(),
-        releaseYear: z.array(z.number()).optional(),
-        updatedYear: z.array(z.number()).optional(), // Add the new filter
-        minVoteAvg: z.number().min(0).optional(),
-        minVoteCount: z.number().min(0).optional(),
-        order: z.enum(orderValues),
-        page: z.number().min(1),
-        pageSize: z.number().min(1),
-        list: z.array(z.enum(userListEnum.enumValues)).optional(),
-      })
-    )
+    .input(SearchAndFilterInputSchema)
     .query(async ({ ctx, input }) => {
       // In a publicProcedure, ctx.session is available but can be null.
       const { session } = ctx;
@@ -194,6 +179,7 @@ export const mediaRouter = createTRPCRouter({
         );
       }
       if (title) {
+        // empty string is falsy -> will not trigger
         conditions.push(ilike(tmdbMedia.title, `%${title}%`));
       }
       if (format && format.length > 0) {
@@ -238,6 +224,7 @@ export const mediaRouter = createTRPCRouter({
         conditions.push(inArray(tmdbMedia.id, originSubquery));
       }
       if (minVoteAvg && minVoteAvg > 0) {
+        //0 is falsy -> so no need for >0
         conditions.push(gte(tmdbMedia.voteAverage, minVoteAvg));
       }
       if (minVoteCount && minVoteCount > 0) {

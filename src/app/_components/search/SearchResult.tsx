@@ -8,8 +8,9 @@ import MediaList from '../media/MediaList';
 // import MediaListFallback from '../media/MediaListFallback';
 import PageSelector from './PageSelector';
 import MediaListFallback from '../media/MediaListFallback';
-import type { UserList } from '~/server/db/schema';
-import type { ListMedia, Order } from '~/type';
+import type { MediaType, UserList } from '~/server/db/schema';
+import { SearchAndFilterInputSchema, type ListMedia, type Order } from '~/type';
+// import { SearchAndFilterInputSchema } from '~/server/api/routers/media';
 
 // Helper function to ensure a value is an array of strings
 const ensureStringArray = (value: string | string[]): string[] => {
@@ -19,40 +20,59 @@ const ensureStringArray = (value: string | string[]): string[] => {
 
 // type InitialData = RouterOutputs['media']['searchAndFilter'];
 
-export default function MediaResults({
-  initialData,
-}: {
-  initialData: {
-    pageMedia: ListMedia[];
-    totalPages: number;
-  };
-}) {
-  // 1. Get filter state from context and page from URL
+export default function MediaResults(
+  {
+    //   initialData,
+    // }: {
+    //   initialData: {
+    //     pageMedia: ListMedia[];
+    //     totalPages: number;
+    //   };
+  }
+) {
+  // 1. Get filter states
   const filters = useFilterContext();
+
+  // 2. Get list and page from url
   const searchParams = useSearchParams();
-  const page = Number(searchParams.get('page') ?? '1');
+  const list = searchParams.getAll('list');
+  const page = searchParams.get('page')
+    ? Number(searchParams.get('page'))
+    : undefined;
 
   // 2. Construct the tRPC input object from the context state
-  const trpcInput = {
-    page: page,
+  const rawInput = {
     title: filters.title || undefined,
-    format: filters.format as ('movie' | 'tv')[],
+    format: filters.format,
     origin: filters.origin,
     genre: filters.genre.map(Number),
     releaseYear: filters.released.map(Number),
     updatedYear: filters.updated.map(Number),
     minVoteAvg: filters.avg ? Number(filters.avg) : undefined,
     minVoteCount: filters.count ? Number(filters.count) : undefined,
-    order: (filters.order as Order) ?? 'popularity-desc',
+    order: filters.order || undefined,
+    list: list,
+    page: page,
     pageSize: 30,
-    list: ensureStringArray(searchParams.getAll('list')) as UserList[],
   };
 
-  // 3. Use the `useQuery` hook to fetch data
-  const { data, isFetching } = api.media.searchAndFilter.useQuery(trpcInput, {
-    // Use the server-fetched data for the very first load
-    // placeholderData: initialData,
-  });
+  // ✨ 3. Validate the raw input using the shared schema
+  const parsedInput = SearchAndFilterInputSchema.safeParse(rawInput);
+
+  // 4. Use the `useQuery` hook, but only enable it if parsing succeeded
+  const { data, isFetching } = api.media.searchAndFilter.useQuery(
+    parsedInput.success ? parsedInput.data : (undefined as any),
+    {
+      enabled: parsedInput.success,
+      staleTime: 0, // always refetch immediately on input change
+    }
+  );
+
+  if (!parsedInput.success) {
+    // You can optionally render an error state if the filters are somehow invalid
+    console.error('Zod validation failed:', parsedInput.error);
+    return <div>Invalid filter options.</div>;
+  }
 
   // 4. Show a skeleton while fetching new data
   if (isFetching) {
@@ -71,10 +91,7 @@ export default function MediaResults({
           mediaList={data.pageMedia}
           pageMediaIds={uniquePageMediaIds}
         />
-        <PageSelector
-          currentPage={trpcInput.page}
-          totalPages={data.totalPages}
-        />
+        <PageSelector currentPage={page ?? 1} totalPages={data.totalPages} />
       </div>
     );
   }

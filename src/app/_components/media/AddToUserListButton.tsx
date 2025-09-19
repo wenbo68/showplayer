@@ -4,8 +4,9 @@ import { api } from '~/trpc/react';
 import { FaHeart } from 'react-icons/fa6';
 import { useState } from 'react';
 import { useIsMediaInUserList } from '~/app/_hooks/userMediaListHooks';
-import type { UserList } from '~/type';
+// import type { UserList } from '~/type';
 import { useSession } from 'next-auth/react';
+import type { UserList } from '~/server/db/schema';
 
 export function AddToUserListButton({
   pageMediaIds,

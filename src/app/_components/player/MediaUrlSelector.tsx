@@ -9,13 +9,13 @@ import { NavButton } from '../NavButton';
 import { useSessionStorageState } from '~/app/_hooks/sessionStorageHooks';
 import { useAutoScroll } from '~/app/_hooks/autoscrollHooks';
 import { SelectorPanel } from './SelectorPanel';
-import type { Provider } from '~/server/db/schema';
+import type { SrcProvider } from '~/server/db/schema';
 
 // --- 1. UPDATE THE PROPS ---
 // TV-specific props are now optional
 interface MediaUrlSelectorProps {
   sources: Source[];
-  selectedProvider?: Provider;
+  selectedProvider?: SrcProvider;
   tmdbId?: number;
   mediaData?: Media & {
     seasons: (Season & {

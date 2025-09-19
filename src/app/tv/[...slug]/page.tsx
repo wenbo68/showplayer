@@ -6,7 +6,7 @@ import {
   tmdbSeason,
   tmdbEpisode,
   tmdbSource,
-  type Provider,
+  type SrcProvider,
 } from '~/server/db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { notFound, redirect } from 'next/navigation';
@@ -37,7 +37,7 @@ export default async function Page({ params }: PageProps) {
   const tmdbId = parseInt(tmdbIdParam, 10);
   const seasonNumber = parseInt(seasonNumberParam, 10);
   const episodeNumber = parseInt(episodeNumberParam, 10);
-  const provider: Provider | undefined =
+  const provider: SrcProvider | undefined =
     providerParam === 'E'
       ? providerParam
       : providerParam === 'F'

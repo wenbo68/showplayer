@@ -16,6 +16,7 @@ function isGroupedOptions(
   );
 }
 
+// ✨ FIX: Make prop types strictly match the context state
 type FilterProps = {
   label: string;
   options: (FilterOption | FilterGroupOption)[];
@@ -23,16 +24,15 @@ type FilterProps = {
 } & (
   | {
       mode: 'single';
-      value: string | number;
+      value: string; // Was `string | number`
       onChange: Dispatch<SetStateAction<string>>;
     }
   | {
       mode: 'multi';
-      value: (string | number)[];
+      value: string[]; // Was `(string | number)[]`
       onChange: Dispatch<SetStateAction<string[]>>;
     }
 );
-// );
 
 export default function Filter(props: FilterProps) {
   const { label, options, placeholder, mode, value, onChange } = props;
@@ -99,7 +99,7 @@ export default function Filter(props: FilterProps) {
       // --- THIS IS THE FIX ---
       // Instead of calculating the new array from the stale `value` prop,
       // we pass an updater function to `onChange`. React guarantees
-      onChange((prevValue: string[]) => {
+      onChange((prevValue) => {
         const currentSelection = [...prevValue]; // Use the guaranteed latest state
         const index = currentSelection.findIndex(
           (item) => String(item) === String(option.trpcInput)

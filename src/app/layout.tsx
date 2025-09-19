@@ -68,6 +68,7 @@ export default async function RootLayout({
 // successive filtering (label works but do we need change?)
 // responsive filter/label
 // add loading skeleton to search page when server is preparing new search result
+// add and/or to each multi filter (currently we can only or)
 
 // need to add a one-time-use function to get genre/origin for all media missing them
 // currently selecting from the filters in quick succession doesn't work well.

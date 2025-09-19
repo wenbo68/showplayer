@@ -1,12 +1,14 @@
 import type { InferSelectModel } from 'drizzle-orm';
 import type {
-  Provider,
+  SrcProvider,
   tmdbEpisode,
   tmdbMedia,
   tmdbSeason,
   tmdbSource,
   tmdbSubtitle,
 } from './server/db/schema';
+import z from 'zod';
+import { orderEnum, orderValues } from './constant';
 
 export type Media = InferSelectModel<typeof tmdbMedia>;
 export type Season = InferSelectModel<typeof tmdbSeason>;
@@ -21,7 +23,7 @@ export type M3U8Result = {
   headers: Record<string, string>;
 };
 export type PuppeteerResult = {
-  provider: Provider;
+  provider: SrcProvider;
   m3u8: M3U8Result;
   subtitle?: string;
 };
@@ -51,9 +53,6 @@ export type FilterOptionsFromDb = {
   updatedYears: number[];
 };
 
-export type UserList = 'saved' | 'favorite' | 'later';
-export type UserRole = 'user' | 'admin';
-
 export type FetchedMediaItem = {
   id: number;
   media_type: 'movie' | 'tv';
@@ -63,3 +62,5 @@ export type FetchedMediaItem = {
 // --- Define the shape of the sort options ---
 export type FilterOption = { label: string; trpcInput: string };
 export type FilterGroupOption = { groupLabel: string; options: FilterOption[] };
+
+export type Order = z.infer<typeof orderEnum>;

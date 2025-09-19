@@ -1,4 +1,22 @@
+import z from 'zod';
 import type { FilterGroupOption } from './type';
+
+export const orderValues = [
+  'released-desc',
+  'released-asc',
+  'title-desc',
+  'title-asc',
+  'popularity-desc',
+  'popularity-asc',
+  'vote-avg-desc',
+  'vote-avg-asc',
+  'vote-count-desc',
+  'vote-count-asc',
+  'updated-desc',
+  'updated-asc',
+] as const;
+
+export const orderEnum = z.enum(orderValues);
 
 export const orderOptions: FilterGroupOption[] = [
   {

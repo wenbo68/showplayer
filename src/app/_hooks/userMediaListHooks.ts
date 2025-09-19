@@ -2,8 +2,9 @@
 
 import { useSession } from 'next-auth/react';
 import { useMemo } from 'react';
+import type { UserList } from '~/server/db/schema';
 import { api } from '~/trpc/react';
-import type { UserList } from '~/type';
+// import type { UserList } from '~/type';
 
 export function useIsMediaInUserList(
   pageMediaIds: string[],

@@ -23,6 +23,8 @@ import {
   tmdbMediaToTmdbGenre,
   tmdbMediaToTmdbOrigin,
   tmdbOrigin,
+  tmdbTypeEnum,
+  userListEnum,
   // tmdbTopRated,
   userMediaList,
 } from '~/server/db/schema';
@@ -35,6 +37,7 @@ import {
   // fetchTmdbTopRatedViaApi,
   fetchTmdbTvGenresViaApi,
 } from '~/server/utils/tmdbApiUtils';
+import { orderValues } from '~/constant';
 
 export const mediaRouter = createTRPCRouter({
   getFilterOptions: publicProcedure.query(async ({ ctx }) => {
@@ -98,30 +101,17 @@ export const mediaRouter = createTRPCRouter({
     .input(
       z.object({
         title: z.string().optional(),
-        format: z.array(z.enum(['movie', 'tv'])).optional(),
+        format: z.array(z.enum(tmdbTypeEnum.enumValues)).optional(),
         genre: z.array(z.number()).optional(),
         origin: z.array(z.string()).optional(),
         releaseYear: z.array(z.number()).optional(),
         updatedYear: z.array(z.number()).optional(), // Add the new filter
         minVoteAvg: z.number().min(0).optional(),
         minVoteCount: z.number().min(0).optional(),
-        order: z.enum([
-          'released-desc',
-          'released-asc',
-          'title-desc',
-          'title-asc',
-          'popularity-desc',
-          'popularity-asc',
-          'vote-avg-desc',
-          'vote-avg-asc',
-          'vote-count-desc',
-          'vote-count-asc',
-          'updated-desc',
-          'updated-asc',
-        ]),
+        order: z.enum(orderValues),
         page: z.number().min(1),
         pageSize: z.number().min(1),
-        list: z.array(z.enum(['saved', 'favorite', 'later'])).optional(),
+        list: z.array(z.enum(userListEnum.enumValues)).optional(),
       })
     )
     .query(async ({ ctx, input }) => {

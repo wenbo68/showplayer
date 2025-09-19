@@ -1,16 +1,16 @@
 import type { Page } from 'puppeteer';
-import type { Provider } from '../db/schema';
+import type { SrcProvider } from '../db/schema';
 
 // ====== maps
 
-export const EnumProviderMap: Record<Provider, string> = {
+export const EnumProviderMap: Record<SrcProvider, string> = {
   E: 'videasy',
   J: 'vidjoy',
   L: 'vidlink',
   F: 'vidfast',
 };
 
-export const providerEnumMap: Record<string, Provider> = {
+export const providerEnumMap: Record<string, SrcProvider> = {
   videasy: 'E',
   vidjoy: 'J',
   vidlink: 'L',

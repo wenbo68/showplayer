@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import type { SourceWithSubtitles } from '~/type';
-import type { Provider } from '../db/schema';
+import type { SrcProvider } from '../db/schema';
 
 /**
  * Handles the logic for redirecting to a valid provider if necessary.
@@ -11,7 +11,7 @@ import type { Provider } from '../db/schema';
 export function getSelectedSourceAndHandleRedirects(
   baseRedirectUrl: string,
   sources: SourceWithSubtitles[],
-  provider?: Provider
+  provider?: SrcProvider
 ) {
   // If no sources exist at all, there's nothing to select.
   if (sources.length === 0) {

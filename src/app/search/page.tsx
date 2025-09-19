@@ -12,6 +12,9 @@ import { cookies } from 'next/headers';
 import { auth } from '~/server/auth';
 import ActiveLabelsFallback from '../_components/search/label/ActiveLabelsFallback';
 import { FilterProvider } from '../_contexts/SearchContext';
+import type { Order } from '~/type';
+import type { MediaType, UserList } from '~/server/db/schema';
+import MediaResults from '../_components/search/SearchResult';
 
 // Helper function to ensure a value is an array of strings
 const ensureStringArray = (value: string | string[] | undefined): string[] => {
@@ -20,6 +23,9 @@ const ensureStringArray = (value: string | string[] | undefined): string[] => {
   return [value];
 };
 
+// have to make client now that searchbar and active labels are responsive
+// otherwise can have glitches: the new search page will reset the client state to match with the url
+// meaning if you make changes right before the page arrives, the reset will wipe out your changes
 export default async function SearchPage({
   searchParams,
 }: {
@@ -56,41 +62,27 @@ export default async function SearchPage({
     title: typeof params.title === 'string' ? params.title : undefined,
     releaseYear: ensureStringArray(params.released).map(Number),
     updatedYear: ensureStringArray(params.updated).map(Number),
-    format: ensureStringArray(params.format) as ('movie' | 'tv')[],
+    format: ensureStringArray(params.format) as MediaType[],
     origin: ensureStringArray(params.origin),
     genre: ensureStringArray(params.genre).map(Number),
     minVoteAvg: typeof params.avg === 'string' ? Number(params.avg) : undefined,
     minVoteCount:
       typeof params.count === 'string' ? Number(params.count) : undefined,
-    order: params.order as
-      | 'popularity-desc'
-      | 'popularity-asc'
-      | 'vote-avg-desc'
-      | 'vote-avg-asc'
-      | 'vote-count-desc'
-      | 'vote-count-asc'
-      | 'released-desc'
-      | 'released-asc'
-      | 'updated-desc'
-      | 'updated-asc'
-      | 'title-desc'
-      | 'title-asc',
+    order: params.order as Order,
     page: Number(params.page),
     pageSize: 30,
-    list: ensureStringArray(params.list) as ('saved' | 'favorite' | 'later')[],
+    list: ensureStringArray(params.list) as UserList[],
   };
 
   // get results from trpc
-  const { pageMedia, totalPages } = await api.media.searchAndFilter(
-    trpcSearchAndFilterInput
-  );
+  const initialData = await api.media.searchAndFilter(trpcSearchAndFilterInput);
 
-  // prefetch for client cache
-  const pageMediaIds = pageMedia.map((m) => m.media.id);
-  const uniquePageMediaIds = [...new Set(pageMediaIds)];
-  api.user.getUserDetailsForMediaList.prefetch({
-    mediaIds: uniquePageMediaIds,
-  });
+  // // prefetch for client cache (only the initial page)
+  // const pageMediaIds = initialData.pageMedia.map((m) => m.media.id);
+  // const uniquePageMediaIds = [...new Set(pageMediaIds)];
+  // api.user.getUserDetailsForMediaList.prefetch({
+  //   mediaIds: uniquePageMediaIds,
+  // });
 
   // get filter options from trpc
   const filterOptions = await api.media.getFilterOptions();
@@ -98,33 +90,52 @@ export default async function SearchPage({
   // just use traditional pagination instead of infinite scrolling (harder to use go back/forward in browser)
   return (
     <div className="flex flex-col gap-8">
+      {/* The provider now wraps all interactive components */}
       <FilterProvider>
         <Suspense fallback={<SearchBarFallback />}>
           <SearchBar filterOptions={filterOptions} />
         </Suspense>
 
-        <div className="w-full flex justify-between gap-4">
-          <Suspense fallback={<ActiveLabelsFallback />}>
-            <ActiveLabels filterOptions={filterOptions} />
-          </Suspense>
-        </div>
-      </FilterProvider>
+        {/* <div className="w-full flex justify-between gap-4"> */}
+        <Suspense fallback={<ActiveLabelsFallback />}>
+          <ActiveLabels filterOptions={filterOptions} />
+        </Suspense>
+        {/* </div> */}
 
-      {pageMedia.length > 0 && (
+        {/* ✨ 2. Use HydrateClient and the new MediaResults component */}
         <HydrateClient>
-          <div className="flex flex-col gap-6">
-            <MediaList
-              viewMode="full"
-              mediaList={pageMedia}
-              pageMediaIds={uniquePageMediaIds}
-            />
-            <PageSelector
-              currentPage={trpcSearchAndFilterInput.page}
-              totalPages={totalPages}
-            />
-          </div>
+          <MediaResults initialData={initialData} />
         </HydrateClient>
-      )}
+      </FilterProvider>
     </div>
+    // <div className="flex flex-col gap-8">
+    //   <FilterProvider>
+    //     <Suspense fallback={<SearchBarFallback />}>
+    //       <SearchBar filterOptions={filterOptions} />
+    //     </Suspense>
+
+    //     <div className="w-full flex justify-between gap-4">
+    //       <Suspense fallback={<ActiveLabelsFallback />}>
+    //         <ActiveLabels filterOptions={filterOptions} />
+    //       </Suspense>
+    //     </div>
+    //   </FilterProvider>
+
+    //   {pageMedia.length > 0 && (
+    //     <HydrateClient>
+    //       <div className="flex flex-col gap-6">
+    //         <MediaList
+    //           viewMode="full"
+    //           mediaList={pageMedia}
+    //           pageMediaIds={uniquePageMediaIds}
+    //         />
+    //         <PageSelector
+    //           currentPage={trpcSearchAndFilterInput.page}
+    //           totalPages={totalPages}
+    //         />
+    //       </div>
+    //     </HydrateClient>
+    //   )}
+    // </div>
   );
 }

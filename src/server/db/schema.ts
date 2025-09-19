@@ -34,8 +34,10 @@ export const userSubmissionStatusEnum = pgEnum('user_submission_status', [
   'failure',
 ]);
 
-// 2. Create a TypeScript union type from the enum's values
-export type Provider = (typeof providerEnum.enumValues)[number];
+export type MediaType = (typeof tmdbTypeEnum.enumValues)[number];
+export type UserList = (typeof userListEnum.enumValues)[number];
+export type UserRole = (typeof userRoleEnum.enumValues)[number];
+export type SrcProvider = (typeof providerEnum.enumValues)[number];
 // This results in the type: 'E' | 'J' | 'L' | 'F'
 
 export const tmdbOrigin = pgTable('tmdb_origin', {

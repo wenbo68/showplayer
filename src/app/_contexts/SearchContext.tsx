@@ -13,6 +13,21 @@ import {
 import { useDebouncedCallback } from 'use-debounce';
 import Cookies from 'js-cookie';
 
+const getCanonicalQueryString = (params: URLSearchParams): string => {
+  const sortedParams = new URLSearchParams();
+  // Sort keys alphabetically
+  const sortedKeys = Array.from(params.keys()).sort();
+
+  sortedKeys.forEach((key) => {
+    // Get all values for the key and sort them as well
+    const values = params.getAll(key).sort();
+    values.forEach((value) => {
+      sortedParams.append(key, value);
+    });
+  });
+  return sortedParams.toString();
+};
+
 // Define the context type
 type FilterContextType = {
   title: string;
@@ -93,7 +108,10 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     const oldParams = new URLSearchParams(searchParams.toString());
     oldParams.delete('page');
 
-    if (newParams.toString() !== oldParams.toString()) {
+    // ✨ FIX: Use the robust comparison function
+    if (
+      getCanonicalQueryString(newParams) !== getCanonicalQueryString(oldParams)
+    ) {
       newParams.set('page', '1');
       updateUrl(newParams.toString());
     }
@@ -108,7 +126,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     count,
     order,
     updateUrl,
-    searchParams, // Add searchParams back to avoid stale closure issues
+    // searchParams, // Add searchParams back to avoid stale closure issues
   ]);
 
   const value = {

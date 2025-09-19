@@ -2,7 +2,6 @@
 
 'use client';
 
-// import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
 import type { FilterGroupOption, FilterOptionsFromDb } from '~/type';
 import { Label, OrderLabel, LabelContainer } from './Label';
@@ -27,16 +26,9 @@ type ActiveLabel = {
 
 export default function ActiveLabels({
   filterOptions,
-}: // orderOptions, // 2. Accept orderOptions as a prop
-{
+}: {
   filterOptions: FilterOptionsFromDb;
-  // orderOptions: FilterGroupOption[];
 }) {
-  // const router = useRouter();
-  // const pathname = usePathname();
-  // const searchParams = useSearchParams();
-
-  // --- 2. Get state and setters from context ---
   const {
     title,
     setTitle,
@@ -58,7 +50,6 @@ export default function ActiveLabels({
     // Note: We don't need setOrder here, as the order label isn't removable.
   } = useFilterContext();
 
-  // --- 3. Build the labels from the CONTEXT STATE, not searchParams ---
   const { activeLabels, orderLabel } = useMemo(() => {
     const activeLabels: ActiveLabel[] = [];
 
@@ -78,7 +69,9 @@ export default function ActiveLabels({
         key: `format-${fmt}`,
         label: fmt === 'movie' ? 'Movie' : 'TV',
         type: 'format',
-        onRemove: () => setFormat(format.filter((f) => f !== fmt)),
+        // ✨ FIX: Use functional update
+        onRemove: () =>
+          setFormat((prevFormat) => prevFormat.filter((f) => f !== fmt)),
       });
     });
 
@@ -92,7 +85,9 @@ export default function ActiveLabels({
           key: `origin-${originId}`,
           label: originDetails.name,
           type: 'origin',
-          onRemove: () => setOrigin(origin.filter((o) => o !== originId)),
+          // ✨ FIX: Use functional update
+          onRemove: () =>
+            setOrigin((prevOrigin) => prevOrigin.filter((o) => o !== originId)),
         });
       }
     });
@@ -107,7 +102,9 @@ export default function ActiveLabels({
           key: `genre-${genreId}`,
           label: genreDetails.name,
           type: 'genre',
-          onRemove: () => setGenre(genre.filter((g) => g !== genreId)),
+          // ✨ FIX: Use functional update
+          onRemove: () =>
+            setGenre((prevGenre) => prevGenre.filter((g) => g !== genreId)),
         });
       }
     });
@@ -118,7 +115,9 @@ export default function ActiveLabels({
         key: `released-${year}`,
         label: `Released: ${year}`,
         type: 'released',
-        onRemove: () => setReleased(released.filter((y) => y !== year)),
+        // ✨ FIX: Use functional update
+        onRemove: () =>
+          setReleased((prevReleased) => prevReleased.filter((y) => y !== year)),
       });
     });
 
@@ -128,7 +127,9 @@ export default function ActiveLabels({
         key: `updated-${year}`,
         label: `Updated: ${year}`,
         type: 'updated',
-        onRemove: () => setUpdated(updated.filter((y) => y !== year)),
+        // ✨ FIX: Use functional update
+        onRemove: () =>
+          setUpdated((prevUpdated) => prevUpdated.filter((y) => y !== year)),
       });
     });
 
@@ -179,21 +180,8 @@ export default function ActiveLabels({
     order,
     filterOptions,
     orderOptions,
-    setAvg,
-    setCount,
-    setFormat,
-    setGenre,
-    setOrigin,
-    setReleased,
-    setTitle,
-    setUpdated,
   ]);
 
-  // if (activePills.length === 0) {
-  //   return null; // Don't render anything if no filters are active
-  // }
-
-  // The rendering logic is now much simpler and more declarative.
   return (
     <LabelContainer>
       {activeLabels.map((label) => (

@@ -1,5 +1,5 @@
 import { db } from '~/server/db';
-import { tmdbMedia, tmdbSource, type Provider } from '~/server/db/schema';
+import { tmdbMedia, tmdbSource, type SrcProvider } from '~/server/db/schema';
 import { asc, eq } from 'drizzle-orm';
 import { notFound, redirect } from 'next/navigation';
 import { VideoPlayer } from '~/app/_components/player/VideoPlayer';
@@ -27,7 +27,7 @@ export default async function Page({ params }: PageProps) {
 
   // Parse params from the URL
   const tmdbId = parseInt(tmdbIdParam, 10);
-  const provider: Provider | undefined =
+  const provider: SrcProvider | undefined =
     providerParam === 'E'
       ? providerParam
       : providerParam === 'F'

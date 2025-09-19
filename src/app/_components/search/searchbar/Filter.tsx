@@ -93,8 +93,11 @@ export default function Filter(props: FilterProps) {
   const handleSelectOption = (option: FilterOption) => {
     if (mode === 'single') {
       onChange(option.trpcInput);
-      setIsDropdownOpen(false);
+      // setIsDropdownOpen(false);
       setWrittenText('');
+      setTimeout(() => {
+        setIsDropdownOpen(false);
+      }, 50); // 50ms is plenty of time
     } else {
       // --- THIS IS THE FIX ---
       // Instead of calculating the new array from the stale `value` prop,
@@ -138,6 +141,7 @@ export default function Filter(props: FilterProps) {
             className="w-full pl-3 outline-none"
           />
           <button
+            type="button"
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className="p-2 cursor-pointer"
           >

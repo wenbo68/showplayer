@@ -8,12 +8,13 @@ import IdSubmitter from './_components/submit/IdSubmitter';
 import SubmissionHistory from './_components/submit/SubmissionHistory';
 import { orderOptions } from '~/constant';
 import { FilterProvider } from './_contexts/SearchContext';
+import SearchSection from './_components/search/SearchSection';
 
 export default async function Home() {
   const session = await auth();
 
   // --- 1. Fetch all four lists in parallel using your search API ---
-  const [popularMvData, popularTvData, topMvData, topTvData, filterOptions] =
+  const [popularMvData, popularTvData, topMvData, topTvData] =
     await Promise.all([
       api.media.searchAndFilter({
         format: ['movie'],
@@ -47,7 +48,7 @@ export default async function Home() {
         page: 1,
         pageSize: 6,
       }),
-      api.media.getFilterOptions(),
+      // api.media.getFilterOptions(),
     ]);
 
   // Extract the media from the response objects
@@ -79,14 +80,7 @@ export default async function Home() {
   return (
     <HydrateClient>
       <div className="flex flex-col justify-center gap-8">
-        <FilterProvider>
-          {/* <Suspense fallback={<SearchBarFallback />}> */}
-          <SearchBar
-            filterOptions={filterOptions}
-            // orderOptions={orderOptions}
-          />
-          {/* </Suspense> */}
-        </FilterProvider>
+        <SearchSection />
 
         {/* <div className="w-full flex flex-col gap-10">
           <div className="w-full flex flex-col gap-10"> */}

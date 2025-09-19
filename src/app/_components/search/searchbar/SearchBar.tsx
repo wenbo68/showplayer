@@ -8,12 +8,20 @@ import { IoIosArrowDown } from 'react-icons/io';
 import { useSessionStorageState } from '~/app/_hooks/sessionStorageHooks';
 import { useFilterContext } from '~/app/_contexts/SearchContext';
 import { orderOptions } from '~/constant';
+import { MdKeyboardReturn } from 'react-icons/md';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useDebouncedCallback } from 'use-debounce';
 
 export default function SearchBar({
+  showOrder,
   filterOptions,
 }: {
+  showOrder: boolean;
   filterOptions: FilterOptionsFromDb;
 }) {
+  const searchParams = useSearchParams();
+
   const [isFilterVisible, setIsFilterVisible] = useSessionStorageState(
     'isFilterVisible',
     false
@@ -38,7 +46,38 @@ export default function SearchBar({
     setCount,
     order,
     setOrder,
+    handleSearch,
   } = useFilterContext();
+
+  // // 1. State is now only for the IMMEDIATE visual value of the input
+  // const [titleInput, setTitleInput] = useState(title ?? '');
+
+  // // 3. Create a debounced function to sync with title and begin search
+  // const debouncedUpdate = useDebouncedCallback((newTitle: string) => {
+  //   setTitle(newTitle);
+  //   handleSearch();
+  // }, 500); // 500ms delay
+
+  // Create a debounced version of the search handler
+  const debouncedSearch = useDebouncedCallback(handleSearch, 500);
+
+  const isInitialMount = useRef(true);
+
+  // The input's onChange only does one thing: updates the state.
+  // <input onChange={(e) => setTitle(e.target.value)} ... />
+
+  // This useEffect hook *reacts* to the state change.
+  useEffect(() => {
+    // Skip the first render
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    // By the time this code runs, the 'title' variable is guaranteed to be
+    // the new, updated value. Now it's safe to call the debounced search.
+    debouncedSearch();
+  }, [title, debouncedSearch]); // This effect depends on 'title'
 
   // dropdown options for all filters
   const releaseYearOptions =
@@ -99,8 +138,18 @@ export default function SearchBar({
     };
   });
 
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    // Prevent the default browser action of reloading the page
+    e.preventDefault();
+    // Call your existing search logic
+    handleSearch();
+  };
+
   return (
-    <div className="text-sm w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+    <form
+      onSubmit={handleSubmit}
+      className="text-sm w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2"
+    >
       <div className="w-full flex flex-col gap-2 col-span-2 sm:col-span-1">
         <span className="w-full font-semibold"> Title</span>
         <div className="w-full flex items-center gap-2">
@@ -111,7 +160,10 @@ export default function SearchBar({
             <input
               type="text"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                // debouncedUpdate(e.target.value);
+              }}
               className="w-full outline-none"
             />
             <button
@@ -122,10 +174,18 @@ export default function SearchBar({
             </button>
           </div>
           <button
+            type="button"
             onClick={() => setIsFilterVisible(!isFilterVisible)}
             className="sm:hidden rounded bg-gray-800 p-2 cursor-pointer"
           >
             <IoIosArrowDown size={20} />
+          </button>
+          <button
+            type="submit"
+            onClick={() => setIsFilterVisible(!isFilterVisible)}
+            className="sm:hidden rounded text-gray-300 bg-blue-600 hover:bg-blue-500 p-2 cursor-pointer"
+          >
+            <MdKeyboardReturn size={20} />
           </button>
         </div>
       </div>
@@ -183,15 +243,32 @@ export default function SearchBar({
             onChange={setCount}
             mode="single"
           />
-          <Filter
-            label="Order"
-            options={orderOptions}
-            value={order}
-            onChange={setOrder}
-            mode="single"
-          />
+          {showOrder && (
+            <Filter
+              label="Order"
+              options={orderOptions}
+              value={order}
+              onChange={setOrder}
+              mode="single"
+            />
+          )}
         </div>
       </div>
-    </div>
+
+      {/* ✨ Add the search button */}
+      <div className="w-full flex-col gap-2 hidden sm:flex">
+        <span className="w-full font-semibold"> Search</span>
+        <button
+          type="submit"
+          onClick={(e) => handleSearch()}
+          className="flex items-center gap-2 py-2 cursor-pointer bg-blue-600 text-gray-300 rounded hover:bg-blue-500 transition-colors"
+        >
+          <span className="w-full text-start pl-3 ">Click!</span>
+          <div className="flex items-center justify-center px-2">
+            <MdKeyboardReturn size={20} />
+          </div>
+        </button>
+      </div>
+    </form>
   );
 }

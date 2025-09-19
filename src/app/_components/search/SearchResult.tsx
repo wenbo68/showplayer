@@ -1,7 +1,6 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { useFilterContext } from '~/app/_contexts/SearchContext';
 import { api } from '~/trpc/react';
 // import type { RouterOutputs } from '~/trpc/shared';
 import MediaList from '../media/MediaList';
@@ -12,11 +11,17 @@ import { SearchAndFilterInputSchema } from '~/type';
 // import { SearchAndFilterInputSchema } from '~/server/api/routers/media';
 
 export default function MediaResults({}) {
-  // 1. Get filter states
-  const filters = useFilterContext();
-
-  // 2. Get list and page from url
+  // 1. Get input from url
   const searchParams = useSearchParams();
+  const title = searchParams.get('title') ?? undefined;
+  const format = searchParams.getAll('format');
+  const origin = searchParams.getAll('origin');
+  const genre = searchParams.getAll('genre').map(Number);
+  const releaseYear = searchParams.getAll('released').map(Number);
+  const updatedYear = searchParams.getAll('updated').map(Number);
+  const minVoteAvg = Number(searchParams.getAll('avg')); // '' => 0
+  const minVoteCount = Number(searchParams.getAll('count'));
+  const order = searchParams.get('order') ?? undefined;
   const list = searchParams.getAll('list');
   const page = searchParams.get('page')
     ? Number(searchParams.get('page'))
@@ -24,17 +29,17 @@ export default function MediaResults({}) {
 
   // 2. Construct the tRPC input object from the context state
   const rawInput = {
-    title: filters.title || undefined,
-    format: filters.format,
-    origin: filters.origin,
-    genre: filters.genre.map(Number),
-    releaseYear: filters.released.map(Number),
-    updatedYear: filters.updated.map(Number),
-    minVoteAvg: filters.avg ? Number(filters.avg) : undefined,
-    minVoteCount: filters.count ? Number(filters.count) : undefined,
-    order: filters.order || undefined,
-    list: list,
-    page: page,
+    title,
+    format,
+    origin,
+    genre,
+    releaseYear,
+    updatedYear,
+    minVoteAvg,
+    minVoteCount,
+    order,
+    list,
+    page,
     pageSize: 30,
   };
 
@@ -56,12 +61,12 @@ export default function MediaResults({}) {
     return <div>Invalid filter options.</div>;
   }
 
-  // 4. Show a skeleton while fetching new data
+  // 5. Show a skeleton while fetching new data
   if (isFetching) {
-    return <MediaListFallback />;
+    return <MediaListFallback label="SEARCH RESULTS" />;
   }
 
-  // 5. Render the results
+  // 6. Render the results
   if (data && data.pageMedia.length > 0) {
     const pageMediaIds = data.pageMedia.map((m) => m.media.id);
     const uniquePageMediaIds = [...new Set(pageMediaIds)];
@@ -72,6 +77,7 @@ export default function MediaResults({}) {
           viewMode="full"
           mediaList={data.pageMedia}
           pageMediaIds={uniquePageMediaIds}
+          label="SEARCH RESULTS"
         />
         <PageSelector currentPage={page ?? 1} totalPages={data.totalPages} />
       </div>

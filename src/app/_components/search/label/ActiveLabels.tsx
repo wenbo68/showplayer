@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { FilterGroupOption, FilterOptionsFromDb } from '~/type';
 import { Label, OrderLabel, LabelContainer } from './Label';
 import { orderOptions } from '~/constant';
@@ -48,6 +48,7 @@ export default function ActiveLabels({
     setCount,
     order,
     // Note: We don't need setOrder here, as the order label isn't removable.
+    handleSearch,
   } = useFilterContext();
 
   const { activeLabels, orderLabel } = useMemo(() => {
@@ -59,7 +60,10 @@ export default function ActiveLabels({
         key: `title-${title}`,
         label: `Title: ${title}`,
         type: 'title',
-        onRemove: () => setTitle(''),
+        onRemove: () => {
+          setTitle('');
+          handleSearch({ title: '' });
+        },
       });
     }
 
@@ -70,8 +74,11 @@ export default function ActiveLabels({
         label: fmt === 'movie' ? 'Movie' : 'TV',
         type: 'format',
         // ✨ FIX: Use functional update
-        onRemove: () =>
-          setFormat((prevFormat) => prevFormat.filter((f) => f !== fmt)),
+        onRemove: () => {
+          const newFormat = format.filter((f) => f !== fmt);
+          setFormat(newFormat);
+          handleSearch({ format: newFormat });
+        },
       });
     });
 
@@ -85,9 +92,11 @@ export default function ActiveLabels({
           key: `origin-${originId}`,
           label: originDetails.name,
           type: 'origin',
-          // ✨ FIX: Use functional update
-          onRemove: () =>
-            setOrigin((prevOrigin) => prevOrigin.filter((o) => o !== originId)),
+          onRemove: () => {
+            const newOrigin = origin.filter((o) => o !== originId);
+            setOrigin(newOrigin);
+            handleSearch({ origin: newOrigin });
+          },
         });
       }
     });
@@ -102,9 +111,11 @@ export default function ActiveLabels({
           key: `genre-${genreId}`,
           label: genreDetails.name,
           type: 'genre',
-          // ✨ FIX: Use functional update
-          onRemove: () =>
-            setGenre((prevGenre) => prevGenre.filter((g) => g !== genreId)),
+          onRemove: () => {
+            const newGenre = genre.filter((g) => g !== genreId);
+            setGenre(newGenre);
+            handleSearch({ genre: newGenre });
+          },
         });
       }
     });
@@ -115,9 +126,11 @@ export default function ActiveLabels({
         key: `released-${year}`,
         label: `Released: ${year}`,
         type: 'released',
-        // ✨ FIX: Use functional update
-        onRemove: () =>
-          setReleased((prevReleased) => prevReleased.filter((y) => y !== year)),
+        onRemove: () => {
+          const newReleased = released.filter((y) => y !== year);
+          setReleased(newReleased);
+          handleSearch({ released: newReleased });
+        },
       });
     });
 
@@ -127,9 +140,11 @@ export default function ActiveLabels({
         key: `updated-${year}`,
         label: `Updated: ${year}`,
         type: 'updated',
-        // ✨ FIX: Use functional update
-        onRemove: () =>
-          setUpdated((prevUpdated) => prevUpdated.filter((y) => y !== year)),
+        onRemove: () => {
+          const newUpdated = updated.filter((y) => y !== year);
+          setUpdated(newUpdated);
+          handleSearch({ updated: newUpdated });
+        },
       });
     });
 
@@ -139,7 +154,10 @@ export default function ActiveLabels({
         key: `avg-${avg}`,
         label: `Rating Avg > ${Number(avg) * 10}%`,
         type: 'avg',
-        onRemove: () => setAvg(''),
+        onRemove: () => {
+          setAvg('');
+          handleSearch({ avg: '' });
+        },
       });
     }
 
@@ -149,7 +167,10 @@ export default function ActiveLabels({
         key: `count-${count}`,
         label: `Rating Cnt > ${count}`,
         type: 'count',
-        onRemove: () => setCount(''),
+        onRemove: () => {
+          setCount('');
+          handleSearch({ count: '' });
+        },
       });
     }
 
@@ -179,20 +200,38 @@ export default function ActiveLabels({
     count,
     order,
     filterOptions,
-    orderOptions,
+    handleSearch,
+    setAvg,
+    setCount,
+    setFormat,
+    setGenre,
+    setOrigin,
+    setReleased,
+    setTitle,
+    setUpdated,
   ]);
 
   return (
     <LabelContainer>
-      {activeLabels.map((label) => (
-        <Label
-          key={label.key}
-          label={label.label}
-          type={label.type}
-          onRemove={label.onRemove}
-        />
-      ))}
-      {orderLabel && <OrderLabel label={orderLabel} />}
+      {activeLabels.length === 0 ? (
+        orderLabel ? (
+          <OrderLabel label={orderLabel} />
+        ) : (
+          <OrderLabel label={'Empty Search'} />
+        )
+      ) : (
+        <>
+          {activeLabels.map((label) => (
+            <Label
+              key={label.key}
+              label={label.label}
+              type={label.type}
+              onRemove={label.onRemove}
+            />
+          ))}
+          {orderLabel && <OrderLabel label={orderLabel} />}
+        </>
+      )}
     </LabelContainer>
   );
 }

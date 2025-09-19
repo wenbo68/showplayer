@@ -8,28 +8,10 @@ import MediaList from '../media/MediaList';
 // import MediaListFallback from '../media/MediaListFallback';
 import PageSelector from './PageSelector';
 import MediaListFallback from '../media/MediaListFallback';
-import type { MediaType, UserList } from '~/server/db/schema';
-import { SearchAndFilterInputSchema, type ListMedia, type Order } from '~/type';
+import { SearchAndFilterInputSchema } from '~/type';
 // import { SearchAndFilterInputSchema } from '~/server/api/routers/media';
 
-// Helper function to ensure a value is an array of strings
-const ensureStringArray = (value: string | string[]): string[] => {
-  if (Array.isArray(value)) return value;
-  return [value];
-};
-
-// type InitialData = RouterOutputs['media']['searchAndFilter'];
-
-export default function MediaResults(
-  {
-    //   initialData,
-    // }: {
-    //   initialData: {
-    //     pageMedia: ListMedia[];
-    //     totalPages: number;
-    //   };
-  }
-) {
+export default function MediaResults({}) {
   // 1. Get filter states
   const filters = useFilterContext();
 
@@ -56,7 +38,7 @@ export default function MediaResults(
     pageSize: 30,
   };
 
-  // ✨ 3. Validate the raw input using the shared schema
+  // 3. Validate the raw input using the shared schema
   const parsedInput = SearchAndFilterInputSchema.safeParse(rawInput);
 
   // 4. Use the `useQuery` hook, but only enable it if parsing succeeded

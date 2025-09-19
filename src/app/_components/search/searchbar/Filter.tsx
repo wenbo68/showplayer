@@ -100,20 +100,18 @@ export default function Filter(props: FilterProps) {
       // Instead of calculating the new array from the stale `value` prop,
       // we pass an updater function to `onChange`. React guarantees
       onChange((prevValue) => {
-        const currentSelection = [...prevValue]; // Use the guaranteed latest state
-        const index = currentSelection.findIndex(
-          (item) => String(item) === String(option.trpcInput)
-        );
+        const currentSelectionSet = new Set(prevValue);
 
-        if (index > -1) {
-          // Item exists, so remove it
-          currentSelection.splice(index, 1);
+        if (currentSelectionSet.has(option.trpcInput)) {
+          // If the item exists, delete it
+          currentSelectionSet.delete(option.trpcInput);
         } else {
-          // Item doesn't exist, so add it
-          currentSelection.push(option.trpcInput);
+          // If it doesn't exist, add it
+          currentSelectionSet.add(option.trpcInput);
         }
 
-        return currentSelection; // Return the newly computed state
+        // Convert the Set back to an array to store in state
+        return Array.from(currentSelectionSet);
       });
       // });
     }

@@ -65,9 +65,12 @@ export default async function RootLayout({
   );
 }
 
-// successive filtering (label works but do we need change?)
-// responsive filter/label
-// add loading skeleton to search page when server is preparing new search result
+// if i sync url to state, when i select a new filter right before the new search result returns, the ui change is reverted and my change may or may not be registered
+// now i removed sync url to state (back and forward don't work anymore, but since i'm using replace, it doesn't matter)
+// however, if i select in quick succession, the url sometimes lags behind or doesn't reflect the current filter state anymore
+
+// if i'm on 2nd page and change filter, the new url is 2nd page, and then becomes 1st page.
+
 // add and/or to each multi filter (currently we can only or)
 
 // need to add a one-time-use function to get genre/origin for all media missing them

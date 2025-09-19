@@ -9,25 +9,11 @@ import {
   type ReactNode,
   type Dispatch,
   type SetStateAction,
+  useRef,
 } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
-import Cookies from 'js-cookie';
+// import Cookies from 'js-cookie';
 import { useSessionStorageState } from '../_hooks/sessionStorageHooks';
-
-const getCanonicalQueryString = (params: URLSearchParams): string => {
-  const sortedParams = new URLSearchParams();
-  // Sort keys alphabetically
-  const sortedKeys = Array.from(params.keys()).sort();
-
-  sortedKeys.forEach((key) => {
-    // Get all values for the key and sort them as well
-    const values = params.getAll(key).sort();
-    values.forEach((value) => {
-      sortedParams.append(key, value);
-    });
-  });
-  return sortedParams.toString();
-};
 
 // Define the context type
 type FilterContextType = {
@@ -58,7 +44,10 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
-  const isSearchPage = pathname === '/search';
+  // ✨ 2. Create a ref to flag when an update is in progress
+  const isUpdatingUrlFromState = useRef(false);
+
+  // const isSearchPage = pathname === '/search';
 
   // 1. use states for instant highlight on selected filter options
   const [title, setTitle] = useState(searchParams.get('title') ?? '');
@@ -77,29 +66,37 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   // const [list, setList] = useState(searchParams.getAll('list') ?? '');
   // const [page, setPage] = useState(searchParams.get('page') ?? '');
 
-  // 2. sync url to state
-  useEffect(() => {
-    setTitle(searchParams.get('title') ?? '');
-    setFormat(searchParams.getAll('format'));
-    setGenre(searchParams.getAll('genre'));
-    setOrigin(searchParams.getAll('origin'));
-    setReleased(searchParams.getAll('released'));
-    setUpdated(searchParams.getAll('updated'));
-    setAvg(searchParams.get('avg') ?? '');
-    setCount(searchParams.get('count') ?? '');
-    // Add the conditional logic for the 'order' state
-    const urlOrder = searchParams.get('order');
-    if (urlOrder) {
-      // If the URL has an order, use it.
-      setOrder(urlOrder);
-    } else if (pathname === '/search') {
-      // If there's NO order in the URL AND we are on the search page, set the default.
-      setOrder('popularity-desc');
-    } else {
-      // Otherwise (e.g., on the homepage), keep it empty.
-      setOrder('');
-    }
-  }, [searchParams, pathname]);
+  // // 2. sync url to state
+  // useEffect(() => {
+  //   // // ✨ 3. Check the flag. If true, it means the state is the source of truth, so we ignore the URL change.
+  //   // if (isUpdatingUrlFromState.current) {
+  //   //   // Reset the flag for the next potential manual navigation
+  //   //   isUpdatingUrlFromState.current = false;
+  //   //   return;
+  //   // }
+
+  //   // This code now only runs on initial load or manual browser navigation (back/forward)
+  //   setTitle(searchParams.get('title') ?? '');
+  //   setFormat(searchParams.getAll('format'));
+  //   setGenre(searchParams.getAll('genre'));
+  //   setOrigin(searchParams.getAll('origin'));
+  //   setReleased(searchParams.getAll('released'));
+  //   setUpdated(searchParams.getAll('updated'));
+  //   setAvg(searchParams.get('avg') ?? '');
+  //   setCount(searchParams.get('count') ?? '');
+  //   // Add the conditional logic for the 'order' state
+  //   const urlOrder = searchParams.get('order');
+  //   if (urlOrder) {
+  //     // If the URL has an order, use it.
+  //     setOrder(urlOrder);
+  //   } else if (pathname === '/search') {
+  //     // If there's NO order in the URL AND we are on the search page, set the default.
+  //     setOrder('popularity-desc');
+  //   } else {
+  //     // Otherwise (e.g., on the homepage), keep it empty.
+  //     setOrder('');
+  //   }
+  // }, [searchParams, pathname]);
 
   // 3. what is useDebouncedCallback?
   // each time the function is called, its execution is delayed by set amount of time
@@ -158,11 +155,12 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     const oldParams = new URLSearchParams(searchParams.toString());
     oldParams.delete('page');
 
-    if (
-      getCanonicalQueryString(newParams) !== getCanonicalQueryString(oldParams)
-    ) {
+    if (newParams.toString() !== oldParams.toString()) {
       newParams.set('page', '1');
-      updateUrl(getCanonicalQueryString(newParams));
+      // ✨ 4. Set the flag right BEFORE we trigger the navigation
+      // isUpdatingUrlFromState.current = true;
+      // router.push(`/search?${newParams.toString()}`, { scroll: false });
+      updateUrl(newParams.toString());
     }
   }, [
     title,
@@ -174,8 +172,8 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     avg,
     count,
     order,
-    updateUrl,
-    // searchParams,
+    // updateUrl,
+    pathname,
   ]);
   // normally you include all used variables in dependency array
   // but there are exceptions:

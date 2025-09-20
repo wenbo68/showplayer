@@ -37,8 +37,8 @@ export default function Overview({
     : '';
 
   const fullBackdropUrl = media.backdropUrl
-    ? `https://image.tmdb.org/t/p/w500${media.backdropUrl}`
-    : '';
+    ? `https://image.tmdb.org/t/p/w780${media.backdropUrl}`
+    : `https://image.tmdb.org/t/p/w780${media.imageUrl}`;
 
   // --- STYLE FOR THE BACKDROP ---
   // We combine a semi-transparent gradient overlay with the background image

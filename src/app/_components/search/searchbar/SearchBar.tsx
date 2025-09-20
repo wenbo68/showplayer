@@ -180,13 +180,13 @@ export default function SearchBar({
           >
             <IoIosArrowDown size={20} />
           </button>
-          <button
+          {/* <button
             type="submit"
             onClick={() => setIsFilterVisible(!isFilterVisible)}
             className="sm:hidden rounded text-gray-300 bg-blue-600 hover:bg-blue-500 p-2 cursor-pointer"
           >
             <MdKeyboardReturn size={20} />
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -255,8 +255,7 @@ export default function SearchBar({
         </div>
       </div>
 
-      {/* ✨ Add the search button */}
-      <div className="w-full flex-col gap-2 hidden sm:flex">
+      {/* <div className="w-full flex-col gap-2 hidden sm:flex">
         <span className="w-full font-semibold"> Search</span>
         <button
           type="submit"
@@ -268,7 +267,7 @@ export default function SearchBar({
             <MdKeyboardReturn size={20} />
           </div>
         </button>
-      </div>
+      </div> */}
     </form>
   );
 }

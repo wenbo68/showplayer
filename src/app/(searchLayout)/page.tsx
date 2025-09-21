@@ -1,14 +1,9 @@
 import { api, HydrateClient } from '~/trpc/server';
-import SearchBar from './_components/search/searchbar/SearchBar';
-import { Suspense } from 'react';
-import MediaList from './_components/media/MediaList';
-import SearchBarFallback from './_components/search/searchbar/SearchBarFallback';
+import MediaList from '../_components/media/MediaList';
 import { auth } from '~/server/auth';
-import IdSubmitter from './_components/submit/IdSubmitter';
-import SubmissionHistory from './_components/submit/SubmissionHistory';
-import { orderOptions } from '~/constant';
-import { FilterProvider } from './_contexts/SearchContext';
-import SearchSection from './_components/search/SearchSection';
+import IdSubmitter from '../_components/submit/IdSubmitter';
+import SubmissionHistory from '../_components/submit/SubmissionHistory';
+// import SearchSection from '../_components/search/SearchSection';
 
 export default async function Home() {
   const session = await auth();
@@ -80,7 +75,7 @@ export default async function Home() {
   return (
     <HydrateClient>
       <div className="flex flex-col justify-center gap-8">
-        <SearchSection />
+        {/* <SearchSection /> */}
 
         {/* <div className="w-full flex flex-col gap-10">
           <div className="w-full flex flex-col gap-10"> */}

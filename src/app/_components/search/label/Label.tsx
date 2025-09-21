@@ -25,17 +25,25 @@ export function LabelContainer({ children }: { children: React.ReactNode }) {
 }
 
 // 2. The Clickable Filter Pill
-type LabelProps = {
+type UnclickableLabelProps = {
   label: string;
-  type: keyof typeof labelColors;
+  colorType: keyof typeof labelColors;
+  className?: string;
+};
+type ClickableLabelProps = UnclickableLabelProps & {
   onRemove: () => void;
 };
 
-export function Label({ label, type, onRemove }: LabelProps) {
+export function ClickableLabel({
+  label,
+  colorType,
+  onRemove,
+  className,
+}: ClickableLabelProps) {
   return (
     <button
       onClick={onRemove}
-      className={`cursor-pointer rounded px-[9px] py-0.5 ring-1 ring-inset transition hover:opacity-80 ${labelColors[type]}`}
+      className={`cursor-pointer rounded px-[9px] py-0.5 ring-1 ring-inset transition hover:opacity-80 ${labelColors[colorType]} ${className}`}
     >
       {label}
     </button>
@@ -43,10 +51,14 @@ export function Label({ label, type, onRemove }: LabelProps) {
 }
 
 // 3. The Non-Clickable Order Label
-export function OrderLabel({ label }: { label: string }) {
+export function UnclickableLabel({
+  label,
+  colorType,
+  className,
+}: UnclickableLabelProps) {
   return (
     <span
-      className={`rounded px-[9px] py-0.5 ring-1 ring-inset ${labelColors['order']}`}
+      className={`rounded px-[9px] py-0.5 ring-1 ring-inset ${labelColors[colorType]} ${className}`}
     >
       {label}
     </span>

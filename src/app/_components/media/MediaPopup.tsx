@@ -7,7 +7,7 @@ import { AddToUserListButton } from './AddToUserListButton';
 // import Backdrop from './Backdrop';
 
 export const tagClassMap = {
-  title: 'bg-rose-500/20 text-rose-300 ring-rose-500/30',
+  title: 'bg-stone-500/20 text-stone-300 ring-stone-500/30',
   format: 'bg-red-500/20 text-red-300 ring-red-500/30',
   origin: 'bg-orange-500/20 text-orange-300 ring-orange-500/30',
   genre: 'bg-amber-500/20 text-amber-300 ring-amber-500/30',
@@ -16,7 +16,7 @@ export const tagClassMap = {
   avg: 'bg-sky-500/20 text-sky-300 ring-sky-500/30',
   count: 'bg-blue-500/20 text-blue-300 ring-blue-500/30',
   list: 'bg-indigo-500/20 text-indigo-300 ring-indigo-500/30',
-  order: 'bg-gray-500/20 text-gray-300 ring-gray-500/30', // Style for the order label
+  order: 'bg-gray-500/20 text-gray-300 ring-gray-500/30',
 };
 
 interface MediaPopupProps {

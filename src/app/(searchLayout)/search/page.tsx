@@ -7,9 +7,9 @@ import { Suspense } from 'react';
 // import ActiveLabels from '../_components/search/label/ActiveLabels';
 // import ActiveLabelsFallback from '../_components/search/label/ActiveLabelsFallback';
 // import { FilterProvider } from '../_contexts/SearchContext';
-import MediaResults from '../_components/search/SearchResult';
-import SearchSection from '../_components/search/SearchSection';
-import MediaListFallback from '../_components/media/MediaListFallback';
+import MediaResults from '../../_components/search/SearchResult';
+// import SearchSection from '../../_components/search/SearchSection';
+import MediaListFallback from '../../_components/media/MediaListFallback';
 
 // have to make client now that searchbar and active labels are responsive
 // otherwise can have glitches: the new search page will reset the client state to match with the url
@@ -19,11 +19,11 @@ export default async function SearchPage({}) {
 
   // just use traditional pagination instead of infinite scrolling (harder to use go back/forward in browser)
   return (
-    <div className="flex flex-col gap-8">
-      <SearchSection />
+    <>
+      {/* <SearchSection /> */}
       <Suspense fallback={<MediaListFallback />}>
         <MediaResults />
       </Suspense>
-    </div>
+    </>
   );
 }

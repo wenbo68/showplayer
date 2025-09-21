@@ -68,11 +68,19 @@ export type FilterGroupOption = { groupLabel: string; options: FilterOption[] };
 
 export type Order = z.infer<typeof orderEnum>;
 
+const FilterInputObject = (itemSchema: z.ZodType) =>
+  z
+    .object({
+      values: z.array(itemSchema),
+      operator: z.enum(['and', 'or']).default('and'), // Default to 'or' for current behavior
+    })
+    .optional();
+
 export const SearchAndFilterInputSchema = z.object({
   title: z.string().optional(),
   format: z.array(z.enum(tmdbTypeEnum.enumValues)).optional(),
-  genre: z.array(z.number()).optional(),
-  origin: z.array(z.string()).optional(),
+  genre: FilterInputObject(z.number()),
+  origin: FilterInputObject(z.string()),
   releaseYear: z.array(z.number()).optional(),
   updatedYear: z.array(z.number()).optional(),
   minVoteAvg: z.number().min(0).optional(),

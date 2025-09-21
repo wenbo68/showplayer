@@ -4,13 +4,12 @@ import '~/styles/globals.css';
 
 import { type Metadata } from 'next';
 import { Geist } from 'next/font/google';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
-import { TRPCReactProvider } from '~/trpc/react';
 import { TopNav } from '~/app/_components/TopNav';
-import { MediaPopupProvider } from './_contexts/MediaPopupContext';
-import { AuthProvider } from './_contexts/AuthContext';
 import { env } from '~/env';
-import { FilterProvider } from './_contexts/SearchContext';
+import { ContextProviders } from './_contexts/ContextProviders';
+import { Suspense } from 'react';
 
 export const metadata: Metadata = {
   title: 'Showplayer',
@@ -48,28 +47,27 @@ export default async function RootLayout({
   return (
     <html lang="en" className={`${geist.variable}`}>
       <body className="flex min-h-screen flex-col bg-gray-900 text-gray-400">
-        <TRPCReactProvider>
-          <AuthProvider>
-            <MediaPopupProvider>
-              {/* <FilterProvider> */}
-              <TopNav /> {/* ✨ Add the navigation bar here */}
-              <main className="max-w-7xl mx-auto w-full flex-grow px-2 py-4">
-                {children}
-              </main>
-              {/* </FilterProvider> */}
-            </MediaPopupProvider>
-          </AuthProvider>
-        </TRPCReactProvider>
+        <Suspense fallback={null}>
+          <ContextProviders>
+            <TopNav />
+            <main className="max-w-7xl mx-auto w-full flex-grow px-2 py-4">
+              {children}
+            </main>
+          </ContextProviders>
+        </Suspense>
+        <SpeedInsights />
       </body>
     </html>
   );
 }
 
-// add and/or to each multi filter (currently we can only or)
+// add trending as auto sliding backdrops at the top
+// test cron trigger
 
 // need to add a one-time-use function to get genre/origin for all media missing them
 // make logo s thicker
-// season/episode grid button has bug?
+
+// add players with ads as well
 
 // link to google analytics
 // create a discord server for showplayer

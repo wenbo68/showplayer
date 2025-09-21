@@ -47,39 +47,39 @@ export default function SearchBar({
     order,
     setOrder,
     handleSearch,
+    genreOperator,
+    setGenreOperator,
+    // originOperator,
+    // setOriginOperator,
   } = useFilterContext();
 
-  // // 1. State is now only for the IMMEDIATE visual value of the input
-  // const [titleInput, setTitleInput] = useState(title ?? '');
+  // below code will automatically push you to search page from home page
+  // not when you 1st land on home but if you go back to home a/f visiting other pages
+  // just use handleSubmit with future state as input
 
-  // // 3. Create a debounced function to sync with title and begin search
-  // const debouncedUpdate = useDebouncedCallback((newTitle: string) => {
-  //   setTitle(newTitle);
-  //   handleSearch();
-  // }, 500); // 500ms delay
+  // const isInitialMount = useRef(true);
+  // // This useEffect hook *reacts* to the state change.
+  // useEffect(() => {
+  //   // Skip the first render
+  //   if (isInitialMount.current) {
+  //     isInitialMount.current = false;
+  //     return;
+  //   }
+  //   // By the time this code runs, the 'title' variable is guaranteed to be
+  //   // the new, updated value. Now it's safe to call the debounced search.
+  //   debouncedSearch();
+  // }, [title, debouncedSearch]); // This effect depends on 'title'
 
-  // Create a debounced version of the search handler
-  const debouncedSearch = useDebouncedCallback(handleSearch, 500);
-
-  const isInitialMount = useRef(true);
-
-  // The input's onChange only does one thing: updates the state.
-  // <input onChange={(e) => setTitle(e.target.value)} ... />
-
-  // This useEffect hook *reacts* to the state change.
-  useEffect(() => {
-    // Skip the first render
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-
-    // By the time this code runs, the 'title' variable is guaranteed to be
-    // the new, updated value. Now it's safe to call the debounced search.
-    debouncedSearch();
-  }, [title, debouncedSearch]); // This effect depends on 'title'
+  // // Create a debounced version of the search handler
+  // const debouncedTitleSearch = useDebouncedCallback((newTitle: string) => {
+  //   handleSearch({ title: newTitle });
+  // }, 300);
 
   // dropdown options for all filters
+  const opOptions = [
+    { label: 'AND', trpcInput: 'and' },
+    { label: 'OR', trpcInput: 'or' },
+  ];
   const releaseYearOptions =
     filterOptions.releaseYears.map((year) => ({
       trpcInput: String(year),
@@ -138,10 +138,13 @@ export default function SearchBar({
     };
   });
 
+  // const submitCountRef = useRef(0);
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    // Prevent the default browser action of reloading the page
     e.preventDefault();
-    // Call your existing search logic
+    // submitCountRef.current += 1;
+    // console.log('Submit count:', submitCountRef.current);
+
     handleSearch();
   };
 
@@ -151,7 +154,7 @@ export default function SearchBar({
       className="text-sm w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2"
     >
       <div className="w-full flex flex-col gap-2 col-span-2 sm:col-span-1">
-        <span className="w-full font-semibold"> Title</span>
+        <span className="w-full font-semibold">Title</span>
         <div className="w-full flex items-center gap-2">
           <div className="w-full flex bg-gray-800 items-center rounded">
             <div className="p-2">
@@ -162,12 +165,20 @@ export default function SearchBar({
               value={title}
               onChange={(e) => {
                 setTitle(e.target.value);
-                // debouncedUpdate(e.target.value);
+                handleSearch({ title: e.target.value });
               }}
+              // onBlur={(e) => {
+              //   // don't trigger onSubmit bc we are already calling handleSearch here
+              //   e.preventDefault();
+              //   setTitle(e.target.value);
+              //   handleSearch({ title: e.target.value });
+              // }}
               className="w-full outline-none"
             />
             <button
-              onClick={() => setTitle('')}
+              onClick={() => {
+                setTitle('');
+              }}
               className={`p-2 cursor-pointer`}
             >
               <X size={20} />
@@ -207,6 +218,16 @@ export default function SearchBar({
             value={origin}
             onChange={setOrigin}
             mode="multi"
+            // opValue={originOperator}
+            // opOnChange={setOriginOperator}
+            // opOptions={opOptions}
+          />
+          <Filter
+            label="Genre Operator"
+            options={opOptions}
+            value={genreOperator}
+            onChange={setGenreOperator}
+            mode="single"
           />
           <Filter
             label="Genre"
@@ -214,6 +235,9 @@ export default function SearchBar({
             value={genre}
             onChange={setGenre}
             mode="multi"
+            // opValue={genreOperator}
+            // opOnChange={setGenreOperator}
+            // opOptions={opOptions}
           />
           <Filter
             label="Release Year"

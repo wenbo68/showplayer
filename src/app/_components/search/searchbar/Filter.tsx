@@ -21,6 +21,9 @@ type FilterProps = {
   label: string;
   options: (FilterOption | FilterGroupOption)[];
   placeholder?: string;
+  // opValue?: string;
+  // opOnChange?: Dispatch<SetStateAction<string>>;
+  // opOptions?: FilterOption[];
 } & (
   | {
       mode: 'single';
@@ -120,6 +123,12 @@ export default function Filter(props: FilterProps) {
     }
   };
 
+  // const handleOperatorClick = () => {
+  //   if (props.opValue && props.opOnChange) {
+  //     props.opOnChange(props.opValue === 'or' ? 'and' : 'or');
+  //   }
+  // };
+
   return (
     <div className="relative flex flex-col w-full gap-2">
       <div className="flex w-full gap-2 items-baseline">
@@ -140,6 +149,15 @@ export default function Filter(props: FilterProps) {
             placeholder={placeholder ?? `Filter ${label.toLowerCase()}...`}
             className="w-full pl-3 outline-none"
           />
+          {/* {props.opValue && props.opOnChange && (
+            <button
+              type="button"
+              onClick={handleOperatorClick}
+              className="p-2 cursor-pointer"
+            >
+              {props.opValue === 'or' ? `&` : `|`}
+            </button>
+          )} */}
           <button
             type="button"
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}

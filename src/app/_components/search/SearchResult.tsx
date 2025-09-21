@@ -15,8 +15,8 @@ export default function MediaResults({}) {
   const searchParams = useSearchParams();
   const title = searchParams.get('title') ?? undefined;
   const format = searchParams.getAll('format');
-  const origin = searchParams.getAll('origin');
-  const genre = searchParams.getAll('genre').map(Number);
+  // const origin = searchParams.getAll('origin');
+  // const genre = searchParams.getAll('genre').map(Number);
   const releaseYear = searchParams.getAll('released').map(Number);
   const updatedYear = searchParams.getAll('updated').map(Number);
   const minVoteAvg = Number(searchParams.getAll('avg')); // '' => 0
@@ -27,12 +27,36 @@ export default function MediaResults({}) {
     ? Number(searchParams.get('page'))
     : undefined;
 
+  // ✨ MODIFIED: Get values and operators for genre and origin
+  const genreValues = searchParams.getAll('genre').map(Number);
+  const originValues = searchParams.getAll('origin');
+
+  // We expect 'and' or 'or'. Default to 'and' as per your schema's new default.
+  const genreOperator = searchParams.get('genre-operator');
+  const originOperator = searchParams.get('origin-operator');
+
   // 2. Construct the tRPC input object from the context state
   const rawInput = {
     title,
     format,
-    origin,
-    genre,
+    // ✨ MODIFIED: Conditionally build the object structure for genre
+    genre:
+      genreValues.length > 0
+        ? {
+            values: genreValues,
+            operator: genreOperator,
+            // === 'or' ? 'or' : 'and', // Safely default to 'and'
+          }
+        : undefined, // Pass undefined if no genres are in the URL
+    // ✨ MODIFIED: Conditionally build the object structure for origin
+    origin:
+      originValues.length > 0
+        ? {
+            values: originValues,
+            operator: originOperator,
+            // === 'or' ? 'or' : 'and', // Safely default to 'and'
+          }
+        : undefined, // Pass undefined if no origins are in the URL
     releaseYear,
     updatedYear,
     minVoteAvg,

@@ -205,22 +205,49 @@ export const mediaRouter = createTRPCRouter({
       // if (origin && origin.length > 0) {
       //   conditions.push(inArray(tmdbMediaToTmdbOrigin.originId, origin));
       // }
-      // Handle genres with a subquery
-      if (genre && genre.length > 0) {
-        const genreSubquery = ctx.db
-          .select({ mediaId: tmdbMediaToTmdbGenre.mediaId })
-          .from(tmdbMediaToTmdbGenre)
-          .where(inArray(tmdbMediaToTmdbGenre.genreId, genre));
 
+      // Handle genres with a subquery
+      if (genre && genre.values.length > 0) {
+        let genreSubquery;
+        if (genre.operator === 'and') {
+          // and: Find media IDs that have ALL the specified genres
+          genreSubquery = ctx.db
+            .select({ mediaId: tmdbMediaToTmdbGenre.mediaId })
+            .from(tmdbMediaToTmdbGenre)
+            .where(inArray(tmdbMediaToTmdbGenre.genreId, genre.values))
+            .groupBy(tmdbMediaToTmdbGenre.mediaId)
+            .having(
+              eq(count(tmdbMediaToTmdbGenre.genreId), genre.values.length)
+            );
+        } else {
+          // or: Find media IDs that have AT LEAST ONE of the genres
+          genreSubquery = ctx.db
+            .select({ mediaId: tmdbMediaToTmdbGenre.mediaId })
+            .from(tmdbMediaToTmdbGenre)
+            .where(inArray(tmdbMediaToTmdbGenre.genreId, genre.values));
+        }
         conditions.push(inArray(tmdbMedia.id, genreSubquery));
       }
       // Handle origins with a subquery
-      if (origin && origin.length > 0) {
-        const originSubquery = ctx.db
-          .select({ mediaId: tmdbMediaToTmdbOrigin.mediaId })
-          .from(tmdbMediaToTmdbOrigin)
-          .where(inArray(tmdbMediaToTmdbOrigin.originId, origin));
-
+      if (origin && origin.values.length > 0) {
+        let originSubquery;
+        if (origin.operator === 'and') {
+          // and: Find media IDs that have ALL the specified origins
+          originSubquery = ctx.db
+            .select({ mediaId: tmdbMediaToTmdbOrigin.mediaId })
+            .from(tmdbMediaToTmdbOrigin)
+            .where(inArray(tmdbMediaToTmdbOrigin.originId, origin.values))
+            .groupBy(tmdbMediaToTmdbOrigin.mediaId)
+            .having(
+              eq(count(tmdbMediaToTmdbOrigin.originId), origin.values.length)
+            );
+        } else {
+          // or: Find media IDs that have AT LEAST ONE of the origins
+          originSubquery = ctx.db
+            .select({ mediaId: tmdbMediaToTmdbOrigin.mediaId })
+            .from(tmdbMediaToTmdbOrigin)
+            .where(inArray(tmdbMediaToTmdbOrigin.originId, origin.values));
+        }
         conditions.push(inArray(tmdbMedia.id, originSubquery));
       }
       if (minVoteAvg && minVoteAvg > 0) {

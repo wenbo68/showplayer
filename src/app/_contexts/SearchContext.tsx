@@ -12,7 +12,6 @@ import {
   useRef,
 } from 'react';
 // import { useDebouncedCallback } from 'use-debounce';
-// import Cookies from 'js-cookie';
 import { useSessionStorageState } from '../_hooks/sessionStorageHooks';
 
 // Define the context type
@@ -23,8 +22,12 @@ type FilterContextType = {
   setFormat: Dispatch<SetStateAction<string[]>>;
   genre: string[];
   setGenre: Dispatch<SetStateAction<string[]>>;
+  genreOperator: string;
+  setGenreOperator: Dispatch<SetStateAction<string>>;
   origin: string[];
   setOrigin: Dispatch<SetStateAction<string[]>>;
+  // originOperator: string;
+  // setOriginOperator: Dispatch<SetStateAction<string>>;
   released: string[];
   setReleased: Dispatch<SetStateAction<string[]>>;
   updated: string[];
@@ -40,27 +43,28 @@ type FilterContextType = {
       title: string;
       format: string[];
       genre: string[];
+      genreOperator: string;
       origin: string[];
       released: string[];
       updated: string[];
       avg: string;
       count: string;
       order: string;
+      list: string[];
     }>
   ) => void;
+  list: string[];
+  setList: Dispatch<SetStateAction<string[]>>;
 };
 
 const FilterContext = createContext<FilterContextType | undefined>(undefined);
 
+// this provider uses client-side hooks (eg useSearchParams) so cannot be directly included in root layout
+// best practice is to create a client component that includes all contexts
+// then use this 1 component in root layout
 export function FilterProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const pathname = usePathname();
-
-  // // ✨ 2. Create a ref to flag when an update is in progress
-  // const isUpdatingUrlFromState = useRef(false);
-
-  // const isSearchPage = pathname === '/search';
 
   // 1. use states for instant highlight on selected filter options
   const [title, setTitle] = useState(searchParams.get('title') ?? '');
@@ -73,25 +77,27 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   const [updated, setUpdated] = useState(() => searchParams.getAll('updated'));
   const [avg, setAvg] = useState(searchParams.get('avg') ?? '');
   const [count, setCount] = useState(searchParams.get('count') ?? '');
-  // actually we don't need a default anymore because every search will set this with a default
-  const [order, setOrder] = useSessionStorageState('order', '');
-
-  // const [list, setList] = useState(searchParams.getAll('list') ?? '');
+  const [order, setOrder] = useSessionStorageState(
+    'order',
+    searchParams.get('order') ?? ''
+  );
+  const [genreOperator, setGenreOperator] = useSessionStorageState(
+    'genre-operator',
+    searchParams.get('genre-operator') ?? ''
+  );
+  // const [originOperator, setOriginOperator] = useSessionStorageState(
+  //   'origin-operator',
+  //   ''
+  // );
+  const [list, setList] = useState(searchParams.getAll('list') ?? '');
   // const [page, setPage] = useState(searchParams.get('page') ?? '');
 
-  // ✨ 2. Add a ref to track the initial mount
-  const isInitialMount = useRef(true);
-
-  // 2. sync url to state
+  // 2. I want the sync url to state useEffect to only run in the following scenarios:
+  // when url change is triggered by go back/forward
+  // when user clicks link to home/search page
+  // when user manually changes url
   useEffect(() => {
-    // // ✨ 3. Check the flag. If true, it means the state is the source of truth, so we ignore the URL change.
-    // if (isUpdatingUrlFromState.current) {
-    //   // Reset the flag for the next potential manual navigation
-    //   isUpdatingUrlFromState.current = false;
-    //   return;
-    // }
-
-    // This code now only runs on initial load or manual browser navigation (back/forward)
+    console.log(`CALLED SYNC`);
     setTitle(searchParams.get('title') ?? '');
     setFormat(searchParams.getAll('format'));
     setGenre(searchParams.getAll('genre'));
@@ -101,129 +107,21 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     setAvg(searchParams.get('avg') ?? '');
     setCount(searchParams.get('count') ?? '');
     setOrder(searchParams.get('order') ?? '');
-    // // Add the conditional logic for the 'order' state
-    // const urlOrder = searchParams.get('order');
-    // if (urlOrder) {
-    //   // If the URL has an order, use it.
-    //   setOrder(urlOrder);
-    // } else if (pathname === '/search') {
-    //   // If there's NO order in the URL AND we are on the search page, set the default.
-    //   setOrder('popularity-desc');
-    // } else {
-    //   // Otherwise (e.g., on the homepage), keep it empty.
-    //   setOrder('');
-    // }
+    setGenreOperator(searchParams.get('genre-operator') ?? '');
+    // setOriginOperator(searchParams.get('origin-operator') ?? '');
+    setList(searchParams.getAll('list') ?? '');
   }, [searchParams]);
+  // spam clicking on search page: click new filter, state updates, url pushed, url syncs to state -> click new filter, state updates, ....
+  // each cycle is too fast that you cannot click fast enough to trigger a flicker
 
-  // // 3. what is useDebouncedCallback?
-  // // each time the function is called, its execution is delayed by set amount of time
-  // // if function called again within this delay, delay timer resets
-  // // at the end of timer, only the latest call is executed
-  // const updateUrl = useDebouncedCallback((queryString: string) => {
-  //   // use replace instead of push and set scroll to false (so that you aren't forced back to top of page)
-  //   // push will put all urls in history
-  //   // replace will replace the latest url in history (will not clutter history)
-  //   router.replace(`/search?${queryString}`, { scroll: false });
-  // }, 500);
+  // Normal sequence on home page: click new filter, state updates, url pushed, router schedules mount, comp dismount, comp remount, states initialized from url
 
-  // // 4. sync state to url
-  // // done only when new url would be different from old url
-  // // otherwise search page will rerender bc this useEffect will be called again after the above useEffect changes state during its 1st run
-  // useEffect(() => {
-  //   // Determine if any filter is active. This signals an intent to search.
-  //   const isSearching =
-  //     title ||
-  //     format.length > 0 ||
-  //     genre.length > 0 ||
-  //     origin.length > 0 ||
-  //     released.length > 0 ||
-  //     updated.length > 0 ||
-  //     avg ||
-  //     count;
+  // Extra click right before dismount: click new filter, state updates, url pushed, router schedules mount,
+  // click another filter, state updates, url pushed, router schedules rerender,
+  // comp dismount, comp mounts, states initialized from 1st url, comp rerenders, useEffect syncs 2nd url to states
 
-  //   // Don't do anything if no filters are selected and we are not on the search page.
-  //   // This prevents adding default params to the URL from the homepage.
-  //   if (!isSearching && pathname !== '/search') {
-  //     return;
-  //   }
-  //   const newParams = new URLSearchParams();
-
-  //   if (title) newParams.set('title', title);
-  //   format.forEach((v) => newParams.append('format', v));
-  //   genre.forEach((v) => newParams.append('genre', v));
-  //   origin.forEach((v) => newParams.append('origin', v));
-  //   released.forEach((v) => newParams.append('released', v));
-  //   updated.forEach((v) => newParams.append('updated', v));
-  //   if (avg) newParams.set('avg', avg);
-  //   if (count) newParams.set('count', count);
-
-  //   // cannot use setOrder here bc that would trigger another call of this useEffect as order is in the dep arr
-  //   // however, if we don't set the order here, a change in other filters at home page will create a url with order
-  //   // and trigger trpc search with the current states in SearchResult component.
-  //   // this may happen before the useEffect to sync url to states, meaning that the trpc search uses order = ''
-  //   // to resolve this issue, we have to delegate this issue and address at the point of impact instead of fixing it at the src here
-  //   if (order) {
-  //     newParams.set('order', order);
-  //     // Cookies.set('lastUsedOrder', order, { expires: 7 });
-  //   } else if (isSearching) {
-  //     newParams.set('order', 'popularity-desc');
-  //   }
-
-  //   const oldParams = new URLSearchParams(searchParams.toString());
-  //   oldParams.delete('page');
-
-  //   if (newParams.toString() !== oldParams.toString()) {
-  //     newParams.set('page', '1');
-  //     // ✨ 4. Set the flag right BEFORE we trigger the navigation
-  //     isUpdatingUrlFromState.current = true;
-  //     router.replace(`/search?${newParams.toString()}`, { scroll: false });
-  //   }
-  // }, [
-  //   title,
-  //   format,
-  //   genre,
-  //   origin,
-  //   released,
-  //   updated,
-  //   avg,
-  //   count,
-  //   order,
-  //   // updateUrl,
-  //   pathname,
-  // ]);
-  // // normally you include all used variables in dependency array
-  // // but there are exceptions:
-  // // 1. unstable obj: even if obj value didn't change, the obj is considered changed; eg searchParams, router, etc.
-  // // 2. obj that never changes: ref
-  // // 3. global singletons: window, document, localStorage, etc.
-  // // ...
-
-  // // ✨ 2. Create the function that will be called by the search button
-  // const handleSearch = () => {
-  //   const newParams = new URLSearchParams();
-
-  //   // Build the query string from the current state
-  //   if (title) newParams.set('title', title);
-  //   format.forEach((v) => newParams.append('format', v));
-  //   genre.forEach((v) => newParams.append('genre', v));
-  //   origin.forEach((v) => newParams.append('origin', v));
-  //   released.forEach((v) => newParams.append('released', v));
-  //   updated.forEach((v) => newParams.append('updated', v));
-  //   if (avg) newParams.set('avg', avg);
-  //   if (count) newParams.set('count', count);
-  //   if (order) {
-  //     newParams.set('order', order);
-  //   } else {
-  //     setOrder('popularity-desc');
-  //     newParams.set('order', 'popularity-desc');
-  //   }
-
-  //   // Always reset to page 1 for a new search
-  //   newParams.set('page', '1');
-
-  //   // Navigate to the search page with the new params
-  //   router.push(`/search?${newParams.toString()}`);
-  // };
+  // FLICKER PROBLEM: caused by the searchbar & active label component dismounting/remounting when you go from home to search page
+  // SOLUTION: put the shared components in layout so that the component never dismount
 
   type SearchParamsOverride = Partial<{
     title: string;
@@ -235,6 +133,9 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     avg: string;
     count: string;
     order: string;
+    genreOperator: string;
+    originOperator: string;
+    list: string[];
   }>;
 
   const handleSearch = (overrides: SearchParamsOverride = {}) => {
@@ -250,6 +151,9 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     const finalAvg = overrides.avg ?? avg;
     const finalCount = overrides.count ?? count;
     const finalOrder = overrides.order ?? order;
+    const finalGenreOperator = overrides.genreOperator ?? genreOperator;
+    // const finalOriginOperator = overrides.originOperator ?? originOperator;
+    const finalList = overrides.list ?? list;
 
     if (finalTitle) newParams.set('title', finalTitle);
     finalFormat.forEach((v) => newParams.append('format', v));
@@ -266,6 +170,25 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       newParams.set('order', 'popularity-desc');
     }
 
+    if (finalGenreOperator) {
+      newParams.set('genre-operator', finalGenreOperator);
+    } else {
+      if (finalGenre.length > 0) {
+        setGenreOperator('and');
+        newParams.set('genre-operator', 'and');
+      }
+    }
+    // if (finalOrigin.length > 0) {
+    //   if (finalOriginOperator) {
+    //     newParams.set('origin-operator', finalOriginOperator);
+    //   } else {
+    //     setOriginOperator('or');
+    //     newParams.set('origin-operator', 'or');
+    //   }
+    // }
+
+    list.forEach((v) => newParams.append('list', v));
+
     // Always reset to page 1 for a new search
     newParams.set('page', '1');
 
@@ -279,8 +202,12 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     setFormat,
     genre,
     setGenre,
+    genreOperator,
+    setGenreOperator,
     origin,
     setOrigin,
+    // originOperator,
+    // setOriginOperator,
     released,
     setReleased,
     updated,
@@ -291,8 +218,9 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     setCount,
     order,
     setOrder,
-    // ✨ 4. Expose the new function through the context
     handleSearch,
+    list,
+    setList,
   };
 
   return (
@@ -308,3 +236,19 @@ export function useFilterContext() {
   }
   return context;
 }
+
+// 3. what is useDebouncedCallback?
+// each time the function is called, its execution is delayed by set amount of time
+// if function called again within this delay, delay timer resets
+// at the end of timer, only the latest call is executed
+
+// 4. sync state to url
+// done only when new url would be different from old url
+// otherwise search page will rerender bc this useEffect will be called again after the above useEffect changes state during its 1st run
+
+// 5. normally you include all used variables in dependency array
+// but there are exceptions:
+// 1. unstable obj: even if obj value didn't change, the obj is considered changed; eg searchParams, router, etc.
+// 2. obj that never changes: ref
+// 3. global singletons: window, document, localStorage, etc.
+// ...

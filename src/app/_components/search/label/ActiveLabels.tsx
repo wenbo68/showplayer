@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import type { FilterGroupOption, FilterOptionsFromDb } from '~/type';
-import { Label, OrderLabel, LabelContainer } from './Label';
+import { ClickableLabel, UnclickableLabel, LabelContainer } from './Label';
 import { orderOptions } from '~/constant';
 import { useFilterContext } from '~/app/_contexts/SearchContext';
 
@@ -21,7 +21,8 @@ type ActiveLabel = {
     | 'avg'
     | 'count'
     | 'list';
-  onRemove: () => void;
+  onRemove?: () => void;
+  className?: string;
 };
 
 export default function ActiveLabels({
@@ -49,6 +50,10 @@ export default function ActiveLabels({
     order,
     // Note: We don't need setOrder here, as the order label isn't removable.
     handleSearch,
+    genreOperator,
+    setGenreOperator,
+    list,
+    setList,
   } = useFilterContext();
 
   const { activeLabels, orderLabel } = useMemo(() => {
@@ -100,6 +105,19 @@ export default function ActiveLabels({
         });
       }
     });
+
+    // Genre Operator
+    if (genreOperator) {
+      activeLabels.push({
+        key: `genre-operator-${genreOperator}`,
+        label: `Genre: ${genreOperator}`,
+        type: 'genre',
+        // onRemove: () => {
+        //   setGenreOperator('');
+        //   handleSearch({ genreOperator: '' });
+        // },
+      });
+    }
 
     // Genres
     genre.forEach((genreId) => {
@@ -174,6 +192,21 @@ export default function ActiveLabels({
       });
     }
 
+    // User List
+    list.forEach((listType) => {
+      activeLabels.push({
+        key: `list-${listType}`,
+        label: `${listType}`,
+        type: 'list',
+        onRemove: () => {
+          const newList = list.filter((l) => l !== listType);
+          setList(newList);
+          handleSearch({ list: newList });
+        },
+        className: 'capitalize',
+      });
+    });
+
     // Order Label
     let orderLabel: string | null = null;
     if (order) {
@@ -215,21 +248,32 @@ export default function ActiveLabels({
     <LabelContainer>
       {activeLabels.length === 0 ? (
         orderLabel ? (
-          <OrderLabel label={orderLabel} />
+          <UnclickableLabel label={orderLabel} colorType="order" />
         ) : (
-          <OrderLabel label={'Empty Search'} />
+          <UnclickableLabel label={'Empty Search'} colorType="order" />
         )
       ) : (
         <>
-          {activeLabels.map((label) => (
-            <Label
-              key={label.key}
-              label={label.label}
-              type={label.type}
-              onRemove={label.onRemove}
-            />
-          ))}
-          {orderLabel && <OrderLabel label={orderLabel} />}
+          {activeLabels.map((label) => {
+            return label.onRemove ? (
+              <ClickableLabel
+                key={label.key}
+                label={label.label}
+                colorType={label.type}
+                onRemove={label.onRemove}
+              />
+            ) : (
+              <UnclickableLabel
+                key={label.key}
+                label={label.label}
+                colorType={label.type}
+                // onRemove={label.onRemove}
+              />
+            );
+          })}
+          {orderLabel && (
+            <UnclickableLabel label={orderLabel} colorType="order" />
+          )}
         </>
       )}
     </LabelContainer>

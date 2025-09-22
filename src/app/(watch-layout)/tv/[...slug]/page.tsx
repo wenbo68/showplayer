@@ -117,7 +117,7 @@ export default async function Page({ params }: PageProps) {
   const subtitles = aggregateSubtitles(sourcesAndSubtitles, selectedSrc?.id);
 
   return (
-    <div className="px-2 pt-4 sm:pt-16 pb-4 flex flex-col gap-4">
+    <>
       <BackButton />
       <OverviewSelector
         selectedMedia={{
@@ -143,6 +143,6 @@ export default async function Page({ params }: PageProps) {
         selectedSeasonId={selectedSeason.id}
         selectedEpisodeId={selectedEpisode.id}
       />
-    </div>
+    </>
   );
 }

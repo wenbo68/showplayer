@@ -18,9 +18,9 @@ export function BackButton() {
   return (
     <Link
       href={backUrl}
-      className="inline-flex items-center gap-2 text-sm font-semibold text-gray-400 transition hover:text-blue-400"
+      className="inline-flex items-start gap-2 text-sm font-semibold text-gray-400 transition hover:text-blue-400"
     >
-      <ArrowLeft size={20} />
+      <ArrowLeft size={18} />
       <span>Back</span>
     </Link>
   );

@@ -50,7 +50,7 @@ export default async function RootLayout({
         <Suspense fallback={null}>
           <ContextProviders>
             <TopNav />
-            <main className="max-w-7xl mx-auto w-full flex-grow">
+            <main className="max-w-7xl mx-auto w-full flex-grow p-2">
               {children}
             </main>
           </ContextProviders>

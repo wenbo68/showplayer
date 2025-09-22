@@ -350,30 +350,88 @@ export async function populateMediaUsingTmdbList(
   limit: number
 ) {
   // 2. fetch list from api (mv will be missing origin, tv will be missing season/episode)
-  const mvFetchOutput = await fetchTmdbListViaApi(listType, 'movie', limit);
-  const tvFetchOutput = await fetchTmdbListViaApi(listType, 'tv', limit);
-  const fetchOutput = [...mvFetchOutput, ...tvFetchOutput];
-
-  console.log(
-    `[populateMediaUsingTmdbList] fetched ${listType}: ${mvFetchOutput.length} mv | ${tvFetchOutput.length} tv`
-  );
-
+  let fetchOutput: any[] = [];
+  if (listType === 'trending') {
+    const trendingLimit = limit;
+    fetchOutput = await fetchTmdbListViaApi(listType, trendingLimit);
+    console.log(
+      `[populateMediaUsingTmdbList] fetched ${listType}: ${fetchOutput.length}`
+    );
+  } else {
+    const mvFetchOutput = await fetchTmdbListViaApi(listType, limit, 'movie');
+    const tvFetchOutput = await fetchTmdbListViaApi(listType, limit, 'tv');
+    fetchOutput = [...mvFetchOutput, ...tvFetchOutput];
+    console.log(
+      `[populateMediaUsingTmdbList] fetched ${listType}: ${mvFetchOutput.length} mv | ${tvFetchOutput.length} tv`
+    );
+  }
+  console.log(fetchOutput);
   // 3. only insert nonexistent media to media/genre/origin tables
   const newMedia = await findNewMediaFromFetched(fetchOutput);
-  if (newMedia.length === 0) return;
-  const mediaOutput = await bulkUpsertNewMedia(newMedia);
+  console.log(`newMedia: ${newMedia.length}`);
 
-  // 4. empty trending table -> insert new media to trending table
+  let mediaOutput: {
+    mediaId: string;
+    tmdbId: number;
+    type: 'movie' | 'tv';
+    title: string;
+  }[] = [];
+  if (newMedia.length > 0) {
+    mediaOutput = await bulkUpsertNewMedia(newMedia);
+  }
+
+  // 4. For trending list, populate the table with ALL fetched media
   if (listType === 'trending') {
-    if (listType === 'trending') await db.delete(tmdbTrending).execute();
-    const trendingInput = mediaOutput.map((item, index) => {
+    // ✨ NEW STEP 4.1: Query the DB to get internal IDs for ALL fetched media
+    const compositeWhereClause = or(
+      ...fetchOutput.map((media) =>
+        and(
+          eq(tmdbMedia.tmdbId, media.id),
+          eq(tmdbMedia.type, media.media_type)
+        )
+      )
+    );
+
+    if (!compositeWhereClause) return; // Exit if fetchOutput was empty
+
+    const allMediaFromDb = await db
+      .select({
+        mediaId: tmdbMedia.id,
+        tmdbId: tmdbMedia.tmdbId,
+        type: tmdbMedia.type,
+      })
+      .from(tmdbMedia)
+      .where(compositeWhereClause);
+
+    console.log(`fetched media ids: ${allMediaFromDb.length}`);
+
+    // ✨ NEW STEP 4.2: Create a lookup map for quick access
+    const mediaIdLookup = new Map<string, string>();
+    for (const media of allMediaFromDb) {
+      mediaIdLookup.set(`${media.tmdbId}-${media.type}`, media.mediaId);
+    }
+
+    // ✨ NEW STEP 4.3: Build the trendingInput using the original fetchOutput to preserve rank
+    const trendingInput = fetchOutput.map((item, index) => {
+      const mediaId = mediaIdLookup.get(`${item.id}-${item.media_type}`);
+      if (!mediaId) {
+        // This should not happen if the upsert logic is correct
+        throw new Error(
+          `Could not find mediaId for tmdbId ${item.id} and type ${item.media_type}`
+        );
+      }
       return {
-        mediaId: item.mediaId,
+        mediaId: mediaId,
         rank: index,
       };
     });
-    await db.insert(tmdbTrending).values(trendingInput).execute();
+    console.log(`created trending input: ${trendingInput.length}`);
+    // ✨ NEW STEP 4.4: Clear the table and insert the full list
+    await db.delete(tmdbTrending);
+    await db.insert(tmdbTrending).values(trendingInput);
   }
+
+  if (mediaOutput.length === 0) return;
 
   // 1. fill origin for inserted mv
   const mvList = mediaOutput.filter((media) => media.type === 'movie');

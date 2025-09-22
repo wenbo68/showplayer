@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useState, useEffect, Suspense } from 'react';
 import { AuthShowcase } from '~/app/_components/auth/AuthShowcase';
 import { AuthShowcaseFallback } from './auth/AuthShowcaseFallback';
+import { IoSearchSharp } from 'react-icons/io5';
 
 export function TopNav() {
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -49,7 +50,7 @@ export function TopNav() {
 
   return (
     <nav
-      className="w-full sticky sm:fixed top-0 z-50 transition-transform duration-0"
+      className="w-full bg-gray-900 sticky top-0 z-50 transition-transform duration-0"
       style={{ transform: `translateY(${navPosition}px)` }}
     >
       <div className="flex items-center justify-between max-w-7xl mx-auto px-1.5 py-1">
@@ -63,9 +64,17 @@ export function TopNav() {
           />
         </Link>
         {/* ✨ 3. Wrap AuthShowcase with the Suspense boundary */}
-        <Suspense fallback={<AuthShowcaseFallback />}>
-          <AuthShowcase />
-        </Suspense>
+        <div className="flex gap-4">
+          {/* <div className="flex items-center justify-center">
+            <Link href={'/search?&order=popularity-desc&page=1'}>
+              <IoSearchSharp size={32} />
+            </Link>
+          </div> */}
+
+          <Suspense fallback={<AuthShowcaseFallback />}>
+            <AuthShowcase />
+          </Suspense>
+        </div>
       </div>
     </nav>
   );

@@ -65,25 +65,28 @@ export default function MediaButton({
   ) : (
     <button
       onClick={() => openPopup(pageMediaIds, mediaDetail)}
-      className={`cursor-pointer group absolute inset-0 transition-opacity duration-1000 ${
+      className={`cursor-pointer group absolute inset-0 transition-opacity duration-300 ${
         isActive ? 'opacity-100' : 'opacity-0 pointer-events-none'
       }`}
     >
-      {/* Backdrop Image */}
-      <div className="relative w-full h-full">
-        <Image
-          src={
-            media.backdropUrl
-              ? `https://image.tmdb.org/t/p/original${media.backdropUrl}`
-              : 'https://placehold.co/780x439/1a202c/ffffff?text=Image+Not+Found'
-          }
-          alt={`${media.title}`}
-          fill
-          className="object-cover object-center"
-        />
+      <div className="flex w-full h-full">
+        {/* Backdrop Image */}
+        <div className="relative w-full aspect-[16/9]">
+          <Image
+            src={
+              media.backdropUrl
+                ? `https://image.tmdb.org/t/p/original${media.backdropUrl}`
+                : 'https://placehold.co/780x439/1a202c/ffffff?text=Image+Not+Found'
+            }
+            alt={`${media.title}`}
+            fill
+            className="object-cover object-center"
+          />
+        </div>
       </div>
+
       {/* Top Gradient (20% height) */}
-      {/* <div className="absolute top-0 left-0 w-full h-[20%] bg-gradient-to-b from-gray-900 to-transparent" /> */}
+      <div className="absolute top-0 left-0 w-full h-[20%] bg-gradient-to-b from-gray-900 to-transparent" />
       {/* Bottom Gradient (20% height) */}
       <div className="absolute bottom-0 left-0 w-full h-[30%] bg-gradient-to-t from-gray-900 to-transparent" />
       {/* Content */}

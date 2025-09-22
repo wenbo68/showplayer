@@ -259,8 +259,8 @@ export async function findNewMediaFromFetched(
 
 export async function fetchTmdbListViaApi(
   listType: 'trending' | 'popular' | 'top_rated',
-  mediaType: 'movie' | 'tv',
-  limit: number
+  limit: number,
+  mediaType?: 'movie' | 'tv'
 ) {
   const collected = [];
   const seenIds = new Set(); // Use a Set to track seen IDs
@@ -270,7 +270,7 @@ export async function fetchTmdbListViaApi(
     const resp = await fetch(
       `https://api.themoviedb.org/3/${
         listType === 'trending'
-          ? `trending/${mediaType}/day`
+          ? `trending/all/day`
           : `${mediaType}/${listType}`
       }?language=en-US&page=${page}`,
       {
@@ -290,7 +290,8 @@ export async function fetchTmdbListViaApi(
     // Iterate through the fetched results
     for (const item of results) {
       // 1. Get the correct title field based on the media type.
-      const title = mediaType === 'movie' ? item.title : item.name;
+      const title =
+        (mediaType ?? item.media_type) === 'movie' ? item.title : item.name;
 
       // 2. Check if the ID is new AND if the title is Latin-based.
       if (!seenIds.has(item.id) && isLatinBased(title)) {
@@ -308,7 +309,10 @@ export async function fetchTmdbListViaApi(
   // Ensure the final array is exactly the length of the limit
   const returnValue = collected.slice(0, limit);
   return returnValue.map((value) => {
-    return { ...value, media_type: mediaType };
+    return {
+      ...value,
+      media_type: mediaType ?? value.media_type,
+    };
   });
 }
 

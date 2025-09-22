@@ -77,7 +77,7 @@ export default async function Home() {
 
   return (
     <HydrateClient>
-      <div className="pt-2 pb-4 flex flex-col justify-center gap-8">
+      <div className="pb-4 flex flex-col justify-center gap-8">
         <TrendingCarousel
           pageMediaIds={uniquePageMediaIds}
           trendingList={trendingList}

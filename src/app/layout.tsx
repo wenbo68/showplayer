@@ -50,7 +50,7 @@ export default async function RootLayout({
         <Suspense fallback={null}>
           <ContextProviders>
             <TopNav />
-            <main className="max-w-7xl mx-auto w-full flex-grow px-2 py-4">
+            <main className="max-w-7xl mx-auto w-full flex-grow">
               {children}
             </main>
           </ContextProviders>
@@ -61,13 +61,12 @@ export default async function RootLayout({
   );
 }
 
-// add trending as auto sliding backdrops at the top
+// add trending as auto sliding backdrops at the top (why trending table only has 25 media??)
 // test cron trigger
 
-// need to add a one-time-use function to get genre/origin for all media missing them
-// make logo s thicker
+// make logo s thicker but smaller
 
-// add players with ads as well
+// add provider embeds (with ads) as well and let user choose
 
 // link to google analytics
 // create a discord server for showplayer

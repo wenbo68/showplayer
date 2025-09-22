@@ -57,6 +57,7 @@ export default function MediaList({
                   key={mediaDetail.media.id}
                   pageMediaIds={pageMediaIds}
                   mediaDetail={mediaDetail}
+                  displayMode="grid"
                 />
               );
             })}
@@ -72,6 +73,7 @@ export default function MediaList({
                 key={mediaDetail.media.id}
                 pageMediaIds={pageMediaIds}
                 mediaDetail={mediaDetail}
+                displayMode="grid"
               />
             );
           })}

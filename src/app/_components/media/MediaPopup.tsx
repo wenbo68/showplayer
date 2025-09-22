@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { ListMedia } from '~/type';
 import { MediaBadge } from './MediaBadge';
 import { AddToUserListButton } from './AddToUserListButton';
+import Image from 'next/image';
 // import Backdrop from './Backdrop';
 
 export const tagClassMap = {
@@ -75,14 +76,15 @@ export function MediaPopup({
         className="overflow-hidden rounded-lg w-full max-w-[90vw] lg:max-w-5xl bg-gray-800 max-h-[80vh] flex"
       >
         {/* Poster Image */}
-        <div className="hidden md:block md:w-1/3">
-          <img
+        <div className="hidden md:block md:w-1/3 relative aspect-[2/3]">
+          <Image
             src={
               `https://image.tmdb.org/t/p/w500${media.imageUrl}` ||
-              '/no_image_available.webp'
+              'https://placehold.co/500x750/1a202c/ffffff?text=Image+Not+Found'
             }
             alt={media.title}
-            className="w-full h-full object-cover"
+            fill
+            className="object-cover"
           />
         </div>
 

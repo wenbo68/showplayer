@@ -16,6 +16,14 @@ const config = {
         protocol: 'https',
         hostname: 'cdn.discordapp.com', // 👈 Add this
       },
+      {
+        protocol: 'https',
+        hostname: 'image.tmdb.org',
+      },
+      {
+        protocol: 'https',
+        hostname: 'placehold.co',
+      },
     ],
   },
 };

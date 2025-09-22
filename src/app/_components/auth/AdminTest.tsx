@@ -20,8 +20,8 @@ export default function TmdbAdmin() {
   const [submissionType, setSubmissionType] = useState<'movie' | 'tv'>('movie');
   const [submissionResult, setSubmissionResult] = useState('');
 
-  const fetchOriginsMutation = api.media.fetchOrigins.useMutation();
-  const fetchGenresMutation = api.media.fetchGenres.useMutation();
+  const fetchOriginsMutation = api.media.fetchTmdbOrigins.useMutation();
+  const fetchGenresMutation = api.media.fetchTmdbGenres.useMutation();
 
   const fetchTmdbListsMutation = api.cron.fetchTmdbLists.useMutation();
   // const fetchTmdbTopMutation = api.media.fetchTmdbTopRated.useMutation();
@@ -51,6 +51,15 @@ export default function TmdbAdmin() {
     api.cron.updateAllChangedMedia.useMutation();
 
   const runCronMutation = api.cron.runCron.useMutation();
+
+  const fetchMissingOriginsAndGenresMutation =
+    api.media.fetchMissingOriginsAndGenres.useMutation();
+
+  const handleFetchMissing = () => {
+    fetchMissingOriginsAndGenresMutation.mutate(undefined, {
+      onError: (err) => console.error(`Error: `, err),
+    });
+  };
 
   const handleFetchOrigins = () => {
     fetchOriginsMutation.mutate(undefined, {
@@ -285,6 +294,22 @@ export default function TmdbAdmin() {
 
   return (
     <section className="flex flex-col items-center justify-center">
+      <button
+        onClick={handleFetchMissing}
+        disabled={fetchMissingOriginsAndGenresMutation.isPending}
+        className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 dark:hover:bg-red-500"
+      >
+        {fetchMissingOriginsAndGenresMutation.isPending
+          ? 'Fetching missing...'
+          : 'Fetch missing origins and genres'}
+      </button>
+      {fetchMissingOriginsAndGenresMutation.error && (
+        <p className="text-red-600 dark:text-red-400 mt-2">
+          Error: {fetchMissingOriginsAndGenresMutation.error.message}
+        </p>
+      )}
+      <hr className="w-full my-4 border-gray-300 dark:border-gray-700" />
+
       <div className="flex flex-col items-center gap-2">
         <button
           onClick={handleFetchOrigins}

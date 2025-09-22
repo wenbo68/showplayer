@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   and,
+  or,
   asc,
   desc,
   eq,
@@ -10,6 +11,7 @@ import {
   sql,
   count,
   gte,
+  isNull,
 } from 'drizzle-orm';
 
 import {
@@ -23,12 +25,17 @@ import {
   tmdbMediaToTmdbGenre,
   tmdbMediaToTmdbOrigin,
   tmdbOrigin,
+  tmdbSeason,
+  tmdbTrending,
   tmdbTypeEnum,
   userListEnum,
   // tmdbTopRated,
   userMediaList,
 } from '~/server/db/schema';
-import { bulkUpsertNewMedia } from '~/server/utils/mediaUtils';
+import {
+  bulkUpsertNewMedia,
+  populateMediaUsingTmdbIds,
+} from '~/server/utils/mediaUtils';
 import { SearchAndFilterInputSchema, type ListMedia } from '~/type';
 import { TRPCError } from '@trpc/server';
 import {
@@ -40,6 +47,57 @@ import {
 import { orderValues } from '~/constant';
 
 export const mediaRouter = createTRPCRouter({
+  getTopTrending: publicProcedure
+    .input(z.object({ limit: z.number().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const { limit } = input;
+      // 1. Define robust SQL aggregations.
+      // COALESCE ensures we get an empty array '{}' instead of NULL if a media has no origins.
+      // FILTER removes any potential NULL values from the aggregation itself.
+      const aggregatedOrigins = sql<
+        string[]
+      >`COALESCE(array_agg(DISTINCT ${tmdbOrigin.name}) FILTER (WHERE ${tmdbOrigin.name} IS NOT NULL), '{}')`.as(
+        'origins'
+      );
+      const aggregatedGenres = sql<
+        string[]
+      >`COALESCE(array_agg(DISTINCT ${tmdbGenre.name}) FILTER (WHERE ${tmdbGenre.name} IS NOT NULL), '{}')`.as(
+        'genres'
+      );
+
+      // 2. Build and execute the query.
+      const trendingMedia: ListMedia[] = await ctx.db
+        .select({
+          media: tmdbMedia,
+          origins: aggregatedOrigins,
+          genres: aggregatedGenres,
+        })
+        .from(tmdbTrending)
+        // Join trending table with the main media table
+        .innerJoin(tmdbMedia, eq(tmdbTrending.mediaId, tmdbMedia.id))
+        // Join through to the origin names
+        .leftJoin(
+          tmdbMediaToTmdbOrigin,
+          eq(tmdbMedia.id, tmdbMediaToTmdbOrigin.mediaId)
+        )
+        .leftJoin(tmdbOrigin, eq(tmdbMediaToTmdbOrigin.originId, tmdbOrigin.id))
+        // Join through to the genre names
+        .leftJoin(
+          tmdbMediaToTmdbGenre,
+          eq(tmdbMedia.id, tmdbMediaToTmdbGenre.mediaId)
+        )
+        .leftJoin(tmdbGenre, eq(tmdbMediaToTmdbGenre.genreId, tmdbGenre.id))
+        .where(gte(tmdbMedia.availabilityCount, 1))
+        // Group by media to collapse all origins/genres into one row per media
+        .groupBy(tmdbMedia.id, tmdbTrending.rank)
+        // Order by the trending rank to get the top items first
+        .orderBy(asc(tmdbTrending.rank))
+        // Limit to the top 10
+        .limit(limit);
+
+      return trendingMedia;
+    }),
+
   getFilterOptions: publicProcedure.query(async ({ ctx }) => {
     const genres = await ctx.db
       .selectDistinct({
@@ -326,7 +384,7 @@ export const mediaRouter = createTRPCRouter({
       };
     }),
 
-  fetchOrigins: protectedProcedure.mutation(async ({ ctx }) => {
+  fetchTmdbOrigins: protectedProcedure.mutation(async ({ ctx }) => {
     // 1. Fetch the origins from the TMDB API
     const origins = await fetchTmdbOriginsViaApi();
 
@@ -352,7 +410,7 @@ export const mediaRouter = createTRPCRouter({
     return { count: originOutput.length };
   }),
 
-  fetchGenres: protectedProcedure.mutation(async ({ ctx }) => {
+  fetchTmdbGenres: protectedProcedure.mutation(async ({ ctx }) => {
     const { genres: mvGenres } = await fetchTmdbMvGenresViaApi();
     const { genres: tvGenres } = await fetchTmdbTvGenresViaApi();
 
@@ -378,6 +436,79 @@ export const mediaRouter = createTRPCRouter({
 
     console.log(`Upserted ${genreOutput.length} unique genres.`);
     return { count: genreOutput.length };
+  }),
+
+  fetchMissingOriginsAndGenres: protectedProcedure.mutation(async ({ ctx }) => {
+    // 1. Create a subquery to efficiently count seasons for each media item.
+    // This avoids complex joins in the main query.
+    const seasonCountSubquery = ctx.db
+      .select({
+        mediaId: tmdbSeason.mediaId,
+        count: count(tmdbSeason.id).as('season_count'),
+      })
+      .from(tmdbSeason)
+      .groupBy(tmdbSeason.mediaId)
+      .as('season_counts');
+
+    // 2. Find all distinct media that are missing an entry in either the
+    // origin or genre join tables.
+    const mediaToUpdate = await ctx.db
+      .selectDistinct({
+        tmdbId: tmdbMedia.tmdbId,
+        type: tmdbMedia.type,
+        // Coalesce ensures we get 0 instead of null if a TV show has no seasons listed yet
+        seasonCount: sql<number>`COALESCE(${seasonCountSubquery.count}, 0)`,
+      })
+      .from(tmdbMedia)
+      // LEFT JOIN to find media that *might not have* an origin
+      .leftJoin(
+        tmdbMediaToTmdbOrigin,
+        eq(tmdbMedia.id, tmdbMediaToTmdbOrigin.mediaId)
+      )
+      // LEFT JOIN to find media that *might not have* a genre
+      .leftJoin(
+        tmdbMediaToTmdbGenre,
+        eq(tmdbMedia.id, tmdbMediaToTmdbGenre.mediaId)
+      )
+      // LEFT JOIN to our season count subquery to get season data
+      .leftJoin(
+        seasonCountSubquery,
+        eq(tmdbMedia.id, seasonCountSubquery.mediaId)
+      )
+      // The core logic: filter for rows where either join failed to find a match
+      .where(
+        or(
+          isNull(tmdbMediaToTmdbOrigin.mediaId),
+          isNull(tmdbMediaToTmdbGenre.mediaId)
+        )
+      );
+
+    if (mediaToUpdate.length === 0) {
+      return { message: 'No media found with missing origins or genres.' };
+    }
+
+    // 3. Format the results into the structure required by your population function.
+    const populationInput = mediaToUpdate.map((media) => ({
+      tmdbId: media.tmdbId,
+      type: media.type,
+      // The population function likely only needs seasonCount for TV shows
+      ...(media.type === 'tv' && { seasonCount: media.seasonCount }),
+    }));
+
+    // 4. Call the actual population logic.
+    // This part is commented out as the function is not provided, but this is where
+    // you would trigger the update.
+    await populateMediaUsingTmdbIds(populationInput);
+
+    console.log(`Found ${mediaToUpdate.length} media items to update.`);
+    console.log('Items to populate:', populationInput);
+
+    return {
+      message: `Found ${mediaToUpdate.length} media items to process for missing origins or genres.`,
+      count: mediaToUpdate.length,
+      // You might want to return the list for debugging purposes
+      // items: populationInput,
+    };
   }),
 
   // fetchTmdbTopRated: protectedProcedure

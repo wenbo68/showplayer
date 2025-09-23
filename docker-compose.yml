@@ -28,6 +28,7 @@ services:
         - M3U8_WAIT_EASY=${M3U8_WAIT_EASY}
         - M3U8_WAIT_LINK=${M3U8_WAIT_LINK}
         - M3U8_WAIT_FAST=${M3U8_WAIT_FAST}
+        - GA_MEASUREMENT_ID=${GA_MEASUREMENT_ID}
     # maps the vps port 8080 to the container's port 3000
     ports:
       - '8080:3000'
@@ -56,4 +57,5 @@ services:
       - M3U8_WAIT_EASY=${M3U8_WAIT_EASY}
       - M3U8_WAIT_LINK=${M3U8_WAIT_LINK}
       - M3U8_WAIT_FAST=${M3U8_WAIT_FAST}
+      - GA_MEASUREMENT_ID=${GA_MEASUREMENT_ID}
     restart: unless-stopped

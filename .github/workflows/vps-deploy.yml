@@ -63,6 +63,7 @@ jobs:
             M3U8_WAIT_EASY=${{ secrets.M3U8_WAIT_EASY }}
             M3U8_WAIT_LINK=${{ secrets.M3U8_WAIT_LINK }}
             M3U8_WAIT_FAST=${{ secrets.M3U8_WAIT_FAST }}
+            GA_MEASUREMENT_ID=${{ secrets.GA_MEASUREMENT_ID }}
 
       # 6. Deploy the new image on the VPS via SSH (uses private key not password to login to vps)
       # when you copy the private key to github you need to copy the -----BEGIN and -----END tags

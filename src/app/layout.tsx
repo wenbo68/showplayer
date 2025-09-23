@@ -10,6 +10,7 @@ import { TopNav } from '~/app/_components/TopNav';
 import { env } from '~/env';
 import { ContextProviders } from './_contexts/ContextProviders';
 import { Suspense } from 'react';
+import Script from 'next/script';
 
 export const metadata: Metadata = {
   title: 'Showplayer',
@@ -44,8 +45,26 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   // const session = await auth();
+  const gaMeasurementId = env.GA_MEASUREMENT_ID;
   return (
     <html lang="en" className={`${geist.variable}`}>
+      {/* Add your Google Analytics scripts here */}
+      {gaMeasurementId && (
+        <>
+          <Script
+            src={`https://www.googletagmanager.com/gtag/js?id=${gaMeasurementId}`}
+            strategy="afterInteractive"
+          />
+          <Script id="google-analytics" strategy="afterInteractive">
+            {`
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  gtag('js', new Date());
+                  gtag('config', '${gaMeasurementId}');
+                `}
+          </Script>
+        </>
+      )}
       <body className="flex min-h-screen flex-col bg-gray-900 text-gray-400">
         <Suspense fallback={null}>
           <ContextProviders>

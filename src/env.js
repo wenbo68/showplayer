@@ -32,6 +32,7 @@ export const env = createEnv({
     M3U8_WAIT_EASY: z.string(),
     M3U8_WAIT_LINK: z.string(),
     M3U8_WAIT_FAST: z.string(),
+    GA_MEASUREMENT_ID: z.string(),
     NODE_ENV: z
       .enum(['development', 'test', 'production'])
       .default('development'),
@@ -74,6 +75,7 @@ export const env = createEnv({
     M3U8_WAIT_EASY: process.env.M3U8_WAIT_EASY,
     M3U8_WAIT_LINK: process.env.M3U8_WAIT_LINK,
     M3U8_WAIT_FAST: process.env.M3U8_WAIT_FAST,
+    GA_MEASUREMENT_ID: process.env.GA_MEASUREMENT_ID,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

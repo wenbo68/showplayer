@@ -66,7 +66,6 @@ export default async function RootLayout({
 
 // link to google analytics
 // create a discord server for showplayer
-// create github actions to automate building docker image and pulling that image in vps
 
 // make media buttons display info according to the search filters (horizontal strips including or not including media description)
 // also should media buttons display availability, total episodes, missing episodes?

@@ -61,11 +61,7 @@ export default async function RootLayout({
   );
 }
 
-// add trending as auto sliding backdrops at the top (why trending table only has 25 media??)
-// test cron trigger
-
-// make logo s thicker but smaller
-
+// automate deployment with github actions
 // add provider embeds (with ads) as well and let user choose
 
 // link to google analytics

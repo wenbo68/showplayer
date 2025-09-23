@@ -50,7 +50,7 @@ export function TopNav() {
 
   return (
     <nav
-      className="w-full bg-gray-800 sticky top-0 z-50 transition-transform duration-0"
+      className="w-full bg-gray-800 fixed top-0 z-50 transition-transform duration-0"
       style={{ transform: `translateY(${navPosition}px)` }}
     >
       <div className="flex items-center justify-between max-w-7xl mx-auto px-1.5 py-1">

@@ -1,0 +1,87 @@
+# This workflow automates building a Docker image, pushing it to Docker Hub,
+# and deploying it on your VPS whenever you push to the main branch.
+
+name: CI/CD Docker Deployment
+
+on:
+  push:
+    branches: ['main']
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Check out the repository code
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # 2. Get the short commit SHA to use as a unique image tag
+      - name: Get Commit SHA
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      # 3. Log in to Docker Hub using secrets
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 4. Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # 5. Build the Docker image and push it to Docker Hub
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            wenboliu68/showplayer:${{ steps.vars.outputs.sha_short }}
+            wenboliu68/showplayer:latest
+          build-args: |
+            AUTH_SECRET=${{ secrets.AUTH_SECRET }}
+            AUTH_URL=${{ secrets.AUTH_URL }}
+            AUTH_GOOGLE_ID=${{ secrets.AUTH_GOOGLE_ID }}
+            AUTH_GOOGLE_SECRET=${{ secrets.AUTH_GOOGLE_SECRET }}
+            AUTH_DISCORD_ID=${{ secrets.AUTH_DISCORD_ID }}
+            AUTH_DISCORD_SECRET=${{ secrets.AUTH_DISCORD_SECRET }}
+            CRON_SECRET=${{ secrets.CRON_SECRET }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            TMDB_API_KEY=${{ secrets.TMDB_API_KEY }}
+            VPS_URL=${{ secrets.VPS_URL }}
+            BUNNY_URL=${{ secrets.BUNNY_URL }}
+            FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+            HEADLESS=${{ secrets.HEADLESS }}
+            FIRST_CLICK=${{ secrets.FIRST_CLICK }}
+            LONG_CLICK=${{ secrets.LONG_CLICK }}
+            MID_CLICK=${{ secrets.MID_CLICK }}
+            SHORT_CLICK=${{ secrets.SHORT_CLICK }}
+            M3U8_WAIT_JOY=${{ secrets.M3U8_WAIT_JOY }}
+            M3U8_WAIT_EASY=${{ secrets.M3U8_WAIT_EASY }}
+            M3U8_WAIT_LINK=${{ secrets.M3U8_WAIT_LINK }}
+            M3U8_WAIT_FAST=${{ secrets.M3U8_WAIT_FAST }}
+
+      # 6. Deploy the new image on the VPS via SSH (uses private key not password to login to vps)
+      # when you copy the private key to github you need to copy the -----BEGIN and -----END tags
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          script: |
+            # Go to the app directory
+            cd ${{ secrets.APP_DIR }}
+
+            # Create a temp env var for image tag
+            export IMAGE_TAG=${{ steps.vars.outputs.sha_short }}
+
+            # Stop current containers, remove them, and prune old images
+            docker-compose down
+            docker image prune -af
+
+            # Start the services with the new image
+            docker-compose up -d

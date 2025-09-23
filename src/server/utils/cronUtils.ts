@@ -365,10 +365,9 @@ export async function populateMediaUsingTmdbList(
       `[populateMediaUsingTmdbList] fetched ${listType}: ${mvFetchOutput.length} mv | ${tvFetchOutput.length} tv`
     );
   }
-  console.log(fetchOutput);
+
   // 3. only insert nonexistent media to media/genre/origin tables
   const newMedia = await findNewMediaFromFetched(fetchOutput);
-  console.log(`newMedia: ${newMedia.length}`);
 
   let mediaOutput: {
     mediaId: string;
@@ -403,8 +402,6 @@ export async function populateMediaUsingTmdbList(
       .from(tmdbMedia)
       .where(compositeWhereClause);
 
-    console.log(`fetched media ids: ${allMediaFromDb.length}`);
-
     // ✨ NEW STEP 4.2: Create a lookup map for quick access
     const mediaIdLookup = new Map<string, string>();
     for (const media of allMediaFromDb) {
@@ -425,7 +422,6 @@ export async function populateMediaUsingTmdbList(
         rank: index,
       };
     });
-    console.log(`created trending input: ${trendingInput.length}`);
     // ✨ NEW STEP 4.4: Clear the table and insert the full list
     await db.delete(tmdbTrending);
     await db.insert(tmdbTrending).values(trendingInput);

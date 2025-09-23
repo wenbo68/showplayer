@@ -76,6 +76,7 @@ export default async function Home() {
   }
 
   // carousel doesn't work well bc tmdb backdrop have different heights
+  // also theres no guarantee that trending table will have at least 1 media with src (best case scenario is that we have 10)
   return (
     <HydrateClient>
       <>

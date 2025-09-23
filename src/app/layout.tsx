@@ -61,7 +61,7 @@ export default async function RootLayout({
   );
 }
 
-// automate deployment with github actions
+// need to make home page load faster (faster initial load or give client skeleton faster and fill later)
 // add provider embeds (with ads) as well and let user choose
 
 // link to google analytics

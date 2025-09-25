@@ -172,6 +172,7 @@ export const mediaRouter = createTRPCRouter({
         page,
         pageSize,
         list,
+        needTotalPages,
       } = input;
 
       // 1. define columns in order to select them in the query
@@ -215,8 +216,8 @@ export const mediaRouter = createTRPCRouter({
 
       // 4. apply all conditions to count and data query
       const conditions = [];
-      // Always filter for available media
-      conditions.push(gte(tmdbMedia.availabilityCount, 1));
+      // // Always filter for available media
+      // conditions.push(gte(tmdbMedia.availabilityCount, 1));
       // if list exists, check if user is logged in
       if (list && list.length > 0) {
         if (!session?.user?.id) {
@@ -323,9 +324,9 @@ export const mediaRouter = createTRPCRouter({
 
       // 5. Get the Total Count from the Subquery
       // This is now very efficient. The database does all the hard work and returns one row.
-      const countResult = await ctx.db
-        .select({ count: count() })
-        .from(countSubquery.as('sq'));
+      const countResult = needTotalPages
+        ? await ctx.db.select({ count: count() }).from(countSubquery.as('sq'))
+        : [];
       const totalMediaCount = countResult[0]?.count ?? 0;
       const totalPages = Math.ceil(totalMediaCount / pageSize);
 

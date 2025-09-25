@@ -89,7 +89,11 @@ export const SearchAndFilterInputSchema = z.object({
   page: z.number().min(1).default(1),
   pageSize: z.number().min(1),
   list: z.array(z.enum(userListEnum.enumValues)).optional(),
+  needTotalPages: z.boolean().default(true),
 });
 
 // ✨ 2. Export the inferred TypeScript type
 export type SearchAndFilterInput = z.infer<typeof SearchAndFilterInputSchema>;
+
+export type SrcProviderPlusEmbed = SrcProvider | 'E!' | 'F!' | 'L!' | 'J!';
+export type PlayerType = 'hls' | 'iframe';

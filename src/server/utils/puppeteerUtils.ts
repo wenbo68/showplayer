@@ -1,5 +1,6 @@
 import type { Page } from 'puppeteer';
 import type { SrcProvider } from '../db/schema';
+import { env } from '~/env';
 
 // ====== maps
 
@@ -168,12 +169,12 @@ export async function findAndClick(
       visible: true,
       timeout:
         name === firstClickMap[provider] // takes abt 2500-3000
-          ? Number(process.env.FIRST_CLICK)
+          ? Number(env.FIRST_CLICK)
           : name === 'highest resolution' // takes abt 3500-4000
-          ? Number(process.env.LONG_CLICK)
+          ? Number(env.LONG_CLICK)
           : provider === 'vidfast' && name === 'en subtitle' // takes abt 1500
-          ? Number(process.env.MID_CLICK)
-          : Number(process.env.SHORT_CLICK), // takes abt 500-1000
+          ? Number(env.MID_CLICK)
+          : Number(env.SHORT_CLICK), // takes abt 500-1000
     });
     // 2. click the thing
     await page.click(selector);

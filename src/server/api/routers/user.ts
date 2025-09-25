@@ -1,12 +1,18 @@
 import { eq, and, count, gte, inArray, desc } from 'drizzle-orm';
 import { createTRPCRouter, protectedProcedure } from '../trpc';
-import { tmdbMedia, userMediaList, userSubmission } from '~/server/db/schema';
+import {
+  tmdbMedia,
+  userMediaList,
+  userSubmission,
+  type MediaType,
+} from '~/server/db/schema';
 import { TRPCError } from '@trpc/server';
 import { populateMediaUsingTmdbIds } from '~/server/utils/mediaUtils';
 import { fetchSrcForMediaIds } from '~/server/utils/srcUtils';
 import { updateDenormFieldsForMediaList } from '~/server/utils/cronUtils';
 import z from 'zod';
 import { subDays } from 'date-fns';
+import { fetchTmdbDetailsByTitleViaApi } from '~/server/utils/tmdbApiUtils';
 
 export const userRouter = createTRPCRouter({
   // 1. Rate Limiting: Check if the user has submitted today yet (if yes, then cannot submit again)
@@ -209,5 +215,23 @@ export const userRouter = createTRPCRouter({
       }
 
       return detailsMap;
+    }),
+
+  findTmdbByTitle: protectedProcedure
+    .input(
+      z.object({
+        title: z.string().min(1, 'Title cannot be empty.'),
+        type: z.enum(['movie', 'tv']),
+        limit: z.number().min(1).max(20).default(10),
+      })
+    )
+    .query(async ({ input }) => {
+      const { title, type, limit } = input;
+      const results = await fetchTmdbDetailsByTitleViaApi(
+        limit,
+        type as MediaType,
+        title
+      );
+      return results;
     }),
 });

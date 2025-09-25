@@ -30,7 +30,7 @@ export async function GET(request: Request) {
   });
 
   // 3. Trigger the long-running job but DO NOT await it
-  caller.cron.runCron({}).catch((error) => {
+  caller.cron.runCron({ jobType: 'userSubmissions' }).catch((error) => {
     console.error('[CRON JOB] The runCron procedure failed on the VPS:', error);
   });
 

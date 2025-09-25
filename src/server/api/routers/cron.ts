@@ -37,6 +37,7 @@ export const cronRouter = createTRPCRouter({
       z.object({
         tmdbListLimit: z.number().min(1).default(50),
         fetchLimit: z.number().min(1).default(100),
+        jobType: z.enum(['all', 'userSubmissions'] as const).default('all'),
       })
     )
     .mutation(async ({ input }) => {
@@ -44,24 +45,39 @@ export const cronRouter = createTRPCRouter({
       resetCronStopFlag();
 
       // 1. Define all your jobs in a single, easy-to-manage array.
-      const jobs = [
-        { name: '1. update changed media', fn: () => updateAllChangedMedia() },
-        { name: '2. update popularity', fn: () => updateAllPopularity() },
-        { name: '3. update ratings', fn: () => updateRatings() },
-        {
-          name: '4. process user submissions',
-          fn: () => processUserSubmissions(),
-        },
-        {
-          name: '5. fetch tmdb lists',
-          fn: () => populateMediaUsingTmdbLists(input.tmdbListLimit),
-        },
-        { name: '6. fetch src', fn: () => fetchSrc(input.fetchLimit) },
-        {
-          name: '7. update denorm fields',
-          fn: () => updateDenormFieldsForMediaList('all'),
-        },
-      ];
+      const jobs =
+        input.jobType === 'all'
+          ? [
+              {
+                name: '1. update changed media',
+                fn: () => updateAllChangedMedia(),
+              },
+              { name: '2. update popularity', fn: () => updateAllPopularity() },
+              { name: '3. update ratings', fn: () => updateRatings() },
+              // {
+              //   name: '4. process user submissions',
+              //   fn: () => processUserSubmissions(),
+              // },
+              {
+                name: '4. fetch tmdb lists',
+                fn: () => populateMediaUsingTmdbLists(input.tmdbListLimit),
+              },
+              { name: '5. fetch src', fn: () => fetchSrc(input.fetchLimit) },
+              {
+                name: '6. update denorm fields',
+                fn: () => updateDenormFieldsForMediaList('all'),
+              },
+            ]
+          : [
+              {
+                name: '1. process user submissions',
+                fn: () => processUserSubmissions(),
+              },
+              {
+                name: '2. update denorm fields',
+                fn: () => updateDenormFieldsForMediaList('all'),
+              },
+            ];
 
       // 2. Use a single loop to run the jobs.
       for (const job of jobs) {
@@ -86,6 +102,10 @@ export const cronRouter = createTRPCRouter({
 
       console.log(`======= All cron jobs done =======`);
     }),
+
+  // userSubmissionCron: protectedProcedure
+  //   .input(z.object({}))
+  //   .mutation(async () => {}),
 
   /**
    * get changed tmdb ids from changed api

@@ -14,7 +14,7 @@ import Script from 'next/script';
 
 export const metadata: Metadata = {
   title: 'Showplayer',
-  description: 'Stream movies and tv shows for free without popups',
+  description: 'Stream movies, tv shows, and animes for free without popup ads',
   metadataBase: new URL(env.AUTH_URL),
 
   // Points to your manifest file for PWA capabilities (website can be saved like apps)
@@ -80,16 +80,24 @@ export default async function RootLayout({
   );
 }
 
+// now need filter for released, not released, all ad, all no ad, partially ad
+
+// add a tmdb id lookup section in id submitter
+// in request page, add search page that filters for user added media
+
+// adless src will be fetched daily at midnight together.
+// but users requests can be handled together once every 5 minutes (they can only watch ad version tho).
+
+// can use media popup as carousel
+
 // need to make home page load faster (faster initial load or give client skeleton faster and fill later)
 // add provider embeds (with ads) as well and let user choose
+// use run time (only present in mv details) instead of updatedDate for mv
 
-// link to google analytics
 // create a discord server for showplayer
 
 // make media buttons display info according to the search filters (horizontal strips including or not including media description)
 // also should media buttons display availability, total episodes, missing episodes?
-
-// use run time (only present in mv details) instead of updatedDate for mv
 
 // if media title isn't english -> don't add to db
 // update trpc procedure to update popularity, rating, vote count when fetching new media via tmdb api

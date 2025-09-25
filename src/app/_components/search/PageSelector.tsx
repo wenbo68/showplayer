@@ -37,6 +37,7 @@ export default function PageSelector({
     const params = new URLSearchParams(searchParams.toString());
     params.set('page', String(newPage));
     router.push(`${pathname}?${params.toString()}`);
+    window.scrollTo(0, 0); // <-- Add this line
   };
 
   // --- Logic to calculate the dynamic page range ---

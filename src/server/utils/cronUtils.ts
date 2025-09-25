@@ -327,6 +327,8 @@ export async function processUserSubmissions() {
   console.log(
     `[upsertUserSubmittedIds] db submission status updated: success (${successCount}) | failure (${failureCount}).`
   );
+
+  // return populateOutput.map((media) => media.mediaId)
 }
 
 export async function populateMediaUsingTmdbLists(limit: number) {

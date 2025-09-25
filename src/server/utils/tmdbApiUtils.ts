@@ -1,6 +1,6 @@
 import { and, eq, or, sql } from 'drizzle-orm';
 import { env } from '~/env';
-import { tmdbMedia, tmdbSeason } from '../db/schema';
+import { tmdbMedia, tmdbSeason, type MediaType } from '../db/schema';
 import { db } from '../db';
 import { isLatinBased } from './utils';
 import type { FetchedMediaItem } from '~/type';
@@ -227,7 +227,7 @@ export async function findNewMediaFromFetched(
 //       {
 //         headers: {
 //           accept: 'application/json',
-//           Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
+//           Authorization: `Bearer ${env.TMDB_API_KEY}`,
 //         },
 //       }
 //     );
@@ -276,7 +276,7 @@ export async function fetchTmdbListViaApi(
       {
         headers: {
           accept: 'application/json',
-          Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
+          Authorization: `Bearer ${env.TMDB_API_KEY}`,
         },
       }
     );
@@ -322,7 +322,7 @@ export async function fetchTmdbDetailViaApi(type: string, id: number) {
     {
       headers: {
         accept: 'application/json',
-        Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
+        Authorization: `Bearer ${env.TMDB_API_KEY}`,
       },
     }
   );
@@ -336,7 +336,7 @@ export async function fetchTmdbOriginsViaApi() {
     {
       headers: {
         accept: 'application/json',
-        Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
+        Authorization: `Bearer ${env.TMDB_API_KEY}`,
       },
     }
   );
@@ -350,7 +350,7 @@ export async function fetchTmdbMvGenresViaApi() {
     {
       headers: {
         accept: 'application/json',
-        Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
+        Authorization: `Bearer ${env.TMDB_API_KEY}`,
       },
     }
   );
@@ -364,7 +364,7 @@ export async function fetchTmdbTvGenresViaApi() {
     {
       headers: {
         accept: 'application/json',
-        Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
+        Authorization: `Bearer ${env.TMDB_API_KEY}`,
       },
     }
   );
@@ -381,10 +381,78 @@ export async function fetchTmdbSeasonDetailViaApi(
     {
       headers: {
         accept: 'application/json',
-        Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
+        Authorization: `Bearer ${env.TMDB_API_KEY}`,
       },
     }
   );
   const data = await resp.json();
   return data;
+}
+
+export async function fetchTmdbDetailsByTitleViaApi(
+  limit: number,
+  type: MediaType,
+  title: string
+): Promise<{ title: string; originalTitle: string; tmdbId: number }[]> {
+  const collected: { title: string; originalTitle: string; tmdbId: number }[] =
+    [];
+  let page = 1;
+  let totalPages = 1; // Initialize totalPages to 1 to start the loop
+
+  // Loop until we have enough results or run out of pages
+  while (collected.length < limit && page <= totalPages) {
+    // URL-encode the title to handle spaces and special characters
+    const encodedTitle = encodeURIComponent(title);
+    const url = `https://api.themoviedb.org/3/search/${type}?query=${encodedTitle}&include_adult=false&language=en-US&page=${page}`;
+
+    try {
+      const resp = await fetch(url, {
+        headers: {
+          accept: 'application/json',
+          Authorization: `Bearer ${env.TMDB_API_KEY}`,
+        },
+      });
+
+      if (!resp.ok) {
+        console.error(`API request failed with status ${resp.status}`);
+        break; // Exit loop on API error
+      }
+
+      const data = await resp.json();
+      const results = data.results;
+      totalPages = data.total_pages; // Update total pages from the first API response
+
+      // If there are no results, break the loop
+      if (!results || results.length === 0) {
+        break;
+      }
+
+      // Process the results from the current page
+      for (const item of results) {
+        // Map the correct fields based on the media type
+        const resultTitle = type === 'movie' ? item.title : item.name;
+        const resultOriginalTitle =
+          type === 'movie' ? item.original_title : item.original_name;
+
+        collected.push({
+          title: resultTitle,
+          originalTitle: resultOriginalTitle,
+          tmdbId: item.id,
+        });
+
+        // If we have reached the desired limit, stop collecting
+        if (collected.length >= limit) {
+          break;
+        }
+      }
+    } catch (error) {
+      console.error('An error occurred while fetching from TMDB:', error);
+      break; // Exit loop on network or other errors
+    }
+
+    page++; // Move to the next page for the next iteration
+  }
+
+  // Return the collected results, ensuring the array is not longer than the limit
+  return collected.slice(0, limit);
 }

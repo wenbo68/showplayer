@@ -9,13 +9,13 @@ export default async function SearchSection() {
   const filterOptions = await api.media.getFilterOptions();
   return (
     <div className="flex flex-col gap-8">
-      <Suspense fallback={<SearchBarFallback />}>
-        <SearchBar showOrder={true} filterOptions={filterOptions} />
-      </Suspense>
+      {/* <Suspense fallback={<SearchBarFallback />}> */}
+      <SearchBar showOrder={true} filterOptions={filterOptions} />
+      {/* </Suspense> */}
 
-      <Suspense fallback={<ActiveLabelsFallback />}>
-        <ActiveLabels filterOptions={filterOptions} />
-      </Suspense>
+      {/* <Suspense fallback={<ActiveLabelsFallback />}> */}
+      <ActiveLabels filterOptions={filterOptions} />
+      {/* </Suspense> */}
     </div>
   );
 }

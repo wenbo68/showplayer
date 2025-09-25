@@ -52,6 +52,18 @@ export function MediaPopup({
       })
     : '';
 
+  let buttonText: string = '';
+  if (!isReleased) buttonText = 'Not Released';
+  else if (media.type === 'movie') {
+    if (media.availabilityCount <= 0) buttonText = 'Watch Now';
+    else buttonText = 'Watch without Ads';
+  } else {
+    if (media.availabilityCount <= 0)
+      buttonText = `${media.airedEpisodeCount} Episodes`;
+    else
+      buttonText = `${media.airedEpisodeCount} Episodes: ${media.availabilityCount} without Ads`;
+  }
+
   const fullBackdropUrl = media.backdropUrl
     ? `https://image.tmdb.org/t/p/w780${media.backdropUrl}`
     : `https://image.tmdb.org/t/p/w780${media.imageUrl}`;
@@ -171,18 +183,12 @@ export function MediaPopup({
                   onClose();
                 }}
                 className={`${
-                  !isReleased || media.availabilityCount <= 0
+                  !isReleased
                     ? `bg-gray-700 hover:bg-gray-600`
                     : `bg-blue-600 hover:bg-blue-500 text-gray-300`
                 } flex-grow flex items-center justify-center font-semibold rounded-lg`}
               >
-                {!isReleased
-                  ? `Not Released`
-                  : media.availabilityCount <= 0
-                  ? `Not Available`
-                  : media.type === 'movie'
-                  ? `Watch Now`
-                  : `${media.availabilityCount}/${media.airedEpisodeCount} Episodes`}
+                {buttonText}
               </Link>
             </div>
           </div>

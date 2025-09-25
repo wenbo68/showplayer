@@ -17,6 +17,7 @@ import {
   getTime,
   providerEnumMap,
 } from './puppeteerUtils'; // Assuming your helper functions and maps are in a utils file
+import { env } from '~/env';
 
 /**
  * This is the main task logic, extracted from your old API endpoint.
@@ -118,13 +119,13 @@ const puppeteerTask = async ({ page, data }: { page: any; data: any }) => {
 
     await timeoutPromise(
       provider === 'vidjoy'
-        ? Number(process.env.M3U8_WAIT_JOY)
+        ? Number(env.M3U8_WAIT_JOY)
         : provider === 'videasy'
-        ? Number(process.env.M3U8_WAIT_EASY)
+        ? Number(env.M3U8_WAIT_EASY)
         : provider === 'vidlink'
-        ? Number(process.env.M3U8_WAIT_LINK)
+        ? Number(env.M3U8_WAIT_LINK)
         : provider === 'vidfast'
-        ? Number(process.env.M3U8_WAIT_FAST)
+        ? Number(env.M3U8_WAIT_FAST)
         : 1000
     );
 
@@ -161,7 +162,7 @@ export function getCluster() {
       maxConcurrency: 3,
       puppeteer,
       puppeteerOptions: {
-        headless: process.env.HEADLESS === 'true',
+        headless: env.HEADLESS === 'true',
         executablePath: '/usr/bin/chromium',
         args: [
           '--no-sandbox',

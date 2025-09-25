@@ -10,7 +10,7 @@ import MediaListFallback from '../media/MediaListFallback';
 import { SearchAndFilterInputSchema } from '~/type';
 // import { SearchAndFilterInputSchema } from '~/server/api/routers/media';
 
-export default function MediaResults({}) {
+export default function SearchResults({}) {
   // 1. Get input from url
   const searchParams = useSearchParams();
   const title = searchParams.get('title') ?? undefined;
@@ -82,7 +82,7 @@ export default function MediaResults({}) {
   if (!parsedInput.success) {
     // You can optionally render an error state if the filters are somehow invalid
     console.error('Zod validation failed:', parsedInput.error);
-    return <div>Invalid filter options.</div>;
+    return <div>Invalid search options.</div>;
   }
 
   // 5. Show a skeleton while fetching new data
@@ -96,7 +96,7 @@ export default function MediaResults({}) {
     const uniquePageMediaIds = [...new Set(pageMediaIds)];
 
     return (
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6 sm:gap-7 md:gap-8 lg:gap-9 xl:gap-10">
         <MediaList
           viewMode="full"
           mediaList={data.pageMedia}
@@ -109,8 +109,12 @@ export default function MediaResults({}) {
   }
 
   return (
-    <div className="text-center py-10">
+    <div className="flex flex-col gap-5 items-center justify-center py-8 sm:py-9 md:py-10 lg:py-11 xl:py-12">
       <p>No results found.</p>
+      <p>
+        Did you know you can add new movies/shows to Showplayer? Just login and
+        click your profile!
+      </p>
     </div>
   );
 }

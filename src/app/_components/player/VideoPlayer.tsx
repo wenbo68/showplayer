@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import type { Episode, Media } from '~/type';
+import type { Episode, Media, PlayerType } from '~/type';
 
 interface Subtitle {
   lang: string;
@@ -10,19 +10,18 @@ interface Subtitle {
   content: string;
   default: boolean;
 }
-
-interface VideoPlayerProps {
-  movie?: Media;
-  episode?: Episode;
-  src?: string;
-  subtitles?: Subtitle[];
-}
-
 interface TrackData {
   src: string;
   label: string;
   srcLang: string;
   default: boolean;
+}
+interface VideoPlayerProps {
+  movie?: Media;
+  episode?: Episode;
+  src: string;
+  subtitles?: Subtitle[];
+  playerType: PlayerType;
 }
 
 export function VideoPlayer({
@@ -30,23 +29,25 @@ export function VideoPlayer({
   episode,
   src,
   subtitles,
+  playerType,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [tracks, setTracks] = useState<TrackData[]>([]);
 
+  // only running these 2 useEffects if we are proxying
   // setup hls.js
   useEffect(() => {
-    if (Hls.isSupported() && videoRef.current && src) {
+    if (playerType === 'hls' && Hls.isSupported() && videoRef.current && src) {
       const hls = new Hls();
       hls.loadSource(src);
       hls.attachMedia(videoRef.current);
     }
-  }, [src]);
+  }, [playerType, src]);
 
   // Effect for creating and cleaning up subtitle Blob URLs
   useEffect(() => {
     // If there are no subtitles, do nothing.
-    if (!subtitles || subtitles.length === 0) {
+    if (playerType !== 'hls' || !subtitles || subtitles.length === 0) {
       setTracks([]); // Clear any existing tracks
       return;
     }
@@ -70,7 +71,7 @@ export function VideoPlayer({
         URL.revokeObjectURL(track.src);
       }
     };
-  }, [subtitles]); // Rerun this effect if the subtitles prop changes
+  }, [playerType, subtitles]); // Rerun this effect if the subtitles prop changes
 
   const isReleased = movie
     ? movie.releaseDate
@@ -80,11 +81,26 @@ export function VideoPlayer({
     ? new Date(episode?.airDate) <= new Date()
     : false;
 
-  if (!src) {
+  if (!isReleased) {
     return (
       <div className="aspect-video flex items-center justify-center">
-        {isReleased ? `Not Yet Available.` : `Not Yet Released.`}
+        Not Yet Released.
       </div>
+    );
+  }
+
+  // --- NEW: Conditional rendering for iframe player ---
+  if (playerType === 'iframe') {
+    return (
+      <iframe
+        src={src}
+        // title={movie?.title ?? episode?.name ?? 'Video Player'}
+        className="w-full aspect-video rounded bg-black"
+        allow="autoplay; encrypted-media; picture-in-picture"
+        allowFullScreen
+        // sandbox attribute adds a layer of security
+        // sandbox="allow-forms allow-pointer-lock allow-same-origin allow-scripts allow-top-navigation"
+      ></iframe>
     );
   }
 

@@ -8,10 +8,10 @@ import { IoIosArrowDown } from 'react-icons/io';
 import { useSessionStorageState } from '~/app/_hooks/sessionStorageHooks';
 import { useFilterContext } from '~/app/_contexts/SearchContext';
 import { orderOptions } from '~/constant';
-import { MdKeyboardReturn } from 'react-icons/md';
-import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { useDebouncedCallback } from 'use-debounce';
+// import { MdKeyboardReturn } from 'react-icons/md';
+// import { useEffect, useRef, useState } from 'react';
+// import { useSearchParams } from 'next/navigation';
+// import { useDebouncedCallback } from 'use-debounce';
 
 export default function SearchBar({
   showOrder,
@@ -20,7 +20,7 @@ export default function SearchBar({
   showOrder: boolean;
   filterOptions: FilterOptionsFromDb;
 }) {
-  const searchParams = useSearchParams();
+  // const searchParams = useSearchParams();
 
   const [isFilterVisible, setIsFilterVisible] = useSessionStorageState(
     'isFilterVisible',
@@ -151,7 +151,7 @@ export default function SearchBar({
   return (
     <form
       onSubmit={handleSubmit}
-      className="text-sm w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2"
+      className="text-sm w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4 lg:gap-5 xl:gap-6"
     >
       <div className="w-full flex flex-col gap-2 col-span-2 sm:col-span-1">
         <span className="w-full font-semibold">Title</span>

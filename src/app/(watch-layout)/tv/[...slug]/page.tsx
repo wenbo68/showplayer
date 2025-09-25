@@ -6,20 +6,22 @@ import {
   tmdbSeason,
   tmdbEpisode,
   tmdbSource,
-  type SrcProvider,
+  // type SrcProvider,
 } from '~/server/db/schema';
 import { eq, asc } from 'drizzle-orm';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { VideoPlayer } from '~/app/_components/player/VideoPlayer';
 // import { TvSelector } from '~/app/_components/player/TvSelector';
-import { getProxiedSrcUrl } from '~/server/utils/proxyUtils';
+// import { getProxiedSrcUrl } from '~/server/utils/proxyUtils';
 import {
-  aggregateSubtitles,
-  getSelectedSourceAndHandleRedirects,
+  // aggregateSubtitles,
+  // getSelectedSourceAndHandleRedirects,
+  handleProvider,
 } from '~/server/utils/playerUtils';
 import { OverviewSelector } from '~/app/_components/player/OverviewSelector';
-import { MediaUrlSelector } from '~/app/_components/player/MediaUrlSelector';
+import { MediaSelector } from '~/app/_components/player/MediaSelector';
 import { BackButton } from '~/app/_components/player/BackButton';
+import type { SourceWithSubtitles } from '~/type';
 
 interface PageProps {
   params: Promise<{ slug: string[] }>;
@@ -37,17 +39,6 @@ export default async function Page({ params }: PageProps) {
   const tmdbId = parseInt(tmdbIdParam, 10);
   const seasonNumber = parseInt(seasonNumberParam, 10);
   const episodeNumber = parseInt(episodeNumberParam, 10);
-  const provider: SrcProvider | undefined =
-    providerParam === 'E'
-      ? providerParam
-      : providerParam === 'F'
-      ? providerParam
-      : providerParam === 'L'
-      ? providerParam
-      : providerParam === 'J'
-      ? providerParam
-      : undefined;
-
   // --- 1. RUN TWO TARGETED QUERIES IN PARALLEL ---
   const [playerData, sidebarData] = await Promise.all([
     // Query 1: Gets only the data needed for the player and overview
@@ -92,29 +83,26 @@ export default async function Page({ params }: PageProps) {
       },
     }),
   ]);
-
+  // If db doesn't have the show/season/episode, render a 404 page
   const mediaData = playerData;
   if (!mediaData || !sidebarData) notFound();
-
   const selectedSeason = mediaData.seasons[0];
   if (!selectedSeason) notFound();
-
   const selectedEpisode = selectedSeason.episodes[0];
   if (!selectedEpisode) notFound();
+  // extract all src and sub of chosen episode
+  const allProxiableSourcesAndSubtitles: SourceWithSubtitles[] =
+    selectedEpisode.sources;
 
-  const sourcesAndSubtitles = selectedEpisode.sources;
-
-  // 2. Replace the manual redirect logic with a single call to the helper
-  const baseRedirectUrl = `/tv/${tmdbId}/${seasonNumber}/${episodeNumber}`;
-  const selectedSrc = getSelectedSourceAndHandleRedirects(
-    baseRedirectUrl,
-    sourcesAndSubtitles,
-    provider
-  );
-
-  // 3. Replace the manual subtitle aggregation with a single call to the helper
-  const proxiedSrcUrl = getProxiedSrcUrl(selectedSrc ?? undefined);
-  const subtitles = aggregateSubtitles(sourcesAndSubtitles, selectedSrc?.id);
+  const { provider, videoUrl, subtitles, proxiableUrlAndSubtitles } =
+    handleProvider(
+      'tv',
+      allProxiableSourcesAndSubtitles,
+      tmdbId,
+      providerParam,
+      seasonNumber,
+      episodeNumber
+    );
 
   return (
     <>
@@ -129,15 +117,16 @@ export default async function Page({ params }: PageProps) {
         selectedEpisode={selectedEpisode}
       />
       <VideoPlayer
-        src={proxiedSrcUrl}
+        src={videoUrl}
         episode={selectedEpisode}
         subtitles={subtitles}
+        playerType={proxiableUrlAndSubtitles === null ? 'iframe' : 'hls'}
       />
 
       {/* Pass the full tree data to the sidebar */}
-      <MediaUrlSelector
-        sources={sourcesAndSubtitles}
-        selectedProvider={provider ?? sourcesAndSubtitles[0]?.provider}
+      <MediaSelector
+        sources={allProxiableSourcesAndSubtitles}
+        selectedProvider={provider ?? 'E!'}
         tmdbId={tmdbId}
         mediaData={sidebarData}
         selectedSeasonId={selectedSeason.id}

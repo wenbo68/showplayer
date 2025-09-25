@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { FaHeart } from 'react-icons/fa6';
 import { RiLogoutBoxRLine } from 'react-icons/ri';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { MdAddBox } from 'react-icons/md';
 
 export function AuthShowcase() {
   const { data: session, status: sessionStatus } = useSession();
@@ -88,6 +89,16 @@ export function AuthShowcase() {
               <FaHeart size={12} />
             </div>
             My List
+          </Link>
+          <Link
+            href="/request"
+            className="flex items-center gap-2 rounded w-full p-2 text-left text-sm hover:bg-gray-900 hover:text-blue-400"
+            onClick={() => setDropdownOpen(false)} // Close dropdown on navigation
+          >
+            <div className="flex items-center justify-center h-4 w-4">
+              <MdAddBox size={14} />
+            </div>
+            Add Media
           </Link>
           <button
             onClick={() => {

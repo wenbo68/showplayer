@@ -1,9 +1,9 @@
 import { api, HydrateClient } from '~/trpc/server';
 import MediaList from '../_components/media/MediaList';
 import { auth } from '~/server/auth';
-import IdSubmitter from '../_components/submit/IdSubmitter';
-import SubmissionHistory from '../_components/submit/SubmissionHistory';
-import TrendingCarousel from '../_components/media/TrendingCarousel';
+import IdSubmitter from '../_components/request/IdSubmitter';
+import SubmissionHistory from '../_components/request/SubmissionHistory';
+// import TrendingCarousel from '../_components/media/TrendingCarousel';
 // import SearchSection from '../_components/search/SearchSection';
 
 export default async function Home() {
@@ -20,6 +20,7 @@ export default async function Home() {
         order: 'popularity-desc',
         page: 1,
         pageSize: 6,
+        needTotalPages: false,
       }),
       api.media.searchAndFilter({
         format: ['tv'],
@@ -28,6 +29,7 @@ export default async function Home() {
         order: 'popularity-desc',
         page: 1,
         pageSize: 6,
+        needTotalPages: false,
       }),
       api.media.searchAndFilter({
         format: ['movie'],
@@ -36,6 +38,7 @@ export default async function Home() {
         order: 'vote-avg-desc',
         page: 1,
         pageSize: 6,
+        needTotalPages: false,
       }),
       api.media.searchAndFilter({
         format: ['tv'],
@@ -44,6 +47,7 @@ export default async function Home() {
         order: 'vote-avg-desc',
         page: 1,
         pageSize: 6,
+        needTotalPages: false,
       }),
       // api.media.getFilterOptions(),
     ]);
@@ -72,7 +76,6 @@ export default async function Home() {
     api.user.getUserDetailsForMediaList.prefetch({
       mediaIds: uniquePageMediaIds,
     });
-    api.user.getUserSubmissions.prefetch();
   }
 
   // carousel doesn't work well bc tmdb backdrop have different heights
@@ -120,8 +123,8 @@ export default async function Home() {
 
           <div className="w-full flex flex-col gap-10"> */}
         {/* <UtcTime /> */}
-        <IdSubmitter />
-        <SubmissionHistory />
+        {/* <IdSubmitter />
+        <SubmissionHistory /> */}
         {/* </div> */}
         {/* </div> */}
         {/* </div> */}

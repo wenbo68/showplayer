@@ -1,7 +1,7 @@
 // ~/app/search/page.tsx
 
 import { Suspense } from 'react';
-import MediaResults from '../../_components/search/SearchResult';
+import SearchResults from '../../_components/search/SearchResult';
 import MediaListFallback from '../../_components/media/MediaListFallback';
 import { api } from '~/trpc/server';
 
@@ -25,7 +25,7 @@ export default async function SearchPage({}) {
       </Suspense> */}
 
       <Suspense fallback={<MediaListFallback />}>
-        <MediaResults />
+        <SearchResults />
       </Suspense>
       {/* </div> */}
     </>

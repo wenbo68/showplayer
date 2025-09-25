@@ -4,7 +4,13 @@
 
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Season, Episode, Media, Source } from '~/type';
+import type {
+  Season,
+  Episode,
+  Media,
+  Source,
+  SrcProviderPlusEmbed,
+} from '~/type';
 import { NavButton } from '../NavButton';
 import { useSessionStorageState } from '~/app/_hooks/sessionStorageHooks';
 import { useAutoScroll } from '~/app/_hooks/autoscrollHooks';
@@ -15,7 +21,7 @@ import type { SrcProvider } from '~/server/db/schema';
 // TV-specific props are now optional
 interface MediaUrlSelectorProps {
   sources: Source[];
-  selectedProvider?: SrcProvider;
+  selectedProvider: SrcProviderPlusEmbed;
   tmdbId?: number;
   mediaData?: Media & {
     seasons: (Season & {
@@ -28,7 +34,7 @@ interface MediaUrlSelectorProps {
   selectedEpisodeId?: string;
 }
 
-export function MediaUrlSelector({
+export function MediaSelector({
   sources,
   selectedProvider,
   tmdbId,
@@ -67,6 +73,8 @@ export function MediaUrlSelector({
   useAutoScroll(seasonsContainerRef, selectedSeasonId);
   useAutoScroll(episodesContainerRef, episodeIdParam);
 
+  const embedSelectors = ['E!', 'F!', 'J!', 'L!'];
+
   return (
     <div className="flex flex-col gap-4 text-sm font-semibold">
       {/* --- 3. MERGE JSX FROM SourceSelector --- */}
@@ -74,11 +82,9 @@ export function MediaUrlSelector({
       <div className="flex flex-col gap-2">
         <div className="flex gap-2 items-baseline">
           <span className="text-base font-semibold">Provider</span>
-          <span className="text-xs">
-            Please try a different provider if video doesn't play.
-          </span>
+          <span className="text-xs">Options with popups are marked with !</span>
         </div>
-        <div className="flex gap-1 overflow-x-auto scrollbar-hide">
+        <div className="flex gap-1 flex-wrap">
           {sources.map((source) => (
             <NavButton
               key={source.id}
@@ -86,6 +92,15 @@ export function MediaUrlSelector({
               isActive={source.provider === selectedProvider}
             >
               {source.provider}
+            </NavButton>
+          ))}
+          {embedSelectors.map((selector) => (
+            <NavButton
+              key={selector}
+              href={`${basePath}/${selector}`}
+              isActive={selector === selectedProvider}
+            >
+              {selector}
             </NavButton>
           ))}
         </div>
@@ -123,10 +138,12 @@ export function MediaUrlSelector({
                 key={episode.id}
                 href={`/tv/${tmdbId}/${selectedSeason.seasonNumber}/${episode.episodeNumber}`}
                 isActive={episode.id === episodeIdParam}
-                isDisabled={episode.sources.length === 0}
-                className={episode.sources.length === 0 ? 'line-through' : ''}
+                // isDisabled={episode.sources.length === 0}
+                // className={episode.sources.length === 0 ? 'line-through' : ''}
               >
-                {episode.episodeNumber}
+                {`${episode.episodeNumber}${
+                  episode.sources.length === 0 ? `!` : ``
+                }`}
               </NavButton>
             ))}
           </SelectorPanel>

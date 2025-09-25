@@ -27,8 +27,8 @@ export function withCors(
 // two ways to create url with params:
 // 1. encode params and append them to to url as strings (encode the urls so that they can be included in another url otherwise the special characters in the embeded urls can cause confusions)
 // 2. use URL obj and attach params (without encoding) as key/value
-export function getProxiedSrcUrl(selectedSrc?: SourceWithSubtitles) {
-  if (!selectedSrc) return undefined;
+export function getProxiedSrcUrl(selectedSrc: SourceWithSubtitles) {
+  // if (!selectedSrc) return undefined;
   const urlObject = new URL(`${env.BUNNY_URL}/api/proxy`);
   urlObject.searchParams.set('url', selectedSrc.url);
 

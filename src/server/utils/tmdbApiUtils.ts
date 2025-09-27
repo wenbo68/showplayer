@@ -389,13 +389,19 @@ export async function fetchTmdbSeasonDetailViaApi(
   return data;
 }
 
+export type FindTmdbIdByTitleResult = {
+  title: string;
+  overview: string;
+  releaseDate: Date | undefined;
+  tmdbId: number;
+};
+
 export async function fetchTmdbDetailsByTitleViaApi(
   limit: number,
   type: MediaType,
   title: string
-): Promise<{ title: string; originalTitle: string; tmdbId: number }[]> {
-  const collected: { title: string; originalTitle: string; tmdbId: number }[] =
-    [];
+): Promise<FindTmdbIdByTitleResult[]> {
+  const collected: FindTmdbIdByTitleResult[] = [];
   let page = 1;
   let totalPages = 1; // Initialize totalPages to 1 to start the loop
 
@@ -431,12 +437,13 @@ export async function fetchTmdbDetailsByTitleViaApi(
       for (const item of results) {
         // Map the correct fields based on the media type
         const resultTitle = type === 'movie' ? item.title : item.name;
-        const resultOriginalTitle =
-          type === 'movie' ? item.original_title : item.original_name;
 
         collected.push({
           title: resultTitle,
-          originalTitle: resultOriginalTitle,
+          overview: item.overview,
+          releaseDate: item.release_date
+            ? new Date(item.release_date)
+            : undefined,
           tmdbId: item.id,
         });
 

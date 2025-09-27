@@ -3,5 +3,5 @@ export default async function SearchLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <section className="py-2 flex flex-col gap-4">{children}</section>;
+  return <section className="flex flex-col gap-4">{children}</section>;
 }

@@ -69,7 +69,7 @@ export default async function RootLayout({
         <Suspense fallback={null}>
           <ContextProviders>
             <TopNav />
-            <main className="max-w-7xl mx-auto w-full flex-grow p-2">
+            <main className="max-w-7xl mx-auto w-full flex-grow p-2 py-4">
               {children}
             </main>
           </ContextProviders>
@@ -82,8 +82,9 @@ export default async function RootLayout({
 
 // now need filter for released, not released, all ad, all no ad, partially ad
 
-// add a tmdb id lookup section in id submitter
 // in request page, add search page that filters for user added media
+
+// add puppeteer invisible to fetch vidfast
 
 // adless src will be fetched daily at midnight together.
 // but users requests can be handled together once every 5 minutes (they can only watch ad version tho).

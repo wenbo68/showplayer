@@ -109,7 +109,9 @@ export function MediaPopup({
             {/* <Backdrop backdropUrl={media.backdropUrl} /> */}
             <div className="flex flex-col gap-4">
               {/* Title */}
-              <h2 className="text-3xl font-bold">{media.title}</h2>
+              <h2 className="text-3xl font-bold text-gray-300">
+                {media.title}
+              </h2>
               {/* Tags */}
               <div className="flex flex-col gap-2 text-xs font-medium">
                 <div className="flex flex-wrap items-center gap-2">

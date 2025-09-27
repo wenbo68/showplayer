@@ -17,7 +17,7 @@ import {
   resetCronStopFlag,
 } from '~/server/utils/cronControllerUtils';
 
-// cron job order: updateChangedMedia -> updatePopularity -> updateRatings -> processSubmission -> fetchTmdbLists -> fetchSrc -> updateDenormFields
+// cron job order: updateChangedMedia -> updatePopularity -> updateRatings -> fetchTmdbLists -> fetchSrc -> updateDenormFields
 export const cronRouter = createTRPCRouter({
   stopCron: protectedProcedure.input(z.object({})).mutation(() => {
     requestCronStop();

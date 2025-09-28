@@ -95,7 +95,7 @@ export default function Filter(props: FilterProps) {
 
   const handleSelectOption = (option: FilterOption) => {
     if (mode === 'single') {
-      onChange(option.trpcInput);
+      onChange(option.urlInput);
       // setIsDropdownOpen(false);
       setWrittenText('');
       setTimeout(() => {
@@ -108,12 +108,12 @@ export default function Filter(props: FilterProps) {
       onChange((prevValue) => {
         const currentSelectionSet = new Set(prevValue);
 
-        if (currentSelectionSet.has(option.trpcInput)) {
+        if (currentSelectionSet.has(option.urlInput)) {
           // If the item exists, delete it
-          currentSelectionSet.delete(option.trpcInput);
+          currentSelectionSet.delete(option.urlInput);
         } else {
           // If it doesn't exist, add it
-          currentSelectionSet.add(option.trpcInput);
+          currentSelectionSet.add(option.urlInput);
         }
 
         // Convert the Set back to an array to store in state
@@ -177,10 +177,10 @@ export default function Filter(props: FilterProps) {
                     </div>
                     {group.options.map((option) => (
                       <button
-                        key={option.trpcInput}
+                        key={option.urlInput}
                         onClick={() => handleSelectOption(option)}
                         className={`w-full text-start p-2 rounded cursor-pointer hover:text-blue-400 hover:bg-gray-900 pl-5 ${
-                          String(value) === String(option.trpcInput)
+                          String(value) === String(option.urlInput)
                             ? 'text-blue-400'
                             : ''
                         }`}
@@ -193,14 +193,14 @@ export default function Filter(props: FilterProps) {
               : // Fallback for original flat options
                 (filteredOptions as FilterOption[]).map((option) => (
                   <button
-                    key={option.trpcInput}
+                    key={option.urlInput}
                     onClick={() => handleSelectOption(option)}
                     className={`w-full text-start p-2 rounded cursor-pointer hover:text-blue-400 hover:bg-gray-900
                     ${
                       // Use .some() to check for inclusion with string comparison
                       mode === 'multi' &&
                       value.some(
-                        (item) => String(item) === String(option.trpcInput)
+                        (item) => String(item) === String(option.urlInput)
                       )
                         ? 'text-blue-400'
                         : ''
@@ -208,7 +208,7 @@ export default function Filter(props: FilterProps) {
                     ${
                       // Compare as strings
                       mode === 'single' &&
-                      String(value) === String(option.trpcInput)
+                      String(value) === String(option.urlInput)
                         ? 'text-blue-400'
                         : ''
                     }`}

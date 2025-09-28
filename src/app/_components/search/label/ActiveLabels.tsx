@@ -2,8 +2,8 @@
 
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
-import type { FilterGroupOption, FilterOptionsFromDb } from '~/type';
+import { useMemo } from 'react';
+import type { FilterOptionsFromDb } from '~/type';
 import { ClickableLabel, UnclickableLabel, LabelContainer } from './Label';
 import { orderOptions } from '~/constant';
 import { useFilterContext } from '~/app/_contexts/SearchContext';
@@ -20,6 +20,7 @@ type ActiveLabel = {
     | 'updated'
     | 'avg'
     | 'count'
+    | 'avail'
     | 'list';
   onRemove?: () => void;
   className?: string;
@@ -47,11 +48,13 @@ export default function ActiveLabels({
     setAvg,
     count,
     setCount,
+    avail,
+    setAvail,
     order,
     // Note: We don't need setOrder here, as the order label isn't removable.
     handleSearch,
-    genreOperator,
-    setGenreOperator,
+    genreOp,
+    setGenreOp,
     list,
     setList,
   } = useFilterContext();
@@ -106,15 +109,15 @@ export default function ActiveLabels({
       }
     });
 
-    // Genre Operator
-    if (genreOperator) {
+    // Genre Operator (cannot be removed once it appears)
+    if (genreOp) {
       activeLabels.push({
-        key: `genre-operator-${genreOperator}`,
-        label: `Genre: ${genreOperator}`,
+        key: `genre-op-${genreOp}`,
+        label: `Genre Op: ${genreOp}`,
         type: 'genre',
         // onRemove: () => {
-        //   setGenreOperator('');
-        //   handleSearch({ genreOperator: '' });
+        //   setGenreOp('');
+        //   handleSearch({ genreOp: '' });
         // },
       });
     }
@@ -192,6 +195,19 @@ export default function ActiveLabels({
       });
     }
 
+    // Availability
+    if (avail) {
+      activeLabels.push({
+        key: `avail-${avail}`,
+        label: `Available: ${avail === 'no' ? 'No' : `> ${avail}% Ad-Free`}`,
+        type: 'avail',
+        onRemove: () => {
+          setAvail('');
+          handleSearch({ avail: '' });
+        },
+      });
+    }
+
     // User List
     list.forEach((listType) => {
       activeLabels.push({
@@ -211,9 +227,7 @@ export default function ActiveLabels({
     let orderLabel: string | null = null;
     if (order) {
       for (const group of orderOptions) {
-        const foundOption = group.options.find(
-          (opt) => opt.trpcInput === order
-        );
+        const foundOption = group.options.find((opt) => opt.urlInput === order);
         if (foundOption) {
           orderLabel = `${group.groupLabel}: ${foundOption.label}`;
           break;
@@ -225,23 +239,29 @@ export default function ActiveLabels({
   }, [
     title,
     format,
+    genreOp,
     genre,
     origin,
     released,
     updated,
     avg,
     count,
+    avail,
+    list,
     order,
     filterOptions,
     handleSearch,
-    setAvg,
-    setCount,
+    setTitle,
     setFormat,
+    setGenreOp,
     setGenre,
     setOrigin,
     setReleased,
-    setTitle,
     setUpdated,
+    setAvg,
+    setCount,
+    setAvail,
+    setList,
   ]);
 
   return (

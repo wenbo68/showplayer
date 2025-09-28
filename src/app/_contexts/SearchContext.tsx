@@ -22,12 +22,12 @@ type FilterContextType = {
   setFormat: Dispatch<SetStateAction<string[]>>;
   genre: string[];
   setGenre: Dispatch<SetStateAction<string[]>>;
-  genreOperator: string;
-  setGenreOperator: Dispatch<SetStateAction<string>>;
+  genreOp: string;
+  setGenreOp: Dispatch<SetStateAction<string>>;
   origin: string[];
   setOrigin: Dispatch<SetStateAction<string[]>>;
-  // originOperator: string;
-  // setOriginOperator: Dispatch<SetStateAction<string>>;
+  // originOp: string;
+  // setOriginOp: Dispatch<SetStateAction<string>>;
   released: string[];
   setReleased: Dispatch<SetStateAction<string[]>>;
   updated: string[];
@@ -36,6 +36,10 @@ type FilterContextType = {
   setAvg: Dispatch<SetStateAction<string>>;
   count: string;
   setCount: Dispatch<SetStateAction<string>>;
+  avail: string;
+  setAvail: Dispatch<SetStateAction<string>>;
+  list: string[];
+  setList: Dispatch<SetStateAction<string[]>>;
   order: string;
   setOrder: Dispatch<SetStateAction<string>>;
   handleSearch: (
@@ -43,18 +47,17 @@ type FilterContextType = {
       title: string;
       format: string[];
       genre: string[];
-      genreOperator: string;
+      genreOp: string;
       origin: string[];
       released: string[];
       updated: string[];
       avg: string;
       count: string;
-      order: string;
+      avail: string;
       list: string[];
+      order: string;
     }>
   ) => void;
-  list: string[];
-  setList: Dispatch<SetStateAction<string[]>>;
 };
 
 const FilterContext = createContext<FilterContextType | undefined>(undefined);
@@ -77,19 +80,20 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   const [updated, setUpdated] = useState(() => searchParams.getAll('updated'));
   const [avg, setAvg] = useState(searchParams.get('avg') ?? '');
   const [count, setCount] = useState(searchParams.get('count') ?? '');
+  const [avail, setAvail] = useState(searchParams.get('avail') ?? '');
+  const [list, setList] = useState(searchParams.getAll('list') ?? '');
   const [order, setOrder] = useSessionStorageState(
     'order',
     searchParams.get('order') ?? ''
   );
-  const [genreOperator, setGenreOperator] = useSessionStorageState(
-    'genre-operator',
-    searchParams.get('genre-operator') ?? ''
+  const [genreOp, setGenreOp] = useSessionStorageState(
+    'genre-op',
+    searchParams.get('genre-op') ?? ''
   );
-  // const [originOperator, setOriginOperator] = useSessionStorageState(
-  //   'origin-operator',
+  // const [originOp, setOriginOp] = useSessionStorageState(
+  //   'origin-op',
   //   ''
   // );
-  const [list, setList] = useState(searchParams.getAll('list') ?? '');
   // const [page, setPage] = useState(searchParams.get('page') ?? '');
 
   // 2. I want the sync url to state useEffect to only run in the following scenarios:
@@ -100,16 +104,17 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     console.log(`CALLED SYNC`);
     setTitle(searchParams.get('title') ?? '');
     setFormat(searchParams.getAll('format'));
+    setGenreOp(searchParams.get('genre-op') ?? '');
     setGenre(searchParams.getAll('genre'));
     setOrigin(searchParams.getAll('origin'));
     setReleased(searchParams.getAll('released'));
     setUpdated(searchParams.getAll('updated'));
     setAvg(searchParams.get('avg') ?? '');
     setCount(searchParams.get('count') ?? '');
-    setOrder(searchParams.get('order') ?? '');
-    setGenreOperator(searchParams.get('genre-operator') ?? '');
-    // setOriginOperator(searchParams.get('origin-operator') ?? '');
+    setAvail(searchParams.get('avail') ?? '');
     setList(searchParams.getAll('list') ?? '');
+    setOrder(searchParams.get('order') ?? '');
+    // setOriginOp(searchParams.get('origin-op') ?? '');
   }, [searchParams]);
   // spam clicking on search page: click new filter, state updates, url pushed, url syncs to state -> click new filter, state updates, ....
   // each cycle is too fast that you cannot click fast enough to trigger a flicker
@@ -132,9 +137,10 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     updated: string[];
     avg: string;
     count: string;
+    avail: string;
     order: string;
-    genreOperator: string;
-    originOperator: string;
+    genreOp: string;
+    originOp: string;
     list: string[];
   }>;
 
@@ -150,9 +156,10 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     const finalUpdated = overrides.updated ?? updated;
     const finalAvg = overrides.avg ?? avg;
     const finalCount = overrides.count ?? count;
+    const finalAvail = overrides.avail ?? avail;
     const finalOrder = overrides.order ?? order;
-    const finalGenreOperator = overrides.genreOperator ?? genreOperator;
-    // const finalOriginOperator = overrides.originOperator ?? originOperator;
+    const finalGenreOp = overrides.genreOp ?? genreOp;
+    // const finalOriginOp = overrides.originOp ?? originOp;
     const finalList = overrides.list ?? list;
 
     if (finalTitle) newParams.set('title', finalTitle);
@@ -163,6 +170,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     finalUpdated.forEach((v) => newParams.append('updated', v));
     if (finalAvg) newParams.set('avg', finalAvg);
     if (finalCount) newParams.set('count', finalCount);
+    if (finalAvail) newParams.set('avail', finalAvail);
     if (finalOrder) {
       newParams.set('order', finalOrder);
     } else {
@@ -170,24 +178,24 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       newParams.set('order', 'popularity-desc');
     }
 
-    if (finalGenreOperator) {
-      newParams.set('genre-operator', finalGenreOperator);
+    if (finalGenreOp) {
+      newParams.set('genre-op', finalGenreOp);
     } else {
       if (finalGenre.length > 0) {
-        setGenreOperator('and');
-        newParams.set('genre-operator', 'and');
+        setGenreOp('and');
+        newParams.set('genre-op', 'and');
       }
     }
     // if (finalOrigin.length > 0) {
-    //   if (finalOriginOperator) {
-    //     newParams.set('origin-operator', finalOriginOperator);
+    //   if (finalOriginOp) {
+    //     newParams.set('origin-op', finalOriginOp);
     //   } else {
-    //     setOriginOperator('or');
-    //     newParams.set('origin-operator', 'or');
+    //     setOriginOp('or');
+    //     newParams.set('origin-op', 'or');
     //   }
     // }
 
-    list.forEach((v) => newParams.append('list', v));
+    finalList.forEach((v) => newParams.append('list', v));
 
     // Always reset to page 1 for a new search
     newParams.set('page', '1');
@@ -202,12 +210,12 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     setFormat,
     genre,
     setGenre,
-    genreOperator,
-    setGenreOperator,
+    genreOp,
+    setGenreOp,
     origin,
     setOrigin,
-    // originOperator,
-    // setOriginOperator,
+    // originOp,
+    // setOriginOp,
     released,
     setReleased,
     updated,
@@ -216,6 +224,8 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     setAvg,
     count,
     setCount,
+    avail,
+    setAvail,
     order,
     setOrder,
     handleSearch,

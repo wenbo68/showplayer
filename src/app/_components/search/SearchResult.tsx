@@ -11,7 +11,7 @@ import { SearchAndFilterInputSchema } from '~/type';
 // import { SearchAndFilterInputSchema } from '~/server/api/routers/media';
 
 export default function SearchResults({}) {
-  // 1. Get input from url
+  // 1. Get input from url (zod optional doesn't accept null so must use undefined)
   const searchParams = useSearchParams();
   const title = searchParams.get('title') ?? undefined;
   const format = searchParams.getAll('format');
@@ -19,21 +19,22 @@ export default function SearchResults({}) {
   // const genre = searchParams.getAll('genre').map(Number);
   const releaseYear = searchParams.getAll('released').map(Number);
   const updatedYear = searchParams.getAll('updated').map(Number);
-  const minVoteAvg = Number(searchParams.getAll('avg')); // '' => 0
-  const minVoteCount = Number(searchParams.getAll('count'));
-  const order = searchParams.get('order') ?? undefined;
+  const minVoteAvg = Number(searchParams.get('avg')); // '' => 0
+  const minVoteCount = Number(searchParams.get('count'));
+  const minAvail = searchParams.get('avail') ?? undefined;
   const list = searchParams.getAll('list');
+  const order = searchParams.get('order') ?? undefined;
   const page = searchParams.get('page')
     ? Number(searchParams.get('page'))
-    : undefined;
+    : undefined; // must not let it default to 0 when page is empty string
 
   // ✨ MODIFIED: Get values and operators for genre and origin
   const genreValues = searchParams.getAll('genre').map(Number);
   const originValues = searchParams.getAll('origin');
 
   // We expect 'and' or 'or'. Default to 'and' as per your schema's new default.
-  const genreOperator = searchParams.get('genre-operator');
-  const originOperator = searchParams.get('origin-operator');
+  const genreOp = searchParams.get('genre-op');
+  const originOp = searchParams.get('origin-op');
 
   // 2. Construct the tRPC input object from the context state
   const rawInput = {
@@ -44,7 +45,7 @@ export default function SearchResults({}) {
       genreValues.length > 0
         ? {
             values: genreValues,
-            operator: genreOperator,
+            operator: genreOp,
             // === 'or' ? 'or' : 'and', // Safely default to 'and'
           }
         : undefined, // Pass undefined if no genres are in the URL
@@ -53,7 +54,7 @@ export default function SearchResults({}) {
       originValues.length > 0
         ? {
             values: originValues,
-            operator: originOperator,
+            operator: originOp,
             // === 'or' ? 'or' : 'and', // Safely default to 'and'
           }
         : undefined, // Pass undefined if no origins are in the URL
@@ -61,8 +62,9 @@ export default function SearchResults({}) {
     updatedYear,
     minVoteAvg,
     minVoteCount,
-    order,
+    minAvail,
     list,
+    order,
     page,
     pageSize: 30,
   };
@@ -82,7 +84,9 @@ export default function SearchResults({}) {
   if (!parsedInput.success) {
     // You can optionally render an error state if the filters are somehow invalid
     console.error('Zod validation failed:', parsedInput.error);
-    return <div>Invalid search options.</div>;
+    return (
+      <p className="text-gray-300 font-semibold">Invalid search options.</p>
+    );
   }
 
   // 5. Show a skeleton while fetching new data
@@ -109,9 +113,9 @@ export default function SearchResults({}) {
   }
 
   return (
-    <div className="flex flex-col gap-5 items-center justify-center py-8 sm:py-9 md:py-10 lg:py-11 xl:py-12">
-      <p>No results found.</p>
-      <p>
+    <div className="flex flex-col gap-2 sm:gap-3 md:gap-4 lg:gap-5 xl:gap-6">
+      <p className="text-gray-300 font-semibold">No results found.</p>
+      <p className="text-sm font-semibold">
         Did you know you can add new movies/shows to Showplayer? Just login and
         click your profile!
       </p>

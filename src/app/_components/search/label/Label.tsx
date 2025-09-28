@@ -11,6 +11,7 @@ const labelColors = {
   updated: tagClassMap['updated'],
   avg: tagClassMap['avg'],
   count: tagClassMap['count'],
+  avail: tagClassMap['avail'],
   list: tagClassMap['list'],
   order: 'bg-gray-500/20 text-gray-300 ring-gray-500/30',
 };

@@ -11,7 +11,6 @@ export default async function SearchLayout({
 
   return (
     <section className="flex flex-col justify-center gap-8 sm:gap-9 md:gap-10 lg:gap-11 xl:gap-12">
-      {/* <span>Did you know you can add movies and shows to Showplayer? Login and </span> */}
       <SearchBar filterOptions={filterOptions} showOrder={true} />
       <ActiveLabels filterOptions={filterOptions} />
       {children}

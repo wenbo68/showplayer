@@ -12,6 +12,9 @@ import {
   count,
   gte,
   isNull,
+  gt,
+  lte,
+  lt,
 } from 'drizzle-orm';
 
 import {
@@ -158,7 +161,6 @@ export const mediaRouter = createTRPCRouter({
   searchAndFilter: publicProcedure
     .input(SearchAndFilterInputSchema)
     .query(async ({ ctx, input }) => {
-      // In a publicProcedure, ctx.session is available but can be null.
       const { session } = ctx;
       const {
         title,
@@ -169,9 +171,11 @@ export const mediaRouter = createTRPCRouter({
         updatedYear,
         minVoteAvg,
         minVoteCount,
+        minAvail,
+        list,
+        order,
         page,
         pageSize,
-        list,
         needTotalPages,
       } = input;
 
@@ -256,15 +260,6 @@ export const mediaRouter = createTRPCRouter({
           inArray(sql`extract(year from ${tmdbMedia.updatedDate})`, updatedYear)
         );
       }
-      // // Handle genres filter (acts on the joined tmdbMediaToTmdbGenre table)
-      // if (genre && genre.length > 0) {
-      //   conditions.push(inArray(tmdbMediaToTmdbGenre.genreId, genre));
-      // }
-      // // Handle origins filter (acts on the joined tmdbMediaToTmdbOrigin table)
-      // if (origin && origin.length > 0) {
-      //   conditions.push(inArray(tmdbMediaToTmdbOrigin.originId, origin));
-      // }
-
       // Handle genres with a subquery
       if (genre && genre.values.length > 0) {
         let genreSubquery;
@@ -316,7 +311,49 @@ export const mediaRouter = createTRPCRouter({
       if (minVoteCount && minVoteCount > 0) {
         conditions.push(gte(tmdbMedia.voteCount, minVoteCount));
       }
+      // handle availability
+      if (minAvail) {
+        const now = sql`CURRENT_TIMESTAMP`;
+        if (minAvail === 'no') {
+          // Condition: releaseDate is in the future
+          conditions.push(gte(tmdbMedia.releaseDate, now));
+        } else {
+          // For all other options, media must be released
+          // Condition: releaseDate is in the past or today
+          conditions.push(lt(tmdbMedia.releaseDate, now));
 
+          // Calculate the ad-free percentage.
+          // We use a CASE statement to prevent division by zero if airedEpisodeCount is 0.
+          // We also cast to `real` to ensure floating-point division.
+          // For movies, airedEpisodeCount should be 1, so this works seamlessly.
+          const adFreePercentage = sql<number>`
+            CASE
+              WHEN ${tmdbMedia.airedEpisodeCount} > 0 THEN (${tmdbMedia.availabilityCount}::real / ${tmdbMedia.airedEpisodeCount}::real)
+              ELSE 0
+            END
+          `;
+
+          switch (minAvail) {
+            case '0':
+              // This is covered by the release date check above, but we can be explicit
+              conditions.push(gte(adFreePercentage, 0));
+              break;
+            case '25':
+              conditions.push(gte(adFreePercentage, 0.25));
+              break;
+            case '50':
+              conditions.push(gte(adFreePercentage, 0.5));
+              break;
+            case '75':
+              conditions.push(gte(adFreePercentage, 0.75));
+              break;
+            case '100':
+              // Use gte(1) to handle cases where availability might exceed aired episodes
+              conditions.push(gte(adFreePercentage, 1));
+              break;
+          }
+        }
+      }
       if (conditions.length > 0) {
         countSubquery.where(and(...conditions));
         dataQueryBuilder.where(and(...conditions));
@@ -332,7 +369,7 @@ export const mediaRouter = createTRPCRouter({
 
       // 6. add order by to data query
       let orderByClause;
-      switch (input.order) {
+      switch (order) {
         case 'title-desc':
           orderByClause = desc(tmdbMedia.title);
           break;
@@ -373,13 +410,11 @@ export const mediaRouter = createTRPCRouter({
       if (orderByClause) dataQueryBuilder.orderBy(orderByClause);
 
       // 6. get all media for chosen page
-      // const pageSize = 30;
       const pageMedia: ListMedia[] = await dataQueryBuilder
         .limit(pageSize)
         .offset((page - 1) * pageSize);
 
       return {
-        // pageSize,
         pageMedia,
         totalPages,
       };

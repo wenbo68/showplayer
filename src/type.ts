@@ -63,7 +63,7 @@ export type FetchedMediaItem = {
 };
 
 // --- Define the shape of the sort options ---
-export type FilterOption = { label: string; trpcInput: string };
+export type FilterOption = { label: string; urlInput: string };
 export type FilterGroupOption = { groupLabel: string; options: FilterOption[] };
 
 export type Order = z.infer<typeof orderEnum>;
@@ -76,6 +76,16 @@ const FilterInputObject = (itemSchema: z.ZodType) =>
     })
     .optional();
 
+// Define the availability options
+export const availabilityEnum = [
+  'no',
+  '0', // >= 0%
+  '25', // >= 25%
+  '50', // >= 50%
+  '75', // >= 75%
+  '100', // 100%
+] as const;
+
 export const SearchAndFilterInputSchema = z.object({
   title: z.string().optional(),
   format: z.array(z.enum(tmdbTypeEnum.enumValues)).optional(),
@@ -85,10 +95,11 @@ export const SearchAndFilterInputSchema = z.object({
   updatedYear: z.array(z.number()).optional(),
   minVoteAvg: z.number().min(0).optional(),
   minVoteCount: z.number().min(0).optional(),
+  minAvail: z.enum(availabilityEnum).optional(),
+  list: z.array(z.enum(userListEnum.enumValues)).optional(),
   order: z.enum(orderValues).default('popularity-desc'), // ✨ Set a default!
   page: z.number().min(1).default(1),
   pageSize: z.number().min(1),
-  list: z.array(z.enum(userListEnum.enumValues)).optional(),
   needTotalPages: z.boolean().default(true),
 });
 

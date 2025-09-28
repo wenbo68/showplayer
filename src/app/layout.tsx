@@ -80,11 +80,16 @@ export default async function RootLayout({
   );
 }
 
-// now need filter for released, not released, all ad, all no ad, partially ad
+// finish optimizing fcp and lcp for home page.
 
-// in request page, add search page that filters for user added media
+// add aniwatch style carousel. make topnav sticky and semi transparent.
+// it's ok to have certain comp (eg carousel and top nav) full width while others are 7xl for ad purposes (eg opgg)
 
-// add puppeteer invisible to fetch vidfast
+// add bot nav
+
+// in list filter, add option that shows requested media of the user
+
+// add puppeteer stealth to fetch vidfast
 
 // adless src will be fetched daily at midnight together.
 // but users requests can be handled together once every 5 minutes (they can only watch ad version tho).

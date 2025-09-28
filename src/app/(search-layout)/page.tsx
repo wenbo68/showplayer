@@ -1,10 +1,6 @@
 import { api, HydrateClient } from '~/trpc/server';
 import MediaList from '../_components/media/MediaList';
 import { auth } from '~/server/auth';
-import IdSubmitter from '../_components/request/IdSubmitter';
-import SubmissionHistory from '../_components/request/SubmissionHistory';
-// import TrendingCarousel from '../_components/media/TrendingCarousel';
-// import SearchSection from '../_components/search/SearchSection';
 
 export default async function Home() {
   const session = await auth();
@@ -17,6 +13,7 @@ export default async function Home() {
         format: ['movie'],
         minVoteAvg: 0,
         minVoteCount: 0,
+        // minAvail: '0',
         order: 'popularity-desc',
         page: 1,
         pageSize: 6,
@@ -26,6 +23,7 @@ export default async function Home() {
         format: ['tv'],
         minVoteAvg: 0,
         minVoteCount: 0,
+        // minAvail: '0',
         order: 'popularity-desc',
         page: 1,
         pageSize: 6,
@@ -35,6 +33,7 @@ export default async function Home() {
         format: ['movie'],
         minVoteAvg: 0,
         minVoteCount: 300,
+        // minAvail: '0',
         order: 'vote-avg-desc',
         page: 1,
         pageSize: 6,
@@ -44,6 +43,7 @@ export default async function Home() {
         format: ['tv'],
         minVoteAvg: 0,
         minVoteCount: 300,
+        // minAvail: '0',
         order: 'vote-avg-desc',
         page: 1,
         pageSize: 6,
@@ -79,56 +79,38 @@ export default async function Home() {
   }
 
   // carousel doesn't work well bc tmdb backdrop have different heights
-  // also theres no guarantee that trending table will have at least 1 media with src (best case scenario is that we have 10)
   return (
     <HydrateClient>
-      <>
-        {/* <div className="flex flex-col justify-center gap-8"> */}
-        {/* <TrendingCarousel
-          pageMediaIds={uniquePageMediaIds}
-          trendingList={trendingList}
-        /> */}
-
-        {/* <div className="p-2 w-full flex flex-col gap-8"> */}
-        {/* <div className="w-full flex flex-col gap-10"> */}
-        <MediaList
-          pageMediaIds={uniquePageMediaIds}
-          mediaList={popularMvList}
-          viewMode="preview"
-          label="POPULAR MOVIES"
-          link="/search?format=movie&order=popularity-desc&page=1"
-        />
-        <MediaList
-          pageMediaIds={uniquePageMediaIds}
-          mediaList={popularTvList}
-          viewMode="preview"
-          label="POPULAR SHOWS"
-          link="/search?format=tv&order=popularity-desc&page=1"
-        />
-        <MediaList
-          pageMediaIds={uniquePageMediaIds}
-          mediaList={topMvList}
-          viewMode="preview"
-          label="TOP MOVIES"
-          link="/search?format=movie&count=300&order=vote-avg-desc&page=1"
-        />
-        <MediaList
-          pageMediaIds={uniquePageMediaIds}
-          mediaList={topTvList}
-          viewMode="preview"
-          label="TOP SHOWS"
-          link="/search?format=tv&count=300&order=vote-avg-desc&page=1"
-        />
-        {/* </div>
-
-          <div className="w-full flex flex-col gap-10"> */}
-        {/* <UtcTime /> */}
-        {/* <IdSubmitter />
-        <SubmissionHistory /> */}
-        {/* </div> */}
-        {/* </div> */}
-        {/* </div> */}
-      </>
+      {/* <> */}
+      <MediaList
+        pageMediaIds={uniquePageMediaIds}
+        mediaList={popularMvList}
+        viewMode="preview"
+        label="POPULAR MOVIES"
+        link="/search?format=movie&order=popularity-desc&page=1"
+      />
+      <MediaList
+        pageMediaIds={uniquePageMediaIds}
+        mediaList={popularTvList}
+        viewMode="preview"
+        label="POPULAR SHOWS"
+        link="/search?format=tv&order=popularity-desc&page=1"
+      />
+      <MediaList
+        pageMediaIds={uniquePageMediaIds}
+        mediaList={topMvList}
+        viewMode="preview"
+        label="TOP MOVIES"
+        link="/search?format=movie&count=300&order=vote-avg-desc&page=1"
+      />
+      <MediaList
+        pageMediaIds={uniquePageMediaIds}
+        mediaList={topTvList}
+        viewMode="preview"
+        label="TOP SHOWS"
+        link="/search?format=tv&count=300&order=vote-avg-desc&page=1"
+      />
+      {/* </> */}
     </HydrateClient>
   );
 }

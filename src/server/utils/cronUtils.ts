@@ -481,6 +481,8 @@ export async function fetchSrc(limit: number) {
   console.log(`[smartFetchMediaSrc] done: ${mediaIds.length} successful.`);
 }
 
+// do we use
+
 // denorm fields include:
 // availability: mv = how many src, tv = how many episodes with src
 // total aired episodes: mv = 0, tv = how many episodes whose air date is before today
@@ -506,13 +508,16 @@ export async function updateDenormFieldsForMediaList(input: 'all' | string[]) {
     WITH movie_calcs AS (
       SELECT
         m.id,
-        (SELECT COUNT(*) FROM ${tmdbSource} src WHERE src.media_id = m.id) as "availabilityCount"
+        CASE
+          WHEN EXISTS (SELECT 1 FROM ${tmdbSource} src WHERE src.media_id = m.id) THEN 1
+          ELSE 0
+        END as "availabilityCount"
       FROM ${tmdbMedia} m
       ${mvConditions}
     )
     UPDATE ${tmdbMedia} m SET
       availability_count = mc."availabilityCount",
-      aired_episode_count = 0,
+      aired_episode_count = CASE WHEN m.release_date < CURRENT_DATE THEN 1 ELSE 0 END,
       updated_date = m.release_date,
       updated_season_number = NULL,
       updated_episode_number = NULL,

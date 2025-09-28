@@ -16,7 +16,8 @@ export const tagClassMap = {
   updated: 'bg-emerald-500/20 text-emerald-300 ring-emerald-500/30',
   avg: 'bg-sky-500/20 text-sky-300 ring-sky-500/30',
   count: 'bg-blue-500/20 text-blue-300 ring-blue-500/30',
-  list: 'bg-indigo-500/20 text-indigo-300 ring-indigo-500/30',
+  avail: 'bg-indigo-500/20 text-indigo-300 ring-indigo-500/30',
+  list: 'bg-violet-500/20 text-violet-300 ring-violet-500/30',
   order: 'bg-gray-500/20 text-gray-300 ring-gray-500/30',
 };
 
@@ -55,13 +56,13 @@ export function MediaPopup({
   let buttonText: string = '';
   if (!isReleased) buttonText = 'Not Released';
   else if (media.type === 'movie') {
-    if (media.availabilityCount <= 0) buttonText = 'Watch Now';
-    else buttonText = 'Watch without Ads';
+    if (media.availabilityCount <= 0) buttonText = 'Watch with Ads';
+    else buttonText = 'Watch Ad-Free';
   } else {
-    if (media.availabilityCount <= 0)
-      buttonText = `${media.airedEpisodeCount} Episodes`;
-    else
-      buttonText = `${media.airedEpisodeCount} Episodes: ${media.availabilityCount} without Ads`;
+    buttonText = `${media.airedEpisodeCount} Episodes (${(
+      (media.availabilityCount / media.airedEpisodeCount) *
+      100
+    ).toFixed(0)}% Ad-Free)`;
   }
 
   const fullBackdropUrl = media.backdropUrl

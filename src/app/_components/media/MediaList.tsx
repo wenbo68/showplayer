@@ -22,20 +22,6 @@ export default function MediaList({
 }: MediaListProps) {
   return (
     <>
-      {/* 2. Add the Head component */}
-      <Head>
-        {/* 3. Map over your media list and create a preload link for each backdrop */}
-        {mediaList.map((mediaDetail) =>
-          mediaDetail.media.backdropUrl ? (
-            <link
-              key={`preload-${mediaDetail.media.id}`}
-              rel="preload"
-              as="image"
-              href={`https://image.tmdb.org/t/p/w500${mediaDetail.media.backdropUrl}`}
-            />
-          ) : null
-        )}
-      </Head>
       {viewMode === 'preview' ? (
         // preview list
         <div className={`${label && link ? `w-full flex flex-col gap-4` : ``}`}>

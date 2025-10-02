@@ -82,12 +82,12 @@ export default async function RootLayout({
 
 // finish optimizing fcp and lcp for home page.
 
+// in list filter, add option that shows requested media of the user
+
 // add aniwatch style carousel. make topnav sticky and semi transparent.
 // it's ok to have certain comp (eg carousel and top nav) full width while others are 7xl for ad purposes (eg opgg)
 
 // add bot nav
-
-// in list filter, add option that shows requested media of the user
 
 // add puppeteer stealth to fetch vidfast
 

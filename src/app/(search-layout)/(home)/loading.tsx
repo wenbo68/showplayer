@@ -1,4 +1,4 @@
-import MediaListFallback from '../_components/media/MediaListFallback';
+import MediaListFallback from '../../_components/media/MediaListFallback';
 
 export default function Loading() {
   // This is the skeleton for your entire Home page.

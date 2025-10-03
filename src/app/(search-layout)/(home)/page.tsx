@@ -1,8 +1,8 @@
 import { api, HydrateClient } from '~/trpc/server';
-import MediaList from '../_components/media/MediaList';
+import MediaList from '../../_components/media/MediaList';
 import { auth } from '~/server/auth';
 import { Suspense } from 'react';
-import MediaListFallback from '../_components/media/MediaListFallback';
+import MediaListFallback from '../../_components/media/MediaListFallback';
 
 export default async function Home() {
   const session = await auth();
@@ -51,7 +51,6 @@ export default async function Home() {
         pageSize: 6,
         needTotalPages: false,
       }),
-      // api.media.getFilterOptions(),
     ]);
 
   // Extract the media from the response objects
@@ -82,79 +81,34 @@ export default async function Home() {
 
   return (
     <HydrateClient>
-      {/* <> */}
-      <Suspense
-        fallback={
-          <MediaListFallback
-            viewMode={'preview'}
-            label={'POPULAR MOVIES'}
-            count={6}
-          />
-        }
-      >
-        <MediaList
-          pageMediaIds={uniquePageMediaIds}
-          mediaList={popularMvList}
-          viewMode="preview"
-          label="POPULAR MOVIES"
-          link="/search?format=movie&order=popularity-desc&page=1"
-        />
-      </Suspense>
-
-      <Suspense
-        fallback={
-          <MediaListFallback
-            viewMode={'preview'}
-            label={'POPULAR SHOWS'}
-            count={6}
-          />
-        }
-      >
-        <MediaList
-          pageMediaIds={uniquePageMediaIds}
-          mediaList={popularTvList}
-          viewMode="preview"
-          label="POPULAR SHOWS"
-          link="/search?format=tv&order=popularity-desc&page=1"
-        />
-      </Suspense>
-
-      <Suspense
-        fallback={
-          <MediaListFallback
-            viewMode={'preview'}
-            label={'TOP MOVIES'}
-            count={6}
-          />
-        }
-      >
-        <MediaList
-          pageMediaIds={uniquePageMediaIds}
-          mediaList={topMvList}
-          viewMode="preview"
-          label="TOP MOVIES"
-          link="/search?format=movie&count=300&order=vote-avg-desc&page=1"
-        />
-      </Suspense>
-
-      <Suspense
-        fallback={
-          <MediaListFallback
-            viewMode={'preview'}
-            label={'TOP SHOWS'}
-            count={6}
-          />
-        }
-      >
-        <MediaList
-          pageMediaIds={uniquePageMediaIds}
-          mediaList={topTvList}
-          viewMode="preview"
-          label="TOP SHOWS"
-          link="/search?format=tv&count=300&order=vote-avg-desc&page=1"
-        />
-      </Suspense>
-      {/* </> */}
+      <MediaList
+        pageMediaIds={uniquePageMediaIds}
+        mediaList={popularMvList}
+        viewMode="preview"
+        label="POPULAR MOVIES"
+        link="/search?format=movie&order=popularity-desc&page=1"
+      />
+      <MediaList
+        pageMediaIds={uniquePageMediaIds}
+        mediaList={popularTvList}
+        viewMode="preview"
+        label="POPULAR SHOWS"
+        link="/search?format=tv&order=popularity-desc&page=1"
+      />
+      <MediaList
+        pageMediaIds={uniquePageMediaIds}
+        mediaList={topMvList}
+        viewMode="preview"
+        label="TOP MOVIES"
+        link="/search?format=movie&count=300&order=vote-avg-desc&page=1"
+      />
+      <MediaList
+        pageMediaIds={uniquePageMediaIds}
+        mediaList={topTvList}
+        viewMode="preview"
+        label="TOP SHOWS"
+        link="/search?format=tv&count=300&order=vote-avg-desc&page=1"
+      />
     </HydrateClient>
   );
 }

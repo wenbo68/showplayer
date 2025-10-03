@@ -49,7 +49,7 @@ async function fetchSrcFromProvidersFast(
   try {
     // 1. Get the already-initialized shared cluster instance.
     const cluster = await getCluster();
-    const providers = ['videasy', 'vidjoy', 'vidlink'];
+    const providers = ['videasy', 'vidfast', 'vidjoy', 'vidlink'];
 
     // 2. Queue all tasks to run in parallel on the cluster.
     const promises = providers.map((provider) => {

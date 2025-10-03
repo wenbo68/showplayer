@@ -1,0 +1,156 @@
+incognito request headers:
+
+:authority
+vidfast.pro
+:method
+HEAD
+:path
+/movie/338969
+:scheme
+https
+accept
+*/*
+accept-encoding
+gzip, deflate, br, zstd
+accept-language
+en-US,en;q=0.9
+cache-control
+no-cache
+pragma
+no-cache
+priority
+u=1, i
+referer
+https://vidfast.pro/
+sec-ch-ua
+"Not=A?Brand";v="24", "Chromium";v="140"
+sec-ch-ua-mobile
+?0
+sec-ch-ua-platform
+"Linux"
+sec-fetch-dest
+empty
+sec-fetch-mode
+cors
+sec-fetch-site
+same-origin
+user-agent
+Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36
+
+
+
+incognito console json output:
+
+--- FINGERPRINT DATA (GOOD) ---
+VM71:21 {
+  "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+  "appVersion": "5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+  "platform": "Linux x86_64",
+  "vendor": "Google Inc.",
+  "languages": [
+    "en-US"
+  ],
+  "webdriver": false,
+  "plugins": [
+    "PDF Viewer",
+    "Chrome PDF Viewer",
+    "Chromium PDF Viewer",
+    "Microsoft Edge PDF Viewer",
+    "WebKit built-in PDF"
+  ],
+  "mimeTypes": [
+    "application/pdf",
+    "text/pdf"
+  ],
+  "screen": {
+    "width": 1680,
+    "height": 1050,
+    "colorDepth": 24,
+    "pixelDepth": 24
+  },
+  "deviceMemory": 8,
+  "hardwareConcurrency": 14
+}
+VM71:22 -------------------------------
+
+
+
+puppeteer request headers:
+
+:authority
+vidfast.pro
+:method
+GET
+:path
+/movie/338969
+:scheme
+https
+accept
+text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+accept-encoding
+gzip, deflate, br, zstd
+accept-language
+en-US,en;q=0.9
+cache-control
+no-cache
+cookie
+_ga=GA1.1.1197254507.1759498339; _ga_JMWN78FZNK=GS2.1.s1759498339$o1$g1$t1759498398$j1$l0$h0
+pragma
+no-cache
+priority
+u=0, i
+sec-ch-ua
+" Not A;Brand";v="99", "Chromium";v="138", "Google Chrome";v="138"
+sec-ch-ua-mobile
+?0
+sec-ch-ua-platform
+"Windows"
+sec-fetch-dest
+document
+sec-fetch-mode
+navigate
+sec-fetch-site
+same-origin
+sec-fetch-user
+?1
+upgrade-insecure-requests
+1
+user-agent
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36
+
+
+
+puppeteer console json output:
+
+--- FINGERPRINT DATA (GOOD) ---
+VM1896:21 {
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+  "appVersion": "5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+  "platform": "Linux x86_64",
+  "vendor": "Google Inc.",
+  "languages": [
+    "en-US",
+    "en"
+  ],
+  "webdriver": false,
+  "plugins": [
+    "PDF Viewer",
+    "Chrome PDF Viewer",
+    "Chromium PDF Viewer",
+    "Microsoft Edge PDF Viewer",
+    "WebKit built-in PDF"
+  ],
+  "mimeTypes": [
+    "application/pdf",
+    "text/pdf"
+  ],
+  "screen": {
+    "width": 1680,
+    "height": 1050,
+    "colorDepth": 24,
+    "pixelDepth": 24
+  },
+  "deviceMemory": 8,
+  "hardwareConcurrency": 4
+}
+VM1896:22 -------------------------------

@@ -1,8 +1,8 @@
-import { Suspense } from 'react';
-import SearchBarFallback from './searchbar/SearchBarFallback';
+// import { Suspense } from 'react';
+// import SearchBarFallback from './searchbar/SearchBarFallback';
 import SearchBar from './searchbar/SearchBar';
 import ActiveLabels from './label/ActiveLabels';
-import ActiveLabelsFallback from './label/ActiveLabelsFallback';
+// import ActiveLabelsFallback from './label/ActiveLabelsFallback';
 import { api } from '~/trpc/server';
 
 export default async function SearchSection() {

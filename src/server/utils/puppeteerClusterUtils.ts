@@ -18,79 +18,14 @@ import {
 } from './puppeteerUtils'; // Assuming your helper functions and maps are in a utils file
 import { env } from '~/env';
 
-// import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-// import puppeteer from 'puppeteer-extra';
-
-// puppeteer.use(StealthPlugin());
-
 const puppeteerTask = async ({ page, data }: { page: any; data: any }) => {
   const { provider, embedUrl } = data;
-
-  // // --- START: FINGERPRINT CORRECTIONS ---
-
-  // // FIX 1: Use the EXACT User-Agent string from your working Incognito browser.
-  // // This is the most important change.
-  // const a_VALID_USER_AGENT =
-  //   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
-  // await page.setUserAgent(a_VALID_USER_AGENT);
-
-  // // FIX 2: Set the correct viewport from your working browser.
-  // await page.setViewport({ width: 1680, height: 1050 });
-
-  // // FIX 3: Override JavaScript properties BEFORE the page loads its scripts.
-  // // This ensures our values are in place from the very beginning.
-  // await page.evaluateOnNewDocument(() => {
-  //   // Override navigator.platform to be consistent
-  //   Object.defineProperty(navigator, 'platform', { get: () => 'Linux x86_64' });
-  //   // Override navigator.plugins to match the working browser
-  //   Object.defineProperty(navigator, 'plugins', {
-  //     get: () => [
-  //       {
-  //         name: 'PDF Viewer',
-  //         filename: 'internal-pdf-viewer',
-  //         description: 'Portable Document Format',
-  //       },
-  //       {
-  //         name: 'Chrome PDF Viewer',
-  //         filename: 'internal-pdf-viewer',
-  //         description: 'Portable Document Format',
-  //       },
-  //       {
-  //         name: 'Chromium PDF Viewer',
-  //         filename: 'internal-pdf-viewer',
-  //         description: 'Portable Document Format',
-  //       },
-  //       {
-  //         name: 'Microsoft Edge PDF Viewer',
-  //         filename: 'internal-pdf-viewer',
-  //         description: 'Portable Document Format',
-  //       },
-  //       {
-  //         name: 'WebKit built-in PDF',
-  //         filename: 'internal-pdf-viewer',
-  //         description: 'Portable Document Format',
-  //       },
-  //     ],
-  //   });
-  //   // Override navigator.languages to be more specific
-  //   Object.defineProperty(navigator, 'languages', { get: () => ['en-US'] });
-  //   // Override hardware concurrency
-  //   Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 14 });
-  //   // Make sure webdriver is false
-  //   Object.defineProperty(navigator, 'webdriver', { get: () => false });
-  // });
-
-  // // FIX 4: Clear any lingering cookies to better mimic an Incognito session.
-  // const client = await page.target().createCDPSession();
-  // await client.send('Network.clearBrowserCookies');
-
-  // // --- END: FINGERPRINT CORRECTIONS ---
 
   // Our manual, targeted fingerprinting is now the only source of truth.
   const a_VALID_USER_AGENT =
     'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
   await page.setUserAgent(a_VALID_USER_AGENT);
-  await page.setViewport({ width: 1680, height: 1050 });
+  // await page.setViewport({ width: 1680, height: 1050 });
 
   await page.evaluateOnNewDocument(() => {
     // We override these to match the "good" report and ensure consistency.
@@ -99,6 +34,7 @@ const puppeteerTask = async ({ page, data }: { page: any; data: any }) => {
     Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 14 });
     Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
     Object.defineProperty(navigator, 'webdriver', { get: () => false });
+    window.open = () => null;
     // Since we disabled the GPU, we don't need to spoof WebGL params.
     // The browser will now naturally report a software renderer.
   });
@@ -106,13 +42,6 @@ const puppeteerTask = async ({ page, data }: { page: any; data: any }) => {
   const client = await page.target().createCDPSession();
   await client.send('Network.clearBrowserCookies');
 
-  // await page.setUserAgent(
-  //   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36'
-  // );
-  await page.evaluateOnNewDocument(() => {
-    Object.defineProperty(navigator, 'webdriver', { get: () => false });
-    window.open = () => null;
-  });
   await page.setCacheEnabled(false);
   await page.setRequestInterception(true);
   page.on('request', (req: HTTPRequest) => {

@@ -8,7 +8,7 @@ import { api } from '~/trpc/server';
 export default async function SearchSection() {
   const filterOptions = await api.media.getFilterOptions();
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col justify-center gap-8 sm:gap-9 md:gap-10 lg:gap-11 xl:gap-12">
       {/* <Suspense fallback={<SearchBarFallback />}> */}
       <SearchBar showOrder={true} filterOptions={filterOptions} />
       {/* </Suspense> */}

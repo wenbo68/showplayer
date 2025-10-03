@@ -24,7 +24,13 @@ export default function MediaList({
     <>
       {viewMode === 'preview' ? (
         // preview list
-        <div className={`${label && link ? `w-full flex flex-col gap-4` : ``}`}>
+        <div
+          className={`${
+            label && link
+              ? `w-full flex flex-col gap-2 sm:gap-3 md:gap-4 lg:gap-5 xl:gap-6`
+              : ``
+          }`}
+        >
           {label && link && (
             <div className="flex items-end justify-between">
               <span className="text-gray-300 font-bold">{label}</span>
@@ -52,7 +58,11 @@ export default function MediaList({
       ) : (
         // full list
         <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4 lg:gap-5 xl:gap-6">
-          {label && <span className="col-span-full font-bold">{label}</span>}
+          {label && (
+            <span className="col-span-full font-bold text-gray-300">
+              {label}
+            </span>
+          )}
           {mediaList.map((mediaDetail) => {
             return (
               <MediaButton

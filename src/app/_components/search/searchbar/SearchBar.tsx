@@ -127,12 +127,6 @@ export default function SearchBar({
                 setTitle(e.target.value);
                 handleSearch({ title: e.target.value });
               }}
-              // onBlur={(e) => {
-              //   // don't trigger onSubmit bc we are already calling handleSearch here
-              //   e.preventDefault();
-              //   setTitle(e.target.value);
-              //   handleSearch({ title: e.target.value });
-              // }}
               className="w-full outline-none"
             />
             <button
@@ -178,9 +172,6 @@ export default function SearchBar({
             value={origin}
             onChange={setOrigin}
             mode="multi"
-            // opValue={originOp}
-            // opOnChange={setOriginOp}
-            // opOptions={opOptions}
           />
           <Filter
             label="Genre Operator"
@@ -195,9 +186,6 @@ export default function SearchBar({
             value={genre}
             onChange={setGenre}
             mode="multi"
-            // opValue={genreOp}
-            // opOnChange={setGenreOp}
-            // opOptions={opOptions}
           />
           <Filter
             label="Release Year"

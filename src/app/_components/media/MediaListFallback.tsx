@@ -16,7 +16,13 @@ export default function MediaListFallback({
   return (
     <>
       {viewMode === 'preview' ? (
-        <div className={`${label ? `w-full flex flex-col gap-4` : ``}`}>
+        <div
+          className={`${
+            label
+              ? `w-full flex flex-col gap-2 sm:gap-3 md:gap-4 lg:gap-5 xl:gap-6`
+              : ``
+          }`}
+        >
           {label && (
             <div className="flex items-end">
               <span className="text-gray-300 font-bold">{label}</span>
@@ -29,7 +35,7 @@ export default function MediaListFallback({
           </div>
         </div>
       ) : (
-        <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4 lg:gap-5 xl:gap-6 space-y-2">
+        <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4 lg:gap-5 xl:gap-6">
           {label && (
             <span className="col-span-full text-gray-300 font-bold">
               {label}

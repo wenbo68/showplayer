@@ -189,7 +189,7 @@ export function MediaPopup({
                   !isReleased
                     ? `bg-gray-700 hover:bg-gray-600`
                     : `bg-blue-600 hover:bg-blue-500 text-gray-300`
-                } flex-grow flex items-center justify-center font-semibold rounded-lg`}
+                } flex-grow flex items-center justify-center text-sm lg:text-base font-semibold rounded-lg`}
               >
                 {buttonText}
               </Link>

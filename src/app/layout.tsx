@@ -11,6 +11,7 @@ import { env } from '~/env';
 import { ContextProviders } from './_contexts/ContextProviders';
 import { Suspense } from 'react';
 import Script from 'next/script';
+import BotNav from './_components/BotNav';
 
 export const metadata: Metadata = {
   title: 'Showplayer',
@@ -69,9 +70,10 @@ export default async function RootLayout({
         <Suspense fallback={null}>
           <ContextProviders>
             <TopNav />
-            <main className="max-w-7xl mx-auto w-full flex-grow p-2 py-4">
+            <main className="max-w-7xl mx-auto w-full flex-grow px-2 pt-4 sm:pt-5 md:pt-6 lg:pt-7 xl:pt-8 pb-10 sm:pb-11 md:pb-12 lg:pb-13 xl:pb-14">
               {children}
             </main>
+            <BotNav />
           </ContextProviders>
         </Suspense>
         <SpeedInsights />

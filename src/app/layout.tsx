@@ -89,11 +89,6 @@ export default async function RootLayout({
 
 // add bot nav
 
-// add puppeteer stealth to fetch vidfast
-
-// adless src will be fetched daily at midnight together.
-// but users requests can be handled together once every 5 minutes (they can only watch ad version tho).
-
 // can use media popup as carousel
 
 // need to make home page load faster (faster initial load or give client skeleton faster and fill later)

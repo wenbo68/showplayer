@@ -167,7 +167,7 @@ export function getCluster() {
     console.log('Initializing Puppeteer Cluster for batch processing...');
     clusterPromise = Cluster.launch({
       concurrency: Cluster.CONCURRENCY_CONTEXT,
-      timeout: 15000,
+      timeout: 10000,
       maxConcurrency: 4,
       puppeteer,
       puppeteerOptions: {

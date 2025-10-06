@@ -16,7 +16,7 @@ interface ActionButtonProps {
   [x: string]: any;
 }
 
-export function NavButton({
+export function PlayerNavButton({
   children,
   isActive = false,
   isDisabled = false,

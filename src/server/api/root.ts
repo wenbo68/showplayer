@@ -2,6 +2,7 @@ import { createCallerFactory, createTRPCRouter } from '~/server/api/trpc';
 import { mediaRouter } from './routers/media';
 import { cronRouter } from './routers/cron';
 import { userRouter } from './routers/user';
+import { stripeRouter } from './routers/stripe';
 
 /**
  * This is the primary router for your server.
@@ -12,6 +13,7 @@ export const appRouter = createTRPCRouter({
   user: userRouter,
   cron: cronRouter,
   media: mediaRouter,
+  stripe: stripeRouter,
 });
 
 // export type definition of API

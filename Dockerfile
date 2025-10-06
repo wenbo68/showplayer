@@ -26,6 +26,8 @@ ARG M3U8_WAIT_EASY
 ARG M3U8_WAIT_LINK
 ARG M3U8_WAIT_FAST
 ARG GA_MEASUREMENT_ID
+ARG STRIPE_PUBLISHABLE_KEY
+ARG STRIPE_SECRET_KEY
 
 # Install Chromium dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \

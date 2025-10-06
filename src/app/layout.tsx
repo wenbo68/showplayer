@@ -6,12 +6,12 @@ import { type Metadata } from 'next';
 import { Geist } from 'next/font/google';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 
-import { TopNav } from '~/app/_components/TopNav';
+import { TopNav } from '~/app/_components/nav/TopNav';
 import { env } from '~/env';
 import { ContextProviders } from './_contexts/ContextProviders';
 import { Suspense } from 'react';
 import Script from 'next/script';
-import BotNav from './_components/BotNav';
+import BotNav from './_components/nav/BotNav';
 
 export const metadata: Metadata = {
   title: 'Showplayer',

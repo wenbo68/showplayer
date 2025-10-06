@@ -20,7 +20,7 @@ import {
 } from '~/server/utils/playerUtils';
 import { OverviewSelector } from '~/app/_components/player/OverviewSelector';
 import { MediaSelector } from '~/app/_components/player/MediaSelector';
-import { BackButton } from '~/app/_components/player/BackButton';
+import { BackButton } from '~/app/_components/BackButton';
 import type { SourceWithSubtitles } from '~/type';
 
 interface PageProps {

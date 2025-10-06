@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react'; // Using lucide for a clean icon
 
 export function BackButton() {
-  const [backUrl, setBackUrl] = useState<string>('/search'); // Default fallback URL
+  const [backUrl, setBackUrl] = useState<string>('/'); // Default fallback URL
 
   useEffect(() => {
     // This effect runs once on the client after the component mounts

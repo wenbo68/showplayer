@@ -11,7 +11,7 @@ import type {
   Source,
   SrcProviderPlusEmbed,
 } from '~/type';
-import { NavButton } from '../NavButton';
+import { PlayerNavButton } from './PlayerNavButton';
 import { useSessionStorageState } from '~/app/_hooks/sessionStorageHooks';
 import { useAutoScroll } from '~/app/_hooks/autoscrollHooks';
 import { SelectorPanel } from './SelectorPanel';
@@ -86,22 +86,22 @@ export function MediaSelector({
         </div>
         <div className="flex gap-1 flex-wrap">
           {sources.map((source) => (
-            <NavButton
+            <PlayerNavButton
               key={source.id}
               href={`${basePath}/${source.provider}`}
               isActive={source.provider === selectedProvider}
             >
               {source.provider}
-            </NavButton>
+            </PlayerNavButton>
           ))}
           {embedSelectors.map((selector) => (
-            <NavButton
+            <PlayerNavButton
               key={selector}
               href={`${basePath}/${selector}`}
               isActive={selector === selectedProvider}
             >
               {selector}
-            </NavButton>
+            </PlayerNavButton>
           ))}
         </div>
       </div>
@@ -117,13 +117,13 @@ export function MediaSelector({
             containerRef={seasonsContainerRef}
           >
             {mediaData.seasons.map((season) => (
-              <NavButton
+              <PlayerNavButton
                 key={season.id}
                 onClick={() => setSelectedSeasonId(season.id)}
                 isActive={season.id === selectedSeasonId}
               >
                 {season.seasonNumber}
-              </NavButton>
+              </PlayerNavButton>
             ))}
           </SelectorPanel>
 
@@ -134,7 +134,7 @@ export function MediaSelector({
             containerRef={episodesContainerRef}
           >
             {selectedSeason?.episodes.map((episode) => (
-              <NavButton
+              <PlayerNavButton
                 key={episode.id}
                 href={`/tv/${tmdbId}/${selectedSeason.seasonNumber}/${episode.episodeNumber}`}
                 isActive={episode.id === episodeIdParam}
@@ -144,7 +144,7 @@ export function MediaSelector({
                 {`${episode.episodeNumber}${
                   episode.sources.length === 0 ? `!` : ``
                 }`}
-              </NavButton>
+              </PlayerNavButton>
             ))}
           </SelectorPanel>
         </>

@@ -9,7 +9,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from 'lucide-react';
-import { NavButton } from '../NavButton';
+import { PlayerNavButton } from '../player/PlayerNavButton';
 
 type PageSelectorProps = {
   currentPage: number;
@@ -62,51 +62,51 @@ export default function PageSelector({
   return (
     <div className="flex items-center justify-center gap-1">
       {/* First Page Button */}
-      <NavButton
+      <PlayerNavButton
         onClick={() => handlePageChange(1)}
         isDisabled={!hasPrevPage}
         aria-label="Go to first page"
       >
         <ChevronsLeft size={16} />
-      </NavButton>
+      </PlayerNavButton>
 
       {/* Previous Page Button */}
-      <NavButton
+      <PlayerNavButton
         onClick={() => handlePageChange(currentPage - 1)}
         isDisabled={!hasPrevPage}
         aria-label="Go to previous page"
       >
         <ChevronLeft size={16} />
-      </NavButton>
+      </PlayerNavButton>
 
       {/* Page Number Buttons */}
       {pageNumbers.map((page) => (
-        <NavButton
+        <PlayerNavButton
           key={page}
           onClick={() => handlePageChange(page)}
           isActive={currentPage === page}
         >
           {page}
-        </NavButton>
+        </PlayerNavButton>
       ))}
 
       {/* Next Page Button */}
-      <NavButton
+      <PlayerNavButton
         onClick={() => handlePageChange(currentPage + 1)}
         isDisabled={!hasNextPage}
         aria-label="Go to next page"
       >
         <ChevronRight size={16} />
-      </NavButton>
+      </PlayerNavButton>
 
       {/* Last Page Button */}
-      <NavButton
+      <PlayerNavButton
         onClick={() => handlePageChange(totalPages)}
         isDisabled={!hasNextPage}
         aria-label="Go to last page"
       >
         <ChevronsRight size={16} />
-      </NavButton>
+      </PlayerNavButton>
     </div>
   );
 }

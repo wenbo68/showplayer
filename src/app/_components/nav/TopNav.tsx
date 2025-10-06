@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect, Suspense } from 'react';
 import { AuthShowcase } from '~/app/_components/auth/AuthShowcase';
-import { AuthShowcaseFallback } from './auth/AuthShowcaseFallback';
+import { AuthShowcaseFallback } from '../auth/AuthShowcaseFallback';
 import { IoSearchSharp } from 'react-icons/io5';
 
 export function TopNav() {
@@ -70,6 +70,15 @@ export function TopNav() {
               <IoSearchSharp size={32} />
             </Link>
           </div> */}
+          <Link
+            href={'/donate'}
+            onClick={() => {
+              sessionStorage.setItem('previousPageUrl', window.location.href);
+            }}
+            className="block rounded bg-blue-600 hover:bg-blue-500 text-gray-300 px-4 py-2 text-sm font-semibold transition cursor-pointer"
+          >
+            Donate
+          </Link>
 
           <Suspense fallback={<AuthShowcaseFallback />}>
             <AuthShowcase />

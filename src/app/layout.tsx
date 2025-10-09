@@ -82,7 +82,8 @@ export default async function RootLayout({
   );
 }
 
-// finish optimizing fcp and lcp for home page.
+// residential proxy didn't work for scraping (100MB consumed too fast, also vidfast/vidlink still didn't work)
+// can try for streaming
 
 // in list filter, add option that shows requested media of the user
 

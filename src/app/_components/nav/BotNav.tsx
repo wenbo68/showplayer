@@ -1,3 +1,6 @@
+import { FaGithub } from 'react-icons/fa6';
+import { BiLogoGmail } from 'react-icons/bi';
+
 export default function BotNav() {
   return (
     <nav className="w-full bg-gray-950">
@@ -11,7 +14,26 @@ export default function BotNav() {
             third-party sites. For DMCA requests, please contact the original
             content provider.
           </p>
-          <p className="font-semibold">© Showplayer. All rights reserved.</p>
+          {/* <p className="font-semibold">© Showplayer. All rights reserved.</p> */}
+          <div className="flex w-full h-full items-center justify-center gap-3 md:gap-3">
+            <a
+              href="mailto:laboratorymember008@gmail.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block"
+            >
+              <BiLogoGmail size={26} className="min-w-fit" />
+            </a>
+
+            <a
+              href="https://github.com/wenbo68"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block"
+            >
+              <FaGithub size={24} className="min-w-fit" />
+            </a>
+          </div>
         </div>
       </div>
     </nav>

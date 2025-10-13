@@ -1,8 +1,5 @@
 // ~/app/donate/success/page.tsx
 
-import Link from 'next/link';
-import { BackButton } from '~/app/_components/BackButton';
-
 export default function DonateSuccessPage() {
   return (
     <>

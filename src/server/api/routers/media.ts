@@ -12,8 +12,6 @@ import {
   count,
   gte,
   isNull,
-  gt,
-  lte,
   lt,
 } from 'drizzle-orm';
 
@@ -30,9 +28,6 @@ import {
   tmdbOrigin,
   tmdbSeason,
   tmdbTrending,
-  tmdbTypeEnum,
-  userListEnum,
-  // tmdbTopRated,
   userMediaList,
 } from '~/server/db/schema';
 import {
@@ -44,10 +39,8 @@ import { TRPCError } from '@trpc/server';
 import {
   fetchTmdbMvGenresViaApi,
   fetchTmdbOriginsViaApi,
-  // fetchTmdbTopRatedViaApi,
   fetchTmdbTvGenresViaApi,
 } from '~/server/utils/tmdbApiUtils';
-import { orderValues } from '~/constant';
 
 export const mediaRouter = createTRPCRouter({
   getTopTrending: publicProcedure

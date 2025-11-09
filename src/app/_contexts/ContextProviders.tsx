@@ -16,7 +16,7 @@ export function ContextProviders({ children }: { children: ReactNode }) {
     <TRPCReactProvider>
       <AuthProvider>
         <MediaPopupProvider>
-          <FilterProvider>{children}</FilterProvider>{' '}
+          <FilterProvider>{children}</FilterProvider>
         </MediaPopupProvider>
       </AuthProvider>
     </TRPCReactProvider>

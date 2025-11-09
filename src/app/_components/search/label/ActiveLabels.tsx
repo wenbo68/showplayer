@@ -1,5 +1,3 @@
-// ~/app/_components/search/ActiveFilters.tsx
-
 'use client';
 
 import { useMemo } from 'react';

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { ComponentProps, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { clsx } from 'clsx';
 
 // Define the props for our new component

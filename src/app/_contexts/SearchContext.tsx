@@ -101,7 +101,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   // when user clicks link to home/search page
   // when user manually changes url
   useEffect(() => {
-    console.log(`CALLED SYNC`);
+    // console.log(`CALLED SYNC`);
     setTitle(searchParams.get('title') ?? '');
     setFormat(searchParams.getAll('format'));
     setGenreOp(searchParams.get('genre-op') ?? '');

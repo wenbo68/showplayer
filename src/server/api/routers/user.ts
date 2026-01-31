@@ -105,8 +105,9 @@ export const userRouter = createTRPCRouter({
           });
         }
 
-        // Step 3b: Fetch sources for the newly added media.
-        await fetchSrcForMediaIds([newMediaId]);
+        console.log("We don't fetch sources anymore, even for admins.")
+        // // Step 3b: Fetch sources for the newly added media.
+        // await fetchSrcForMediaIds([newMediaId]);
 
         // Step 3c: Update all the denormalized fields so it's ready for searching.
         await updateDenormFieldsForMediaList([newMediaId]);

@@ -62,7 +62,7 @@ export const cronRouter = createTRPCRouter({
                 name: '4. fetch tmdb lists',
                 fn: () => populateMediaUsingTmdbLists(input.tmdbListLimit),
               },
-              { name: '5. fetch src', fn: () => fetchSrc(input.fetchLimit) },
+              // { name: '5. fetch src', fn: () => fetchSrc(input.fetchLimit) },
               {
                 name: '6. update denorm fields',
                 fn: () => updateDenormFieldsForMediaList('all'),
@@ -180,7 +180,8 @@ export const cronRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       resetCronStopFlag();
       console.log(`======= Starting: 6. fetchSrc =======`);
-      await fetchSrc(input.limit);
+      console.log(`======= We don't fetch sources anymore =======`);
+      // await fetchSrc(input.limit);
       console.log(`======= Done: 6. fetchSrc =======`);
     }),
 

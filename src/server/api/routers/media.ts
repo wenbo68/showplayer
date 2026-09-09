@@ -27,7 +27,6 @@ import {
   tmdbMediaToTmdbOrigin,
   tmdbOrigin,
   tmdbSeason,
-  tmdbTrending,
   userMediaList,
 } from '~/server/db/schema';
 import {
@@ -43,57 +42,6 @@ import {
 } from '~/server/utils/tmdbApiUtils';
 
 export const mediaRouter = createTRPCRouter({
-  getTopTrending: publicProcedure
-    .input(z.object({ limit: z.number().min(1) }))
-    .query(async ({ ctx, input }) => {
-      const { limit } = input;
-      // 1. Define robust SQL aggregations.
-      // COALESCE ensures we get an empty array '{}' instead of NULL if a media has no origins.
-      // FILTER removes any potential NULL values from the aggregation itself.
-      const aggregatedOrigins = sql<
-        string[]
-      >`COALESCE(array_agg(DISTINCT ${tmdbOrigin.name}) FILTER (WHERE ${tmdbOrigin.name} IS NOT NULL), '{}')`.as(
-        'origins'
-      );
-      const aggregatedGenres = sql<
-        string[]
-      >`COALESCE(array_agg(DISTINCT ${tmdbGenre.name}) FILTER (WHERE ${tmdbGenre.name} IS NOT NULL), '{}')`.as(
-        'genres'
-      );
-
-      // 2. Build and execute the query.
-      const trendingMedia: ListMedia[] = await ctx.db
-        .select({
-          media: tmdbMedia,
-          origins: aggregatedOrigins,
-          genres: aggregatedGenres,
-        })
-        .from(tmdbTrending)
-        // Join trending table with the main media table
-        .innerJoin(tmdbMedia, eq(tmdbTrending.mediaId, tmdbMedia.id))
-        // Join through to the origin names
-        .leftJoin(
-          tmdbMediaToTmdbOrigin,
-          eq(tmdbMedia.id, tmdbMediaToTmdbOrigin.mediaId)
-        )
-        .leftJoin(tmdbOrigin, eq(tmdbMediaToTmdbOrigin.originId, tmdbOrigin.id))
-        // Join through to the genre names
-        .leftJoin(
-          tmdbMediaToTmdbGenre,
-          eq(tmdbMedia.id, tmdbMediaToTmdbGenre.mediaId)
-        )
-        .leftJoin(tmdbGenre, eq(tmdbMediaToTmdbGenre.genreId, tmdbGenre.id))
-        .where(gte(tmdbMedia.availabilityCount, 1))
-        // Group by media to collapse all origins/genres into one row per media
-        .groupBy(tmdbMedia.id, tmdbTrending.rank)
-        // Order by the trending rank to get the top items first
-        .orderBy(asc(tmdbTrending.rank))
-        // Limit to the top 10
-        .limit(limit);
-
-      return trendingMedia;
-    }),
-
   getFilterOptions: publicProcedure.query(async ({ ctx }) => {
     const genres = await ctx.db
       .selectDistinct({

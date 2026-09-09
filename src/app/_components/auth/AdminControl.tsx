@@ -6,9 +6,7 @@ import { useState } from 'react';
 import { api } from '~/trpc/react';
 
 export default function CronAdmin() {
-  // 1. Add new state for the fetch source limit with a default of 100
   const [tmdbListLimit, setTmdbListLimit] = useState(50);
-  const [fetchSrcLimit, setFetchSrcLimit] = useState(100);
 
   // --- Create a useMutation hook for each procedure ---
   const stopCronMutation = api.cron.stopCron.useMutation();
@@ -22,7 +20,6 @@ export default function CronAdmin() {
   const processUserSubmissionsMutation =
     api.cron.processUserSubmissions.useMutation();
   const fetchTmdbListsMutation = api.cron.fetchTmdbLists.useMutation();
-  const fetchSrcMutation = api.cron.fetchSrc.useMutation();
   const updateDenormFieldsMutation = api.cron.updateDenormFields.useMutation();
 
   // --- Create a handler for each mutation ---
@@ -79,16 +76,6 @@ export default function CronAdmin() {
     );
   };
 
-  // 3. Create a new, specific handler for fetching sources with a limit
-  const handleFetchSrc = () => {
-    fetchSrcMutation.mutate(
-      { limit: fetchSrcLimit },
-      {
-        onError: (err) => console.error(`handleFetchSrc Error: ${err.message}`),
-      }
-    );
-  };
-
   const jobs = [
     {
       name: '1. Update Changed Media',
@@ -129,16 +116,7 @@ export default function CronAdmin() {
       },
     },
     {
-      name: '6. Fetch Sources',
-      mutation: fetchSrcMutation,
-      handler: handleFetchSrc, // Use the new handler
-      input: {
-        value: fetchSrcLimit,
-        setter: setFetchSrcLimit,
-      },
-    },
-    {
-      name: '7. Update Denorm. Fields',
+      name: '6. Update Denorm. Fields',
       mutation: updateDenormFieldsMutation,
       handler: createSimpleHandler(
         updateDenormFieldsMutation,
@@ -165,17 +143,6 @@ export default function CronAdmin() {
           type="number"
           value={tmdbListLimit}
           onChange={(e) => setTmdbListLimit(Number(e.target.value))}
-          className="w-60 rounded border border-gray-700 bg-gray-800 px-3 py-2 text-gray-300"
-        />
-        {/* Add a new input for the Fetch Sources limit */}
-        <label htmlFor="fetchSrcLimit" className="text-xs text-gray-500">
-          Fetch Sources Limit (for step 6)
-        </label>
-        <input
-          id="fetchSrcLimit"
-          type="number"
-          value={fetchSrcLimit}
-          onChange={(e) => setFetchSrcLimit(Number(e.target.value))}
           className="w-60 rounded border border-gray-700 bg-gray-800 px-3 py-2 text-gray-300"
         />
         {/** execute button */}

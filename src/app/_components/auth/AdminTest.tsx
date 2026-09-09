@@ -32,7 +32,6 @@ export default function TmdbAdmin() {
 
   // const populateDetailsMutation =
   //   api.media.populateMissingMediaDetails.useMutation();
-  const dailySrcFetchMutation = api.cron.fetchSrc.useMutation();
 
   // const fetchMvSrcMutation = api.media.fetchAndInsertMvSrc.useMutation();
   // const insertEpisodeMutation = api.media.insertSeasonAndEpisode.useMutation();
@@ -128,18 +127,6 @@ export default function TmdbAdmin() {
   //     onError: (err) => console.error('Error populating details: ', err),
   //   });
   // };
-  const handleDailySrcFetch = () => {
-    dailySrcFetchMutation.mutate(
-      {
-        // cronSecret:
-        //   'd23b4a9f9d009dcf28bd69cdbb2815819379db2702dc96251bd72f2dfa1c9d4e',
-      },
-      {
-        onSuccess: () => console.log('Daily src fetch finished'),
-        onError: (err) => console.error('Error fetching daily src: ', err),
-      }
-    );
-  };
   // const handleFetchMvSrc = () => {
   //   fetchMvSrcMutation.mutate(
   //     { tmdbId: Number(mvTmdbId) },
@@ -483,18 +470,6 @@ export default function TmdbAdmin() {
             Error: {populateDetailsMutation.error.message}
           </p>
         )} */}
-        <button
-          onClick={handleDailySrcFetch}
-          disabled={dailySrcFetchMutation.isPending}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-500"
-        >
-          {dailySrcFetchMutation.isPending ? 'Fetching...' : 'Daily src fetch'}
-        </button>
-        {dailySrcFetchMutation.error && (
-          <p className="text-red-600 dark:text-red-400">
-            Error: {dailySrcFetchMutation.error.message}
-          </p>
-        )}
       </div>
 
       {/* <hr className="w-full my-4 border-gray-300 dark:border-gray-700" /> */}

@@ -2,7 +2,6 @@ import { relations, sql } from 'drizzle-orm';
 import {
   index,
   integer,
-  jsonb,
   pgEnum,
   pgTable,
   primaryKey,
@@ -13,7 +12,7 @@ import {
   varchar,
   boolean,
 } from 'drizzle-orm/pg-core';
-import { type AdapterAccount } from 'next-auth/adapters';
+import type { AdapterAccount } from 'next-auth/adapters';
 
 /**
  * This is an example of how to use the multi-project schema feature of Drizzle ORM. Use the same
@@ -23,9 +22,7 @@ import { type AdapterAccount } from 'next-auth/adapters';
  */
 // export const pgTable = pgTableCreator((name) => `showplayer_${name}`);
 
-export const providerEnum = pgEnum('provider_enum', ['E', 'J', 'L', 'F']);
 export const tmdbTypeEnum = pgEnum('tmdb_type', ['movie', 'tv']);
-export const m3u8TypeEnum = pgEnum('m3u8_type', ['master', 'media']);
 export const userListEnum = pgEnum('list_type', ['saved', 'favorite', 'later']);
 export const userRoleEnum = pgEnum('user_role', ['user', 'admin']);
 export const userSubmissionStatusEnum = pgEnum('user_submission_status', [
@@ -37,8 +34,6 @@ export const userSubmissionStatusEnum = pgEnum('user_submission_status', [
 export type MediaType = (typeof tmdbTypeEnum.enumValues)[number];
 export type UserList = (typeof userListEnum.enumValues)[number];
 export type UserRole = (typeof userRoleEnum.enumValues)[number];
-export type SrcProvider = (typeof providerEnum.enumValues)[number];
-// This results in the type: 'E' | 'J' | 'L' | 'F'
 
 export const tmdbOrigin = pgTable('tmdb_origin', {
   id: varchar('id', { length: 2 }).primaryKey(),
@@ -171,10 +166,6 @@ export const tmdbMedia = pgTable(
       mode: 'date',
       withTimezone: true,
     }),
-    srcFetchedAt: timestamp('src_fetched_at', {
-      mode: 'date',
-      withTimezone: true,
-    }),
     // metrics
     popularity: real('popularity').default(0).notNull(),
     voteAverage: real('vote_average').default(0).notNull(),
@@ -221,16 +212,7 @@ export const tmdbMedia = pgTable(
   ]
 );
 
-export const tmdbMediaRelations = relations(tmdbMedia, ({ one, many }) => ({
-  trending: one(tmdbTrending, {
-    fields: [tmdbMedia.id],
-    references: [tmdbTrending.mediaId],
-  }),
-  // topRated: one(tmdbTopRated, {
-  //   fields: [tmdbMedia.id],
-  //   references: [tmdbTopRated.mediaId],
-  // }),
-  sources: many(tmdbSource),
+export const tmdbMediaRelations = relations(tmdbMedia, ({ many }) => ({
   seasons: many(tmdbSeason),
   genres: many(tmdbMediaToTmdbGenre),
   origins: many(tmdbMediaToTmdbOrigin),
@@ -242,47 +224,6 @@ export const tmdbMediaRelations = relations(tmdbMedia, ({ one, many }) => ({
   }),
   lists: many(userMediaList), // ✨ Add this line
 }));
-
-export const tmdbTrending = pgTable('tmdb_trending', {
-  id: varchar({ length: 255 })
-    .notNull()
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  mediaId: varchar('media_id', { length: 255 })
-    .notNull()
-    .references(() => tmdbMedia.id, { onDelete: 'cascade' })
-    .unique(),
-  rank: integer('rank').notNull(),
-});
-
-export const tmdbTrendingRelations = relations(tmdbTrending, ({ one }) => ({
-  media: one(tmdbMedia, {
-    fields: [tmdbTrending.mediaId],
-    references: [tmdbMedia.id],
-  }),
-}));
-
-// export const tmdbTopRated = pgTable('tmdb_top_rated', {
-//   id: varchar({ length: 255 })
-//     .notNull()
-//     .primaryKey()
-//     .$defaultFn(() => crypto.randomUUID()),
-//   mediaId: varchar('media_id', { length: 255 })
-//     .notNull()
-//     .references(() => tmdbMedia.id, { onDelete: 'cascade' })
-//     .unique(),
-//   rank: integer('rank').notNull(),
-//   voteAverage: real('vote_average').notNull(),
-//   voteCount: integer('vote_count').notNull(),
-// });
-
-// export const tmdbTopRatedRelations = relations(tmdbTopRated, ({ one }) => ({
-//   // Creates a link to get the full media details
-//   media: one(tmdbMedia, {
-//     fields: [tmdbTopRated.mediaId],
-//     references: [tmdbMedia.id],
-//   }),
-// }));
 
 export const tmdbSeason = pgTable(
   'tmdb_season',
@@ -337,81 +278,6 @@ export const tmdbEpisodeRelations = relations(tmdbEpisode, ({ one, many }) => ({
   season: one(tmdbSeason, {
     fields: [tmdbEpisode.seasonId],
     references: [tmdbSeason.id],
-  }),
-  sources: many(tmdbSource),
-}));
-
-export const tmdbSource = pgTable(
-  'tmdb_source',
-  {
-    id: varchar({ length: 255 })
-      .notNull()
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    mediaId: varchar('media_id', { length: 255 }).references(
-      () => tmdbMedia.id,
-      {
-        onDelete: 'cascade',
-      }
-    ),
-    episodeId: varchar('episode_id', { length: 255 }).references(
-      () => tmdbEpisode.id,
-      {
-        onDelete: 'cascade',
-      }
-    ),
-
-    // --- 2. Change the column to use the new enum ---
-    provider: providerEnum('provider').notNull(),
-
-    type: m3u8TypeEnum('type').notNull(),
-    url: text().notNull(),
-    headers: jsonb('headers'),
-  },
-  (t) => [
-    // These definitions do not need to change. Drizzle will understand
-    // they now apply to the new integer 'provider' column.
-    uniqueIndex('unq_episode_provider').on(t.episodeId, t.provider),
-    uniqueIndex('unq_movie_provider').on(t.mediaId, t.provider),
-  ]
-);
-
-export const tmdbSourceRelations = relations(tmdbSource, ({ one, many }) => ({
-  media: one(tmdbMedia, {
-    fields: [tmdbSource.mediaId],
-    references: [tmdbMedia.id],
-  }),
-  episode: one(tmdbEpisode, {
-    fields: [tmdbSource.episodeId],
-    references: [tmdbEpisode.id],
-  }),
-  subtitles: many(tmdbSubtitle),
-}));
-
-export const tmdbSubtitle = pgTable(
-  'tmdb_subtitle',
-  {
-    id: varchar({ length: 255 })
-      .notNull()
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    sourceId: varchar('source_id', { length: 255 })
-      .notNull()
-      .references(() => tmdbSource.id, {
-        onDelete: 'cascade',
-      }),
-    language: varchar({ length: 255 }).notNull(),
-    content: text().notNull(),
-  },
-  (table) => [
-    uniqueIndex('unq_source_language').on(table.sourceId, table.language),
-  ]
-);
-
-export const tmdbSubtitleRelations = relations(tmdbSubtitle, ({ one }) => ({
-  source: one(tmdbSource, {
-    fields: [tmdbSubtitle.sourceId],
-    references: [tmdbSource.id],
   }),
 }));
 

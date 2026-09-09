@@ -1,27 +1,14 @@
 // ~/app/tv/[...slug]/page.tsx
 
 import { db } from '~/server/db';
-import {
-  tmdbMedia,
-  tmdbSeason,
-  tmdbEpisode,
-  tmdbSource,
-  // type SrcProvider,
-} from '~/server/db/schema';
+import { tmdbMedia, tmdbSeason, tmdbEpisode } from '~/server/db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { VideoPlayer } from '~/app/_components/player/VideoPlayer';
-// import { TvSelector } from '~/app/_components/player/TvSelector';
-// import { getProxiedSrcUrl } from '~/server/utils/proxyUtils';
-import {
-  // aggregateSubtitles,
-  // getSelectedSourceAndHandleRedirects,
-  handleProvider,
-} from '~/server/utils/playerUtils';
+import { handleProvider } from '~/server/utils/playerUtils';
 import { OverviewSelector } from '~/app/_components/player/OverviewSelector';
 import { MediaSelector } from '~/app/_components/player/MediaSelector';
 import { BackButton } from '~/app/_components/BackButton';
-import type { SourceWithSubtitles } from '~/type';
 
 interface PageProps {
   params: Promise<{ slug: string[] }>;
@@ -52,18 +39,12 @@ export default async function Page({ params }: PageProps) {
           with: {
             episodes: {
               where: eq(tmdbEpisode.episodeNumber, episodeNumber),
-              with: {
-                sources: {
-                  orderBy: [asc(tmdbSource.provider)],
-                  with: { subtitles: true },
-                },
-              },
             },
           },
         },
       },
     }),
-    // Query 2: Gets the full data tree needed for the TvSelector sidebar
+    // Query 2: Gets the full season/episode tree for the selector sidebar
     db.query.tmdbMedia.findFirst({
       where: eq(tmdbMedia.tmdbId, tmdbId),
       with: {
@@ -72,11 +53,6 @@ export default async function Page({ params }: PageProps) {
           with: {
             episodes: {
               orderBy: [asc(tmdbEpisode.episodeNumber)],
-              with: {
-                sources: {
-                  columns: { provider: true }, // Only need provider for styling
-                },
-              },
             },
           },
         },
@@ -90,19 +66,15 @@ export default async function Page({ params }: PageProps) {
   if (!selectedSeason) notFound();
   const selectedEpisode = selectedSeason.episodes[0];
   if (!selectedEpisode) notFound();
-  // extract all src and sub of chosen episode
-  const allProxiableSourcesAndSubtitles: SourceWithSubtitles[] =
-    selectedEpisode.sources;
 
-  const { provider, videoUrl, subtitles, proxiableUrlAndSubtitles } =
-    handleProvider(
-      'tv',
-      allProxiableSourcesAndSubtitles,
-      tmdbId,
-      providerParam,
-      seasonNumber,
-      episodeNumber
-    );
+  // 2. resolve the embed provider (redirects if missing/invalid)
+  const { provider, videoUrl } = handleProvider(
+    'tv',
+    tmdbId,
+    providerParam,
+    seasonNumber,
+    episodeNumber
+  );
 
   return (
     <>
@@ -116,17 +88,10 @@ export default async function Page({ params }: PageProps) {
         selectedSeason={selectedSeason}
         selectedEpisode={selectedEpisode}
       />
-      <VideoPlayer
-        src={videoUrl}
-        episode={selectedEpisode}
-        subtitles={subtitles}
-        playerType={proxiableUrlAndSubtitles === null ? 'iframe' : 'hls'}
-      />
+      <VideoPlayer src={videoUrl} episode={selectedEpisode} />
 
-      {/* Pass the full tree data to the sidebar */}
       <MediaSelector
-        sources={allProxiableSourcesAndSubtitles}
-        selectedProvider={provider ?? 'E!'}
+        selectedProvider={provider}
         tmdbId={tmdbId}
         mediaData={sidebarData}
         selectedSeasonId={selectedSeason.id}

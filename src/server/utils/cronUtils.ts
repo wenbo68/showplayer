@@ -2,8 +2,6 @@ import {
   tmdbEpisode,
   tmdbMedia,
   tmdbSeason,
-  tmdbSource,
-  tmdbTrending,
   userSubmission,
   userSubmissionStatusEnum,
 } from '~/server/db/schema';
@@ -39,7 +37,6 @@ import {
   findNewMediaFromFetched,
 } from './tmdbApiUtils';
 import { runItemsInEachBatchInBulk } from './utils';
-import { fetchSrcForMediaIds } from './srcUtils';
 import { isCronStopping } from './cronControllerUtils';
 
 export async function updateAllChangedMedia() {
@@ -381,54 +378,6 @@ export async function populateMediaUsingTmdbList(
     mediaOutput = await bulkUpsertNewMedia(newMedia);
   }
 
-  // 4. For trending list, populate the table with ALL fetched media
-  if (listType === 'trending') {
-    // ✨ NEW STEP 4.1: Query the DB to get internal IDs for ALL fetched media
-    const compositeWhereClause = or(
-      ...fetchOutput.map((media) =>
-        and(
-          eq(tmdbMedia.tmdbId, media.id),
-          eq(tmdbMedia.type, media.media_type)
-        )
-      )
-    );
-
-    if (!compositeWhereClause) return; // Exit if fetchOutput was empty
-
-    const allMediaFromDb = await db
-      .select({
-        mediaId: tmdbMedia.id,
-        tmdbId: tmdbMedia.tmdbId,
-        type: tmdbMedia.type,
-      })
-      .from(tmdbMedia)
-      .where(compositeWhereClause);
-
-    // ✨ NEW STEP 4.2: Create a lookup map for quick access
-    const mediaIdLookup = new Map<string, string>();
-    for (const media of allMediaFromDb) {
-      mediaIdLookup.set(`${media.tmdbId}-${media.type}`, media.mediaId);
-    }
-
-    // ✨ NEW STEP 4.3: Build the trendingInput using the original fetchOutput to preserve rank
-    const trendingInput = fetchOutput.map((item, index) => {
-      const mediaId = mediaIdLookup.get(`${item.id}-${item.media_type}`);
-      if (!mediaId) {
-        // This should not happen if the upsert logic is correct
-        throw new Error(
-          `Could not find mediaId for tmdbId ${item.id} and type ${item.media_type}`
-        );
-      }
-      return {
-        mediaId: mediaId,
-        rank: index,
-      };
-    });
-    // ✨ NEW STEP 4.4: Clear the table and insert the full list
-    await db.delete(tmdbTrending);
-    await db.insert(tmdbTrending).values(trendingInput);
-  }
-
   if (mediaOutput.length === 0) return;
 
   // 1. fill origin for inserted mv
@@ -442,49 +391,8 @@ export async function populateMediaUsingTmdbList(
   return mediaOutput;
 }
 
-export async function fetchSrc(limit: number) {
-  // 1. Find a prioritized list of media to check, using the same logic as updateRatings
-  const mediaToFetchSrc = await db
-    .select({ id: tmdbMedia.id })
-    .from(tmdbMedia)
-    .where(
-      or(
-        isNull(tmdbMedia.srcFetchedAt), // 1. Never checked
-        and(
-          // 2. Popular but not checked recently (e.g., 3 days for sources)
-          gt(tmdbMedia.popularity, 20),
-          lt(tmdbMedia.srcFetchedAt, sql`CURRENT_DATE - INTERVAL '1 day'`)
-        ),
-        // 3. Any other media not checked in a longer time (e.g., 14 days)
-        lt(tmdbMedia.srcFetchedAt, sql`CURRENT_DATE - INTERVAL '7 day'`)
-      )
-    )
-    .orderBy(desc(tmdbMedia.popularity), asc(tmdbMedia.srcFetchedAt))
-    .limit(limit);
-
-  if (mediaToFetchSrc.length === 0) {
-    console.log('[smartFetchMediaSrc] No media needed src fetch.');
-    return { success: true, checked: 0 };
-  }
-
-  const mediaIds = mediaToFetchSrc.map((m) => m.id);
-
-  // 2. Pass this prioritized list to your powerful, reusable function
-  await fetchSrcForMediaIds(mediaIds);
-
-  // 3. Mark these media items as "checked" by updating their timestamp
-  await db
-    .update(tmdbMedia)
-    .set({ srcFetchedAt: new Date() })
-    .where(inArray(tmdbMedia.id, mediaIds));
-
-  console.log(`[smartFetchMediaSrc] done: ${mediaIds.length} successful.`);
-}
-
-// do we use
-
 // denorm fields include:
-// availability: mv = how many src, tv = how many episodes with src
+// availability: always 0 now that source scraping is removed (column kept for compatibility)
 // total aired episodes: mv = 0, tv = how many episodes whose air date is before today
 // latestEpisodeInfo: season number, episode number, air date
 export async function updateDenormFieldsForMediaList(input: 'all' | string[]) {
@@ -506,17 +414,12 @@ export async function updateDenormFieldsForMediaList(input: 'all' | string[]) {
 
   const mvOutput = await db.execute(sql`
     WITH movie_calcs AS (
-      SELECT
-        m.id,
-        CASE
-          WHEN EXISTS (SELECT 1 FROM ${tmdbSource} src WHERE src.media_id = m.id) THEN 1
-          ELSE 0
-        END as "availabilityCount"
+      SELECT m.id
       FROM ${tmdbMedia} m
       ${mvConditions}
     )
     UPDATE ${tmdbMedia} m SET
-      availability_count = mc."availabilityCount",
+      availability_count = 0,
       aired_episode_count = CASE WHEN m.release_date < CURRENT_DATE THEN 1 ELSE 0 END,
       updated_date = m.release_date,
       updated_season_number = NULL,
@@ -562,12 +465,11 @@ export async function updateDenormFieldsForMediaList(input: 'all' | string[]) {
     WITH tv_calcs AS (
       SELECT
         m.id,
-        (SELECT COUNT(DISTINCT src.episode_id) FROM ${tmdbSource} src JOIN ${tmdbEpisode} e ON src.episode_id = e.id JOIN ${tmdbSeason} s ON e.season_id = s.id WHERE s.media_id = m.id) as "availabilityCount",
         (SELECT COUNT(*) FROM ${tmdbEpisode} e JOIN ${tmdbSeason} s ON e.season_id = s.id WHERE s.media_id = m.id AND e.air_date < CURRENT_DATE) as "airedEpisodeCount",
         (
           SELECT json_build_object('seasonNumber', s.season_number, 'episodeNumber', e.episode_number, 'airDate', e.air_date)
           FROM ${tmdbEpisode} e JOIN ${tmdbSeason} s ON e.season_id = s.id
-          WHERE s.media_id = m.id AND EXISTS (SELECT 1 FROM ${tmdbSource} src WHERE src.episode_id = e.id)
+          WHERE s.media_id = m.id AND e.air_date < CURRENT_DATE
           ORDER BY e.air_date DESC
           LIMIT 1
         ) as "latestEpisode"
@@ -575,7 +477,7 @@ export async function updateDenormFieldsForMediaList(input: 'all' | string[]) {
       WHERE m.id IN ${tvIds.map((tv) => tv.id)}
     )
     UPDATE ${tmdbMedia} m SET
-      availability_count = tc."availabilityCount",
+      availability_count = 0,
       aired_episode_count = tc."airedEpisodeCount",
       updated_date = (tc."latestEpisode"->>'airDate')::timestamp,
       updated_season_number = (tc."latestEpisode"->>'seasonNumber')::integer,

@@ -8,9 +8,8 @@ export default async function Home() {
   const session = await auth();
 
   // --- 1. Fetch all four lists in parallel using your search API ---
-  const [trendingList, popularMvData, popularTvData, topMvData, topTvData] =
+  const [popularMvData, popularTvData, topMvData, topTvData] =
     await Promise.all([
-      api.media.getTopTrending({ limit: 10 }),
       api.media.searchAndFilter({
         format: ['movie'],
         minVoteAvg: 0,
@@ -62,7 +61,6 @@ export default async function Home() {
   // need to pass down all media ids on the page so that optimistically updating of one media will apply to copies of that same media on the entire page
   // eg this home page may have multiple media lists that may or may not share the some same media
   const pageMediaIds = [
-    ...trendingList.map((m) => m.media.id),
     ...popularMvList.map((m) => m.media.id),
     ...popularTvList.map((m) => m.media.id),
     ...topMvList.map((m) => m.media.id),

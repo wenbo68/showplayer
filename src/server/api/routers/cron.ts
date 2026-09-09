@@ -3,7 +3,6 @@
 import { createTRPCRouter, protectedProcedure } from '~/server/api/trpc';
 import { z } from 'zod';
 import {
-  fetchSrc,
   populateMediaUsingTmdbLists,
   processUserSubmissions,
   updateAllChangedMedia,
@@ -17,7 +16,7 @@ import {
   resetCronStopFlag,
 } from '~/server/utils/cronControllerUtils';
 
-// cron job order: updateChangedMedia -> updatePopularity -> updateRatings -> fetchTmdbLists -> fetchSrc -> updateDenormFields
+// cron job order: updateChangedMedia -> updatePopularity -> updateRatings -> fetchTmdbLists -> updateDenormFields
 export const cronRouter = createTRPCRouter({
   stopCron: protectedProcedure.input(z.object({})).mutation(() => {
     requestCronStop();
@@ -36,7 +35,6 @@ export const cronRouter = createTRPCRouter({
     .input(
       z.object({
         tmdbListLimit: z.number().min(1).default(50),
-        fetchLimit: z.number().min(1).default(100),
         jobType: z.enum(['all', 'userSubmissions'] as const).default('all'),
       })
     )
@@ -62,7 +60,6 @@ export const cronRouter = createTRPCRouter({
                 name: '4. fetch tmdb lists',
                 fn: () => populateMediaUsingTmdbLists(input.tmdbListLimit),
               },
-              // { name: '5. fetch src', fn: () => fetchSrc(input.fetchLimit) },
               {
                 name: '6. update denorm fields',
                 fn: () => updateDenormFieldsForMediaList('all'),
@@ -171,27 +168,14 @@ export const cronRouter = createTRPCRouter({
       console.log(`======= Done: 5. fetchTmdbLists =======`);
     }),
 
-  /**
-   * Intelligently selects a batch of the most important media (new, popular, or stale)
-   * and triggers the source fetching process for them.
-   */
-  fetchSrc: protectedProcedure
-    .input(z.object({ limit: z.number().min(1).default(50) }))
-    .mutation(async ({ input }) => {
-      resetCronStopFlag();
-      console.log(`======= Starting: 6. fetchSrc =======`);
-      console.log(`======= We don't fetch sources anymore =======`);
-      // await fetchSrc(input.limit);
-      console.log(`======= Done: 6. fetchSrc =======`);
-    }),
 
   // update denorm fields of media marked as outdated
   updateDenormFields: protectedProcedure
     .input(z.object({}))
     .mutation(async () => {
       resetCronStopFlag();
-      console.log(`======= Starting: 7. updateDenormFields =======`);
+      console.log(`======= Starting: 6. updateDenormFields =======`);
       await updateDenormFieldsForMediaList('all');
-      console.log(`======= Done: 7. updateDenormFields =======`);
+      console.log(`======= Done: 6. updateDenormFields =======`);
     }),
 });

@@ -2,12 +2,9 @@ import type { InferSelectModel } from 'drizzle-orm';
 import {
   tmdbTypeEnum,
   userListEnum,
-  type SrcProvider,
   type tmdbEpisode,
   type tmdbMedia,
   type tmdbSeason,
-  type tmdbSource,
-  type tmdbSubtitle,
 } from './server/db/schema';
 import z from 'zod';
 import { orderEnum, orderValues } from './constant';
@@ -16,20 +13,6 @@ import { orderEnum, orderValues } from './constant';
 export type Media = InferSelectModel<typeof tmdbMedia>;
 export type Season = InferSelectModel<typeof tmdbSeason>;
 export type Episode = InferSelectModel<typeof tmdbEpisode>;
-export type Source = InferSelectModel<typeof tmdbSource>;
-export type Subtitle = InferSelectModel<typeof tmdbSubtitle>;
-export type SourceWithSubtitles = Source & { subtitles: Subtitle[] };
-
-export type M3U8Result = {
-  type: 'master' | 'media';
-  url: string;
-  headers: Record<string, string>;
-};
-export type PuppeteerResult = {
-  provider: SrcProvider;
-  m3u8: M3U8Result;
-  subtitle?: string;
-};
 
 export type ListMedia = {
   media: Media;
@@ -106,5 +89,8 @@ export const SearchAndFilterInputSchema = z.object({
 // ✨ 2. Export the inferred TypeScript type
 export type SearchAndFilterInput = z.infer<typeof SearchAndFilterInputSchema>;
 
-export type SrcProviderPlusEmbed = SrcProvider | 'E!' | 'F!' | 'L!' | 'J!';
-export type PlayerType = 'hls' | 'iframe';
+// Third-party embed players. The trailing "!" in the URL segment marks options
+// that open popups (kept for backward-compatible links).
+export const embedProviders = ['E!', 'F!', 'J!', 'L!'] as const;
+export type EmbedProvider = (typeof embedProviders)[number];
+export const DEFAULT_EMBED_PROVIDER: EmbedProvider = 'E!';

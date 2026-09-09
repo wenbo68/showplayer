@@ -8,7 +8,6 @@ import {
 } from '~/server/db/schema';
 import { TRPCError } from '@trpc/server';
 import { populateMediaUsingTmdbIds } from '~/server/utils/mediaUtils';
-import { fetchSrcForMediaIds } from '~/server/utils/srcUtils';
 import { updateDenormFieldsForMediaList } from '~/server/utils/cronUtils';
 import z from 'zod';
 import { subDays } from 'date-fns';
@@ -19,8 +18,8 @@ export const userRouter = createTRPCRouter({
   // admin can bypass this limit
   // 2. Check if the submitted already exists in tmdbMedia table
   // if yes, return the releaseDate and availabilityCount and totalEpisodeCount
-  // 3. for admin, immediately, upsert media to tmdbMedia table -> fetch src for that media -> update denorm fields for that media
-  // 4. for regular users, add to the table for batch processing later (batch upsert user submitted media -> fetch src with all other media -> update denorm with all other media)
+  // 3. for admin, immediately, upsert media to tmdbMedia table -> update denorm fields for that media
+  // 4. for regular users, add to the table for batch processing later by the daily job
   submitTmdbId: protectedProcedure
     .input(
       z.object({
@@ -105,11 +104,7 @@ export const userRouter = createTRPCRouter({
           });
         }
 
-        console.log("We don't fetch sources anymore, even for admins.")
-        // // Step 3b: Fetch sources for the newly added media.
-        // await fetchSrcForMediaIds([newMediaId]);
-
-        // Step 3c: Update all the denormalized fields so it's ready for searching.
+        // Step 3b: Update all the denormalized fields so it's ready for searching.
         await updateDenormFieldsForMediaList([newMediaId]);
 
         console.log(

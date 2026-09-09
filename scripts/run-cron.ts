@@ -2,8 +2,8 @@
 // (see .github/workflows/daily-cron.yml) or locally with `pnpm cron [job] [tmdbListLimit]`.
 //
 // Jobs:
-//   all              full daily sequence (default)
-//   userSubmissions  process pending user submissions + refresh denorm fields
+//   all              full daily sequence, including pending user submissions (default)
+//   userSubmissions  process pending user submissions + refresh denorm fields (runs every few hours)
 //   <step name>      run a single step: changedMedia | popularity | ratings | tmdbLists | submissions | denorm
 
 import {
@@ -36,7 +36,7 @@ const steps = (tmdbListLimit: number): Record<string, Step> => ({
 });
 
 const sequences: Record<string, string[]> = {
-  all: ['changedMedia', 'popularity', 'ratings', 'tmdbLists', 'denorm'],
+  all: ['changedMedia', 'popularity', 'ratings', 'tmdbLists', 'submissions', 'denorm'],
   userSubmissions: ['submissions', 'denorm'],
 };
 

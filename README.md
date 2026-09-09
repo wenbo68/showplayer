@@ -2,7 +2,7 @@
 
 ## Deployment
 
-- **Site**: Vercel (`.github/workflows/vercel-deploy.yml`, runs on push to `main`).
+- **Site**: Vercel, connected to this GitHub repo. Every push to `main` deploys automatically.
 - **Database**: Postgres on Neon (`DATABASE_URL`). Apply schema changes with `pnpm db:migrate`.
 - **Daily job**: GitHub Actions (`.github/workflows/daily-cron.yml`). Runs `pnpm cron` every day at 09:00 UTC.
   Start it by hand or run a single step from the Actions tab ("Run workflow"); cancel a run from the same page.

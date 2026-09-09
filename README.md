@@ -4,8 +4,8 @@
 
 - **Site**: Vercel, connected to this GitHub repo. Every push to `main` deploys automatically.
 - **Database**: Postgres on Neon (`DATABASE_URL`). Apply schema changes with `pnpm db:migrate`.
-- **Scheduled jobs**: GitHub Actions (`.github/workflows/daily-cron.yml`). Full sequence daily at 09:00 UTC;
-  pending user submissions every 4 hours. Admin submissions are processed immediately on the request page.
+- **Daily job**: GitHub Actions (`.github/workflows/daily-cron.yml`). Runs the full sequence, including pending
+  user submissions, every day at 09:00 UTC. Admin submissions are processed immediately on the request page.
   Start it by hand or run a single step from the Actions tab ("Run workflow"); cancel a run from the same page.
   Locally: `set -a; source .env; set +a; SKIP_ENV_VALIDATION=1 pnpm cron [job] [tmdbListLimit]`.
 - Video playback uses third-party embed players only (Videasy, Vidfast, Vidjoy, Vidlink). Source scraping and

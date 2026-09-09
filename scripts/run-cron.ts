@@ -3,7 +3,7 @@
 //
 // Jobs:
 //   all              full daily sequence, including pending user submissions (default)
-//   userSubmissions  process pending user submissions + refresh denorm fields (runs every few hours)
+//   userSubmissions  process pending user submissions + refresh denorm fields (manual use)
 //   <step name>      run a single step: changedMedia | popularity | ratings | tmdbLists | submissions | denorm
 
 import {

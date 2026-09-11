@@ -161,8 +161,6 @@ export const mediaRouter = createTRPCRouter({
 
       // 4. apply all conditions to count and data query
       const conditions = [];
-      // // Always filter for available media
-      // conditions.push(gte(tmdbMedia.availabilityCount, 1));
       // if list exists, check if user is logged in
       if (list && list.length > 0) {
         if (!session?.user?.id) {
@@ -252,47 +250,13 @@ export const mediaRouter = createTRPCRouter({
       if (minVoteCount && minVoteCount > 0) {
         conditions.push(gte(tmdbMedia.voteCount, minVoteCount));
       }
-      // handle availability
+      // handle availability: released or not yet released
       if (minAvail) {
         const now = sql`CURRENT_TIMESTAMP`;
         if (minAvail === 'no') {
-          // Condition: releaseDate is in the future
           conditions.push(gte(tmdbMedia.releaseDate, now));
         } else {
-          // For all other options, media must be released
-          // Condition: releaseDate is in the past or today
           conditions.push(lt(tmdbMedia.releaseDate, now));
-
-          // Calculate the ad-free percentage.
-          // We use a CASE statement to prevent division by zero if airedEpisodeCount is 0.
-          // We also cast to `real` to ensure floating-point division.
-          // For movies, airedEpisodeCount should be 1, so this works seamlessly.
-          const adFreePercentage = sql<number>`
-            CASE
-              WHEN ${tmdbMedia.airedEpisodeCount} > 0 THEN (${tmdbMedia.availabilityCount}::real / ${tmdbMedia.airedEpisodeCount}::real)
-              ELSE 0
-            END
-          `;
-
-          switch (minAvail) {
-            case '0':
-              // This is covered by the release date check above, but we can be explicit
-              conditions.push(gte(adFreePercentage, 0));
-              break;
-            case '25':
-              conditions.push(gte(adFreePercentage, 0.25));
-              break;
-            case '50':
-              conditions.push(gte(adFreePercentage, 0.5));
-              break;
-            case '75':
-              conditions.push(gte(adFreePercentage, 0.75));
-              break;
-            case '100':
-              // Use gte(1) to handle cases where availability might exceed aired episodes
-              conditions.push(gte(adFreePercentage, 1));
-              break;
-          }
         }
       }
       if (conditions.length > 0) {

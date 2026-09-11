@@ -61,12 +61,8 @@ const FilterInputObject = (itemSchema: z.ZodType) =>
 
 // Define the availability options
 export const availabilityEnum = [
-  'no',
-  '0', // >= 0%
-  '25', // >= 25%
-  '50', // >= 50%
-  '75', // >= 75%
-  '100', // 100%
+  'yes', // released
+  'no', // not released yet
 ] as const;
 
 export const SearchAndFilterInputSchema = z.object({

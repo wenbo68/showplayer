@@ -55,15 +55,8 @@ export function MediaPopup({
 
   let buttonText: string = '';
   if (!isReleased) buttonText = 'Not Released';
-  else if (media.type === 'movie') {
-    if (media.availabilityCount <= 0) buttonText = 'Watch with Ads';
-    else buttonText = 'Watch Ad-Free';
-  } else {
-    buttonText = `${media.airedEpisodeCount} Episodes (${(
-      (media.availabilityCount / media.airedEpisodeCount) *
-      100
-    ).toFixed(0)}% Ad-Free)`;
-  }
+  else if (media.type === 'movie') buttonText = 'Watch';
+  else buttonText = `${media.airedEpisodeCount} Episodes`;
 
   const fullBackdropUrl = media.backdropUrl
     ? `https://image.tmdb.org/t/p/w780${media.backdropUrl}`

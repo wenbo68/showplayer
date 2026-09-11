@@ -209,12 +209,8 @@ export default function TmdbAdmin() {
                   : 'N/A'
               }. Availability: ${
                 submissionType === 'movie'
-                  ? `${
-                      data.mediaInfo.availabilityCount > 0
-                        ? 'Available'
-                        : 'Not Available'
-                    }`
-                  : `${data.mediaInfo.availabilityCount}/${data.mediaInfo.airedEpisodeCount}`
+                  ? 'Available'
+                  : `${data.mediaInfo.airedEpisodeCount} episodes`
               }`
             );
           } else if (data.status === 'processed') {

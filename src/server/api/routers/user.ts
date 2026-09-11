@@ -17,7 +17,7 @@ export const userRouter = createTRPCRouter({
   // 1. Rate Limiting: Check if the user has submitted today yet (if yes, then cannot submit again)
   // admin can bypass this limit
   // 2. Check if the submitted already exists in tmdbMedia table
-  // if yes, return the releaseDate and availabilityCount and totalEpisodeCount
+  // if yes, return the releaseDate and airedEpisodeCount
   // 3. for admin, immediately, upsert media to tmdbMedia table -> update denorm fields for that media
   // 4. for regular users, add to the table for batch processing later by the daily job
   submitTmdbId: protectedProcedure
@@ -77,7 +77,6 @@ export const userRouter = createTRPCRouter({
           status: 'exists' as const,
           mediaInfo: {
             releaseDate: existingMedia.releaseDate,
-            availabilityCount: existingMedia.availabilityCount,
             airedEpisodeCount: existingMedia.airedEpisodeCount,
           },
         };

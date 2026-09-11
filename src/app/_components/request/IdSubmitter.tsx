@@ -188,16 +188,10 @@ export default function IdSubmitter() {
           if (!isReleased) {
             availabilityMsg = 'Not Yet Released';
           } else {
-            const hasSources = media.availabilityCount > 0;
-            if (mediaType === 'movie') {
-              availabilityMsg = hasSources
-                ? 'Available without ads'
-                : 'Available with ads';
-            } else {
-              availabilityMsg =
-                `${media.airedEpisodeCount} episodes available` +
-                (hasSources ? ` (${media.availabilityCount} without ads)` : '');
-            }
+            availabilityMsg =
+              mediaType === 'movie'
+                ? 'Available'
+                : `${media.airedEpisodeCount} episodes available`;
           }
           setMessage({
             text: `Media already exists. Release Date: ${

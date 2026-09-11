@@ -6,7 +6,7 @@ import {
   tmdbMediaToTmdbOrigin,
   tmdbSeason,
 } from '../db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import {
   fetchTmdbDetailViaApi,
   fetchTmdbSeasonDetailViaApi,
@@ -253,12 +253,6 @@ export async function upsertSeasonsAndEpisodes(
       });
 
     console.log(`[upsertSeasonsAndEpisodes] ${detail.id}: Done.`);
-
-    // 7. after updating seasons/episodes -> flag media as needing denorm field update
-    await tx
-      .update(tmdbMedia)
-      .set({ denormFieldsOutdated: true })
-      .where(eq(tmdbMedia.id, media.mediaId));
   });
 }
 

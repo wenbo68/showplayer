@@ -197,7 +197,7 @@ export default function ActiveLabels({
     if (avail) {
       activeLabels.push({
         key: `avail-${avail}`,
-        label: `Available: ${avail === 'no' ? 'No' : `> ${avail}% Ad-Free`}`,
+        label: `Availability: ${avail === 'no' ? 'Not Released' : 'Released'}`,
         type: 'avail',
         onRemove: () => {
           setAvail('');

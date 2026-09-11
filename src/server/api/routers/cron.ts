@@ -169,7 +169,7 @@ export const cronRouter = createTRPCRouter({
     }),
 
 
-  // update denorm fields of media marked as outdated
+  // recalculate denorm fields for every movie and tv show
   updateDenormFields: protectedProcedure
     .input(z.object({}))
     .mutation(async () => {

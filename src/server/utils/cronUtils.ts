@@ -406,11 +406,15 @@ export async function updateDenormFieldsForMediaList(input: 'all' | string[]) {
     }`
   );
 
+  // Always recalculate every row in scope. These fields depend on the calendar
+  // (has the release/air date passed yet?), not only on the underlying data,
+  // so a change-flag would miss shows whose episodes simply aired since the
+  // last run. A full sweep is a few seconds at this catalog size.
   // 1. Update mv
   const mvConditions =
     input === 'all'
-      ? sql`WHERE m.type = 'movie' AND m.denorm_fields_outdated IS TRUE`
-      : sql`WHERE m.type = 'movie' AND m.denorm_fields_outdated IS TRUE AND m.id IN ${input}`;
+      ? sql`WHERE m.type = 'movie'`
+      : sql`WHERE m.type = 'movie' AND m.id IN ${input}`;
 
   const mvOutput = await db.execute(sql`
     WITH movie_calcs AS (
@@ -419,12 +423,10 @@ export async function updateDenormFieldsForMediaList(input: 'all' | string[]) {
       ${mvConditions}
     )
     UPDATE ${tmdbMedia} m SET
-      availability_count = 0,
       aired_episode_count = CASE WHEN m.release_date < CURRENT_DATE THEN 1 ELSE 0 END,
       updated_date = m.release_date,
       updated_season_number = NULL,
-      updated_episode_number = NULL,
-      denorm_fields_outdated = FALSE
+      updated_episode_number = NULL
     FROM movie_calcs mc
     WHERE m.id = mc.id
     RETURNING m.id;
@@ -439,28 +441,12 @@ export async function updateDenormFieldsForMediaList(input: 'all' | string[]) {
     return;
   }
 
-  // 2. get tv
-  const tvConditions = [
-    eq(tmdbMedia.type, 'tv'),
-    eq(tmdbMedia.denormFieldsOutdated, true),
-  ];
-  if (input !== 'all') {
-    tvConditions.push(inArray(tmdbMedia.id, input));
-  }
+  // 2. Update tv in a single bulk statement.
+  const tvConditions =
+    input === 'all'
+      ? sql`WHERE m.type = 'tv'`
+      : sql`WHERE m.type = 'tv' AND m.id IN ${input}`;
 
-  const tvIds = await db
-    .select({ id: tmdbMedia.id })
-    .from(tmdbMedia)
-    .where(and(...tvConditions));
-
-  if (tvIds.length === 0) {
-    console.log('[updateDenormFieldsForMediaList] No tv to update.');
-    return { updatedMv: mvOutput.length, updatedTv: 0 };
-  }
-
-  // collect tv denorm fields in batch
-  // 3. Perform a SINGLE, efficient bulk update for all dirty TV shows.
-  //    The loop and batchProcess are now REMOVED.
   const tvOutput = await db.execute(sql`
     WITH tv_calcs AS (
       SELECT
@@ -470,19 +456,17 @@ export async function updateDenormFieldsForMediaList(input: 'all' | string[]) {
           SELECT json_build_object('seasonNumber', s.season_number, 'episodeNumber', e.episode_number, 'airDate', e.air_date)
           FROM ${tmdbEpisode} e JOIN ${tmdbSeason} s ON e.season_id = s.id
           WHERE s.media_id = m.id AND e.air_date < CURRENT_DATE
-          ORDER BY e.air_date DESC
+          ORDER BY e.air_date DESC, s.season_number DESC, e.episode_number DESC
           LIMIT 1
         ) as "latestEpisode"
       FROM ${tmdbMedia} m
-      WHERE m.id IN ${tvIds.map((tv) => tv.id)}
+      ${tvConditions}
     )
     UPDATE ${tmdbMedia} m SET
-      availability_count = 0,
       aired_episode_count = tc."airedEpisodeCount",
       updated_date = (tc."latestEpisode"->>'airDate')::timestamp,
       updated_season_number = (tc."latestEpisode"->>'seasonNumber')::integer,
-      updated_episode_number = (tc."latestEpisode"->>'episodeNumber')::integer,
-      denorm_fields_outdated = FALSE
+      updated_episode_number = (tc."latestEpisode"->>'episodeNumber')::integer
     FROM tv_calcs tc
     WHERE m.id = tc.id
     RETURNING m.id;

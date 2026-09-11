@@ -10,7 +10,6 @@ import {
   timestamp,
   uniqueIndex,
   varchar,
-  boolean,
 } from 'drizzle-orm/pg-core';
 import type { AdapterAccount } from 'next-auth/adapters';
 
@@ -175,7 +174,6 @@ export const tmdbMedia = pgTable(
       withTimezone: true,
     }),
     // denormalized fields for faster filtering/sorting
-    availabilityCount: integer('availability_count').default(0).notNull(),
     airedEpisodeCount: integer('aired_episode_count').default(0).notNull(),
     updatedDate: timestamp('updated_date', {
       mode: 'date',
@@ -183,10 +181,6 @@ export const tmdbMedia = pgTable(
     }),
     updatedSeasonNumber: integer('updated_season_number'),
     updatedEpisodeNumber: integer('updated_episode_number'),
-    denormFieldsOutdated: boolean('denorm_fields_outdated')
-      .default(true)
-      .notNull(),
-
     createdAt: timestamp('created_at', {
       mode: 'date',
       withTimezone: true,
@@ -205,7 +199,6 @@ export const tmdbMedia = pgTable(
     index('popularity_idx').on(table.popularity),
     index('vote_average_idx').on(table.voteAverage),
     index('vote_count_idx').on(table.voteCount),
-    index('denorm_updated_at_idx').on(table.denormFieldsOutdated),
     index('vote_updated_at_idx').on(table.voteUpdatedAt),
     index('updated_date_idx').on(table.updatedDate),
     uniqueIndex('tmdb_id_type_unq_idx').on(table.tmdbId, table.type),

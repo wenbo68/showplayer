@@ -95,11 +95,7 @@ export default function SearchBar({
     { label: '> 100', urlInput: '100' },
   ];
   const availOptions = [
-    { label: '> 100% Ad-Free', urlInput: '100' },
-    { label: '> 75% Ad-Free', urlInput: '75' },
-    { label: '> 50% Ad-Free', urlInput: '50' },
-    { label: '> 25% Ad-Free', urlInput: '25' },
-    { label: '> 0% Ad-Free', urlInput: '0' },
+    { label: 'Released', urlInput: 'yes' },
     { label: 'Not Released', urlInput: 'no' },
   ];
 

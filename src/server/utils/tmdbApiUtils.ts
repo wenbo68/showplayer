@@ -316,17 +316,53 @@ export async function fetchTmdbListViaApi(
   });
 }
 
+/** Thrown when TMDB answers with a non-2xx HTTP status. */
+export class TmdbApiError extends Error {
+  constructor(
+    public readonly httpStatus: number,
+    public readonly tmdbStatusCode: number | undefined,
+    public readonly label: string,
+    message: string
+  ) {
+    super(message);
+    this.name = 'TmdbApiError';
+  }
+}
+
+/** True when TMDB answered 404: the title has been deleted/merged on TMDB. */
+export function isTmdbNotFoundError(err: unknown): err is TmdbApiError {
+  return err instanceof TmdbApiError && err.httpStatus === 404;
+}
+
+/**
+ * Fetches a TMDB endpoint and returns the parsed JSON body.
+ * Throws when TMDB responds with a non-2xx status (e.g. 404 for a deleted
+ * title, 429 for rate limiting) so callers never receive an error body
+ * (`{ success: false, status_code, status_message }`) in place of real data.
+ */
+async function fetchTmdbJson(url: string, label: string) {
+  const resp = await fetch(url, { headers: TMDB_API_HEADERS });
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => undefined);
+    const tmdbStatusCode: number | undefined = body?.status_code;
+    const tmdbMessage: string | undefined = body?.status_message;
+    throw new TmdbApiError(
+      resp.status,
+      tmdbStatusCode,
+      label,
+      `[tmdb] ${label}: HTTP ${resp.status}` +
+        (tmdbStatusCode !== undefined ? ` (tmdb code ${tmdbStatusCode})` : '') +
+        (tmdbMessage ? ` - ${tmdbMessage}` : '')
+    );
+  }
+  return resp.json();
+}
+
 export async function fetchTmdbDetailViaApi(type: string, id: number) {
-  const resp = await fetch(
+  const data = await fetchTmdbJson(
     `https://api.themoviedb.org/3/${type}/${id}?language=en-US`,
-    {
-      headers: {
-        accept: 'application/json',
-        Authorization: `Bearer ${env.TMDB_API_KEY}`,
-      },
-    }
+    `${type}/${id}`
   );
-  const data = await resp.json();
   return { ...data, media_type: type };
 }
 
@@ -376,17 +412,10 @@ export async function fetchTmdbSeasonDetailViaApi(
   id: number,
   seasonNumber: number
 ) {
-  const resp = await fetch(
+  return fetchTmdbJson(
     `https://api.themoviedb.org/3/tv/${id}/season/${seasonNumber}?language=en-US`,
-    {
-      headers: {
-        accept: 'application/json',
-        Authorization: `Bearer ${env.TMDB_API_KEY}`,
-      },
-    }
+    `tv/${id}/season/${seasonNumber}`
   );
-  const data = await resp.json();
-  return data;
 }
 
 export type FindTmdbIdByTitleResult = {

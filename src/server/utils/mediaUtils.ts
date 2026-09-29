@@ -6,10 +6,11 @@ import {
   tmdbMediaToTmdbOrigin,
   tmdbSeason,
 } from '../db/schema';
-import { sql } from 'drizzle-orm';
+import { and, eq, or, sql } from 'drizzle-orm';
 import {
   fetchTmdbDetailViaApi,
   fetchTmdbSeasonDetailViaApi,
+  isTmdbNotFoundError,
 } from './tmdbApiUtils';
 import { runItemsInEachBatchConcurrently } from './utils';
 
@@ -36,9 +37,10 @@ export async function bulkUpsertNewMedia(fetchOutput: any[]) {
               : item.first_air_date
               ? new Date(item.first_air_date)
               : null,
+            // list endpoints return `genre_ids`, detail endpoints return `genres`
             genreIds:
-              item.genre_ids ||
-              item.genres.map((g: { id: number; name: string }) => g.id) ||
+              item.genre_ids ??
+              item.genres?.map((g: { id: number; name: string }) => g.id) ??
               [],
             originIds: item.origin_country || [],
             popularity: item.popularity,
@@ -311,8 +313,15 @@ export async function populateSeasonAndEpisodeForTvList(
       );
       return;
     }
-    // upsert seasons/episodes
-    await upsertSeasonsAndEpisodes(tvDetail, tv);
+    // upsert seasons/episodes (one failing show must not abort the whole batch)
+    try {
+      await upsertSeasonsAndEpisodes(tvDetail, tv);
+    } catch (err) {
+      console.error(
+        `[populateSeasonAndEpisodeForTvList] upsert seasons/episodes failed: ${tv.tmdbId} (${tv.title})`,
+        err
+      );
+    }
   });
   console.log(
     `[populateSeasonAndEpisodeForTvList] upsert tv seasons/episodes: done`
@@ -371,6 +380,66 @@ export async function populateOriginForMediaList(
   console.log(`[populateOriginForMediaList] Finished.`);
 }
 
+type MediaRef = { tmdbId: number; type: 'movie' | 'tv'; title?: string };
+
+// Safety valve: never delete more than this share of the titles checked in one
+// run (with a small absolute floor). A TMDB outage or auth problem must not be
+// able to wipe the catalog. Real deletions on TMDB are rare, a handful per day.
+const MAX_TMDB_DELETE_RATIO = 0.1;
+const MIN_TMDB_DELETE_ALLOWANCE = 20;
+
+/**
+ * Removes titles from our db that TMDB reports as deleted (HTTP 404), so the
+ * db does not drift from TMDB. Seasons, episodes, genre/origin links and user
+ * list entries for those titles are removed via ON DELETE CASCADE.
+ * @param missing   titles that returned 404 in this run
+ * @param checkedCount how many titles were checked in this run (for the cap)
+ * @returns number of media rows deleted
+ */
+export async function deleteMediaMissingOnTmdb(
+  missing: MediaRef[],
+  checkedCount: number
+): Promise<number> {
+  if (missing.length === 0) return 0;
+
+  const allowance = Math.max(
+    MIN_TMDB_DELETE_ALLOWANCE,
+    Math.ceil(checkedCount * MAX_TMDB_DELETE_RATIO)
+  );
+  if (missing.length > allowance) {
+    console.error(
+      `[deleteMediaMissingOnTmdb] REFUSING to delete: ${missing.length} of ${checkedCount} titles returned 404 ` +
+        `(cap is ${allowance}). This looks like a TMDB problem, not real deletions. Nothing removed.`
+    );
+    return 0;
+  }
+
+  const deleted = await db
+    .delete(tmdbMedia)
+    .where(
+      or(
+        ...missing.map((m) =>
+          and(eq(tmdbMedia.type, m.type), eq(tmdbMedia.tmdbId, m.tmdbId))
+        )
+      )
+    )
+    .returning({
+      tmdbId: tmdbMedia.tmdbId,
+      type: tmdbMedia.type,
+      title: tmdbMedia.title,
+    });
+
+  for (const d of deleted) {
+    console.log(
+      `[deleteMediaMissingOnTmdb] deleted ${d.type} ${d.tmdbId} "${d.title}" (no longer on TMDB)`
+    );
+  }
+  console.log(
+    `[deleteMediaMissingOnTmdb] done: ${deleted.length} deleted (${missing.length} reported missing).`
+  );
+  return deleted.length;
+}
+
 // this is only used for new (user submitted) or existing but changed media so far
 // (so seasonCount is there for existing media so that we can skip season fetch if season is up to date)
 // fetch detail of each media
@@ -384,11 +453,19 @@ export async function populateMediaUsingTmdbIds(
     `[populateMediaUsingTmdbIds] fetching media details: ${input.length}`
   );
   const mediaDetails: any[] = [];
+  const missingOnTmdb: MediaRef[] = [];
   await runItemsInEachBatchConcurrently(input, 10, async (item) => {
     try {
       const detail = await fetchTmdbDetailViaApi(item.type, item.tmdbId);
       mediaDetails.push(detail);
     } catch (err) {
+      if (isTmdbNotFoundError(err)) {
+        console.log(
+          `[populateMediaUsingTmdbIds] ${item.type} ${item.tmdbId}: not found on TMDB (deleted/merged)`
+        );
+        missingOnTmdb.push({ tmdbId: item.tmdbId, type: item.type });
+        return;
+      }
       console.error(
         `[populateMediaUsingTmdbIds] failed fetching detail: ${item.tmdbId}`,
         err
@@ -398,6 +475,14 @@ export async function populateMediaUsingTmdbIds(
   console.log(
     `[populateMediaUsingTmdbIds] done fetching media details: ${mediaDetails.length}`
   );
+
+  // 1b. keep the db in sync with TMDB: drop titles TMDB has deleted
+  await deleteMediaMissingOnTmdb(missingOnTmdb, input.length);
+
+  if (mediaDetails.length === 0) {
+    console.log('[populateMediaUsingTmdbIds] nothing to upsert.');
+    return [];
+  }
 
   // 2. upsert media, genre, origin
   const mediaOutput = await bulkUpsertNewMedia(mediaDetails);
@@ -435,8 +520,25 @@ export async function updateRatingsForMediaList(
     voteCount: number;
   }[] = [];
 
+  const missingOnTmdb: MediaRef[] = [];
   await runItemsInEachBatchConcurrently(input, 10, async (media) => {
-    const details = await fetchTmdbDetailViaApi(media.type, media.tmdbId);
+    let details: any;
+    try {
+      details = await fetchTmdbDetailViaApi(media.type, media.tmdbId);
+    } catch (err) {
+      if (isTmdbNotFoundError(err)) {
+        console.log(
+          `[updateRatingsForMediaList] ${media.type} (${media.title}): not found on TMDB (deleted/merged)`
+        );
+        missingOnTmdb.push({ tmdbId: media.tmdbId, type: media.type });
+        return;
+      }
+      console.error(
+        `[updateRatingsForMediaList] ${media.type} (${media.title}): detail fetch failed`,
+        err
+      );
+      return;
+    }
     if (details?.vote_average && details?.vote_count) {
       newRatings.push({
         id: media.id,
@@ -455,6 +557,9 @@ export async function updateRatingsForMediaList(
       );
     }
   });
+  // keep the db in sync with TMDB: drop titles TMDB has deleted
+  await deleteMediaMissingOnTmdb(missingOnTmdb, input.length);
+
   if (newRatings.length === 0) {
     console.log('[updateRatingsForMediaList] No media from API had ratings.');
     return 0;

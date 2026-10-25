@@ -12,16 +12,14 @@ import {
   fetchTmdbSeasonDetailViaApi,
   isTmdbNotFoundError,
 } from './tmdbApiUtils';
-import { runItemsInEachBatchConcurrently } from './utils';
+import { isMovieOrTv, runItemsInEachBatchConcurrently } from './utils';
 
 export async function bulkUpsertNewMedia(fetchOutput: any[]) {
   // 2. Prepare db input from api fetch ouput (removes duplicates)
   const mediaInput = Array.from(
     new Map(
       fetchOutput
-        .filter(
-          (item: any) => item.media_type === 'movie' || item.media_type === 'tv'
-        )
+        .filter((item: any) => isMovieOrTv(item.media_type))
         .map((item: any) => [
           // Use a composite key for the map to handle movie/tv id collisions
           `${item.media_type}-${item.id}`,

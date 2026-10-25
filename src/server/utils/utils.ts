@@ -39,6 +39,16 @@ export async function runItemsInEachBatchConcurrently<T>(
 }
 
 /**
+ * TMDB list endpoints such as `trending/all` return people alongside movies
+ * and tv shows. Only movie/tv exist in the `tmdb_type` db enum.
+ */
+export function isMovieOrTv(
+  mediaType: string | undefined | null
+): mediaType is 'movie' | 'tv' {
+  return mediaType === 'movie' || mediaType === 'tv';
+}
+
+/**
  * A helper function to check if a string contains only standard Latin/ASCII characters.
  * This is effective at filtering out titles in scripts like Cyrillic, Japanese, Korean, etc.
  * @param text The string to test.

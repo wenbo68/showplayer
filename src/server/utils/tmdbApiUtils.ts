@@ -2,7 +2,7 @@ import { and, eq, or, sql } from 'drizzle-orm';
 import { env } from '~/env';
 import { tmdbMedia, tmdbSeason, type MediaType } from '../db/schema';
 import { db } from '../db';
-import { isLatinBased } from './utils';
+import { isLatinBased, isMovieOrTv } from './utils';
 import type { FetchedMediaItem } from '~/type';
 
 const TMDB_API_HEADERS = {
@@ -289,11 +289,16 @@ export async function fetchTmdbListViaApi(
 
     // Iterate through the fetched results
     for (const item of results) {
-      // 1. Get the correct title field based on the media type.
-      const title =
-        (mediaType ?? item.media_type) === 'movie' ? item.title : item.name;
+      // 1. `trending/all` mixes in people (actors, directors). The db `type`
+      //    enum only accepts movie/tv, so drop anything else before it can
+      //    reach a query.
+      const itemType: string = mediaType ?? item.media_type;
+      if (!isMovieOrTv(itemType)) continue;
 
-      // 2. Check if the ID is new AND if the title is Latin-based.
+      // 2. Get the correct title field based on the media type.
+      const title = itemType === 'movie' ? item.title : item.name;
+
+      // 3. Check if the ID is new AND if the title is Latin-based.
       if (!seenIds.has(item.id) && isLatinBased(title)) {
         seenIds.add(item.id);
         collected.push(item);
